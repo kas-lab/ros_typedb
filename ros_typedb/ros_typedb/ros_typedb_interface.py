@@ -20,6 +20,7 @@ from rclpy.lifecycle import State
 from rclpy.lifecycle import TransitionCallbackReturn
 
 from ros_typedb.typedb_interface import TypeDBInterface
+from ros_typedb_msgs.srv import Query
 
 from std_msgs.msg import String
 
@@ -29,6 +30,7 @@ class ROSTypeDBInterface(Node):
         super().__init__(node_name, **kwargs)
 
     def init_typedb_interface(
+            self,
             address,
             database_name,
             schema_path=None,
@@ -45,20 +47,34 @@ class ROSTypeDBInterface(Node):
             force_data
         )
 
-        # self.typedb_interface.insert_data_event = self.insert_data_event
-
     def on_configure(self, state: State) -> TransitionCallbackReturn:
         self.get_logger().info("on_configure() is called.")
 
         self.event_pub = self.create_lifecycle_publisher(
-            String, 'typedb/events/', 10)
+            String, 'typedb/events', 10)
+
+        self.insert_query_service = self.create_service(
+            Query,
+            'typedb/insert_query',
+            self.insert_query_service_cb)
 
         return TransitionCallbackReturn.SUCCESS
 
-    # def insert_data_event(self):
-    #     event = String()
-    #     event.data = 'insert'
-    #     self.event_pub.publish(event)
+    def on_cleanup(self, state: State) -> TransitionCallbackReturn:
+        self.destroy_publisher(self.event_pub)
+        self.destroy_service(self.insert_query_service)
+
+        self.get_logger().info('on_cleanup() is called.')
+        return TransitionCallbackReturn.SUCCESS
+
+    def insert_query_service_cb(self, req, response):
+        self.get_logger().info('Insert query requested: {}'.format(req.query))
+        result = self.typedb_interface.insert_database(req.query)
+        if result is None:
+            response.succes = False
+        else:
+            response.succes = True
+        return response
 
 
 def main():
@@ -66,6 +82,13 @@ def main():
 
     executor = rclpy.executors.MultiThreadedExecutor()
     lc_node = ROSTypeDBInterface('ros_typedb_interface')
+    lc_node.init_typedb_interface(
+        "localhost:1729",
+        "test_database",
+        force_database=True,
+        schema_path='/home/gus/exp_metacontrol_ws/src/ros_typedb/ros_typedb/test/typedb_test_data/schema.tql',
+        data_path='/home/gus/exp_metacontrol_ws/src/ros_typedb/ros_typedb/test/typedb_test_data/data.tql',
+        force_data=True)
     executor.add_node(lc_node)
     try:
         executor.spin()
