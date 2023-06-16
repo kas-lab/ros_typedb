@@ -150,32 +150,53 @@ class TypeDBInterface:
     # Insert query
     @insert_data_event_
     def insert_database(self, query):
-        return self.database_query(
-            SessionType.DATA, TransactionType.WRITE, 'insert', query)
+        result = None
+        try:
+            result = self.database_query(
+                SessionType.DATA, TransactionType.WRITE, 'insert', query)
+        except TypeDBClientException as err:
+            print('Error with insert query! Exception retrieved: ', err)
+        return result
 
     # Delete query
     @delete_data_event_
     def delete_from_database(self, query):
-        return self.database_query(
-            SessionType.DATA, TransactionType.WRITE, 'delete', query)
+        result = None
+        try:
+            result = self.database_query(
+                SessionType.DATA, TransactionType.WRITE, 'delete', query)
+        except TypeDBClientException as err:
+            print('Error with delete query! Exception retrieved: ', err)
+        return result
 
     # TODO: decorator?
     # Match query
     def match_database(self, query):
-        options = TypeDBOptions.core()
-        options.infer = True
-        return self.database_query(
-            SessionType.DATA, TransactionType.READ, 'match', query, options)
+        result = None
+        try:
+            options = TypeDBOptions.core()
+            options.infer = True
+            result = self.database_query(
+               SessionType.DATA, TransactionType.READ, 'match', query, options)
+        except TypeDBClientException as err:
+            print('Error with match query! Exception retrieved: ', err)
+        return result
 
     def match_aggregate_database(self, query):
-        options = TypeDBOptions.core()
-        options.infer = True
-        return self.database_query(
-            SessionType.DATA,
-            TransactionType.READ,
-            'match_aggregate',
-            query,
-            options)
+        result = None
+        try:
+            options = TypeDBOptions.core()
+            options.infer = True
+            result = self.database_query(
+                SessionType.DATA,
+                TransactionType.READ,
+                'match_aggregate',
+                query,
+                options)
+        except TypeDBClientException as err:
+            print(
+                'Error with match_aggregate query! Exception retrieved: ', err)
+        return result
     # Read/write database end
 
     def delete_entity(self, entity, key, key_value):
