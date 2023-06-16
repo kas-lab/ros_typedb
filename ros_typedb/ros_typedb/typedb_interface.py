@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import functools
 
 from typedb.client import TypeDB
 from typedb.client import TypeDBOptions
@@ -123,27 +124,37 @@ class TypeDBInterface:
             print('Error in load_data method. Exception msg: ', err)
 
     # Events begining
-    def insert_data_event(func):
-        def inner(*args, **kwargs):
-            print('Data has been inserted!')  # TODO: Do something else
-            return func(*args, **kwargs)
-        return inner
+    def insert_data_event(self):
+        print('Data has been inserted!')
 
-    def delete_data_event(func):
-        def inner(*args, **kwargs):
-            print('Data has been deleted!')  # TODO: Do something else
-            return func(*args, **kwargs)
-        return inner
+    def insert_data_event_(func):
+        @functools.wraps(func)
+        def insert_data_event_wrapper(*args, **kwargs):
+            value = func(*args, **kwargs)
+            args[0].insert_data_event()
+            return value
+        return insert_data_event_wrapper
+
+    def delete_data_event(self):
+        print('Data has been deleted!')
+
+    def delete_data_event_(func):
+        @functools.wraps(func)
+        def delete_data_event_wrapper(*args, **kwargs):
+            value = func(*args, **kwargs)
+            args[0].delete_data_event()
+            return value
+        return delete_data_event_wrapper
     # Events end
 
     # Insert query
-    @insert_data_event
+    @insert_data_event_
     def insert_database(self, query):
         return self.database_query(
             SessionType.DATA, TransactionType.WRITE, 'insert', query)
 
     # Delete query
-    @delete_data_event
+    @delete_data_event_
     def delete_from_database(self, query):
         return self.database_query(
             SessionType.DATA, TransactionType.WRITE, 'delete', query)
