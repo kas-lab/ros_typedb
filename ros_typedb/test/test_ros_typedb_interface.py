@@ -70,10 +70,10 @@ def test_ros_typedb_lc_states():
         activate_res = node.change_ros_typedb_state(3)
         get_active_state_res = node.get_ros_typedb_state()
 
-        assert configure_res is True and \
-               get_inactive_state_res == 2 and \
-               activate_res is True and \
-               get_active_state_res == 3
+        assert configure_res.success is True and \
+               get_inactive_state_res.current_state.id == 2 and \
+               activate_res.success is True and \
+               get_active_state_res.current_state.id == 3
     finally:
         rclpy.shutdown()
 
@@ -87,11 +87,10 @@ def test_ros_typedb_insert_query():
         node.activate_ros_typedb()
 
         query_req = Query.Request()
+        query_req.query_type = 'insert'
         query_req.query = \
             'insert $entity isa person, has email \"test@test.com\";'
-        while not node.insert_query_srv.wait_for_service(timeout_sec=1.0):
-            node.get_logger().info('service not available, waiting again...')
-        query_res = node.insert_query_srv.call(query_req)
+        query_res = node.call_service(node.query_srv, query_req)
         assert query_res.success is True
     finally:
         rclpy.shutdown()
@@ -106,13 +105,84 @@ def test_ros_typedb_insert_event():
         node.activate_ros_typedb()
 
         query_req = Query.Request()
+        query_req.query_type = 'insert'
         query_req.query = \
             'insert $entity isa person, has email \"test@test.com\";'
-        while not node.insert_query_srv.wait_for_service(timeout_sec=1.0):
-            node.get_logger().info('service not available, waiting again...')
-        query_res = node.insert_query_srv.call(query_req)
+        query_res = node.call_service(node.query_srv, query_req)
         event_flag = node.typedb_event.wait(timeout=5.0)
         assert event_flag and node.typedb_event_data == 'insert'
+    finally:
+        rclpy.shutdown()
+
+
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_delete_query():
+    rclpy.init()
+    try:
+        node = MakeTestNode()
+        node.start_node()
+        node.activate_ros_typedb()
+
+        query_req = Query.Request()
+        query_req.query_type = 'insert'
+        query_req.query = \
+            'insert $entity isa person, has email \"test@test.com\";'
+        query_res = node.call_service(node.query_srv, query_req)
+
+        query_req = Query.Request()
+        query_req.query_type = 'delete'
+        query_req.query = \
+            'match $entity isa person, has email \"test@test.com\";' + \
+            ' delete $entity isa person;'
+        query_res = node.call_service(node.query_srv, query_req)
+
+        assert query_res.success is True
+    finally:
+        rclpy.shutdown()
+
+
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_delete_event():
+    rclpy.init()
+    try:
+        node = MakeTestNode()
+        node.start_node()
+        node.activate_ros_typedb()
+
+        query_req = Query.Request()
+        query_req.query_type = 'insert'
+        query_req.query = \
+            'insert $entity isa person, has email \"test@test.com\";'
+        query_res = node.call_service(node.query_srv, query_req)
+
+        query_req = Query.Request()
+        query_req.query_type = 'delete'
+        query_req.query = \
+            'match $entity isa person, has email \"test@test.com\";' + \
+            ' delete $entity isa person;'
+        query_res = node.call_service(node.query_srv, query_req)
+        event_flag = node.typedb_event.wait(timeout=5.0)
+        assert event_flag and node.typedb_event_data == 'delete'
+
+        assert query_res.success is True
+    finally:
+        rclpy.shutdown()
+
+
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_wrong_query():
+    rclpy.init()
+    try:
+        node = MakeTestNode()
+        node.start_node()
+        node.activate_ros_typedb()
+
+        query_req = Query.Request()
+        query_req.query_type = 'wrong'
+        query_req.query = \
+            'insert $entity isa person, has email \"test@test.com\";'
+        query_res = node.call_service(node.query_srv, query_req)
+        assert query_res.success is False
     finally:
         rclpy.shutdown()
 
@@ -130,8 +200,8 @@ class MakeTestNode(Node):
         self.get_state_srv = self.create_client(
             GetState, '/ros_typedb_interface/get_state')
 
-        self.insert_query_srv = self.create_client(
-            Query, '/typedb/insert_query')
+        self.query_srv = self.create_client(
+            Query, '/typedb/query')
 
         self.event_sub = self.create_subscription(
             String, '/typedb/events', self.event_sub_cb, 10)
@@ -145,19 +215,27 @@ class MakeTestNode(Node):
     def change_ros_typedb_state(self, transition_id):
         change_state_req = ChangeState.Request()
         change_state_req.transition.id = transition_id
-        while not self.change_state_srv.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-        change_state_res = self.change_state_srv.call(change_state_req)
-
-        return change_state_res.success
+        return self.call_service(self.change_state_srv, change_state_req)
 
     def get_ros_typedb_state(self):
         get_state_req = GetState.Request()
-        while not self.get_state_srv.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-        get_state_res = self.get_state_srv.call(get_state_req)
+        return self.call_service(self.get_state_srv, get_state_req)
 
-        return get_state_res.current_state.id
+    def call_service(self, cli, request):
+        if cli.wait_for_service(timeout_sec=5.0) is False:
+            self.get_logger().error(
+                'service not available {}'.format(cli.srv_name))
+            return None
+        future = cli.call_async(request)
+        if self.executor.spin_until_future_complete(
+                future, timeout_sec=5.0) is False:
+            self.get_logger().error(
+                "Future not completed {}".format(cli.srv_name))
+            return None
+
+        self.get_logger().error("Future completed {}".format(cli.srv_name))
+        self.get_logger().error("Future result {}".format(future.result()))
+        return future.result()
 
     def activate_ros_typedb(self):
         self.change_ros_typedb_state(1)
