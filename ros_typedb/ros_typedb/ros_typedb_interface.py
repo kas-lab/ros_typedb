@@ -47,6 +47,13 @@ class ROSTypeDBInterface(Node):
             force_data
         )
 
+        self.typedb_interface.insert_data_event = self.insert_data_event
+
+    def insert_data_event(self):
+        event = String()
+        event.data = 'insert'
+        self.event_pub.publish(event)
+
     def on_configure(self, state: State) -> TransitionCallbackReturn:
         self.get_logger().info("on_configure() is called.")
 
