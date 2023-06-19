@@ -71,9 +71,9 @@ class ROSTypeDBInterface(Node):
         self.get_logger().info('Insert query requested: {}'.format(req.query))
         result = self.typedb_interface.insert_database(req.query)
         if result is None:
-            response.succes = False
+            response.success = False
         else:
-            response.succes = True
+            response.success = True
         return response
 
 
