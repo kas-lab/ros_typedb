@@ -1,3 +1,4 @@
+string query_type # insert, delete, match, or match_aggregate
 string query
 ---
 bool success

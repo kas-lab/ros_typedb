@@ -67,10 +67,10 @@ class ROSTypeDBInterface(Node):
         self.event_pub = self.create_lifecycle_publisher(
             String, 'typedb/events', 10)
 
-        self.insert_query_service = self.create_service(
+        self.query_service = self.create_service(
             Query,
-            'typedb/insert_query',
-            self.insert_query_service_cb)
+            'typedb/query',
+            self.query_service_cb)
 
         return TransitionCallbackReturn.SUCCESS
 
@@ -81,9 +81,24 @@ class ROSTypeDBInterface(Node):
         self.get_logger().info('on_cleanup() is called.')
         return TransitionCallbackReturn.SUCCESS
 
-    def insert_query_service_cb(self, req, response):
-        self.get_logger().info('Insert query requested: {}'.format(req.query))
-        result = self.typedb_interface.insert_database(req.query)
+    def query_service_cb(self, req, response):
+        self.get_logger().info(
+            '{} query requested: {}'.format(req.query_type, req.query))
+        if req.query_type == 'insert':
+            query_func = self.typedb_interface.insert_database
+        elif req.query_type == 'delete':
+            query_func = self.typedb_interface.delete_from_database
+        elif req.query_type == 'match':
+            query_func = self.typedb_interface.match_database
+        elif req.query_type == 'match_aggregate':
+            query_func = self.typedb_interface.match_aggregate_database
+        else:
+            self.get_logger().warning(
+                'Query type {} not recognized'.format(req.query_type))
+            response.success = False
+            return response
+
+        result = query_func(req.query)
         if result is None:
             response.success = False
         else:
