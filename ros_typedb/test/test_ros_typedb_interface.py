@@ -14,6 +14,7 @@
 
 from pathlib import Path
 import sys
+from threading import Event
 from threading import Thread
 
 import launch
@@ -30,6 +31,7 @@ from ros_typedb.ros_typedb_interface import ROSTypeDBInterface
 from lifecycle_msgs.srv import ChangeState
 from lifecycle_msgs.srv import GetState
 from ros_typedb_msgs.srv import Query
+from std_msgs.msg import String
 
 
 @launch_pytest.fixture
@@ -95,10 +97,32 @@ def test_ros_typedb_insert_query():
         rclpy.shutdown()
 
 
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_insert_event():
+    rclpy.init()
+    try:
+        node = MakeTestNode()
+        node.start_node()
+        node.activate_ros_typedb()
+
+        query_req = Query.Request()
+        query_req.query = \
+            'insert $entity isa person, has email \"test@test.com\";'
+        while not node.insert_query_srv.wait_for_service(timeout_sec=1.0):
+            node.get_logger().info('service not available, waiting again...')
+        query_res = node.insert_query_srv.call(query_req)
+        event_flag = node.typedb_event.wait(timeout=5.0)
+        assert event_flag and node.typedb_event_data == 'insert'
+    finally:
+        rclpy.shutdown()
+
+
 class MakeTestNode(Node):
 
     def __init__(self, name='test_node'):
         super().__init__(name)
+        self.typedb_event = Event()
+        self.typedb_event_data = None
 
         self.change_state_srv = self.create_client(
             ChangeState, '/ros_typedb_interface/change_state')
@@ -108,6 +132,9 @@ class MakeTestNode(Node):
 
         self.insert_query_srv = self.create_client(
             Query, '/typedb/insert_query')
+
+        self.event_sub = self.create_subscription(
+            String, '/typedb/events', self.event_sub_cb, 10)
 
     def start_node(self):
         self.ros_spin_thread = Thread(
@@ -135,3 +162,7 @@ class MakeTestNode(Node):
     def activate_ros_typedb(self):
         self.change_ros_typedb_state(1)
         self.change_ros_typedb_state(3)
+
+    def event_sub_cb(self, msg):
+        self.typedb_event_data = msg.data
+        self.typedb_event.set()
