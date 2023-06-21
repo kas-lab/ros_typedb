@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3.3.0
-      - uses: ros-tooling/setup-ros@0.6.1
-          with:
-            required-ros-distributions: humble
+      - uses: ros-tooling/setup-ros@v0.6
+        with:
+          required-ros-distributions: humble
       - uses: ros-tooling/action-ros-ci@v0.3
         with:
           package-name: ros_typedb
