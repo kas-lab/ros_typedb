@@ -6,4 +6,5 @@ gpg --export 8F3DA4B5E9AEF44C | sudo tee /etc/apt/trusted.gpg.d/vaticle.gpg > /d
 echo "deb [ arch=all ] https://repo.vaticle.com/repository/apt/ trusty main" | sudo tee /etc/apt/sources.list.d/vaticle.list > /dev/null
 
 sudo apt update
-sudo apt install typedb-all typedb-client
+sudo apt install typedb-all
+pip3 install typedb-client
