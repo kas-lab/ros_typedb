@@ -13,16 +13,14 @@
 # limitations under the License.
 import functools
 
-from typedb.client import TypeDB
-from typedb.client import TypeDBOptions
 from typedb.client import SessionType
 from typedb.client import TransactionType
+from typedb.client import TypeDB
 from typedb.client import TypeDBClientException
+from typedb.client import TypeDBOptions
 
 
 class TypeDBInterface:
-    def __del__(self):
-        self.client.close()
 
     def __init__(self, address, database_name, schema_path=None,
                  data_path=None, force_database=False, force_data=False):
@@ -34,6 +32,9 @@ class TypeDBInterface:
 
         if data_path is not None and data_path != '':
             self.load_data(data_path, force=force_data)
+
+    def __del__(self):
+        self.client.close()
 
     def connect_client(self, address, parallelisation=2):
         self.client = TypeDB.core_client(
@@ -200,25 +201,25 @@ class TypeDBInterface:
     # Read/write database end
 
     def delete_entity(self, entity, key, key_value):
-        query = f'''
+        query = f"""
             match $entity isa {entity}, has {key} "{key_value}";
             delete $entity isa {entity};
-        '''
+        """
         return self.delete_from_database(query)
 
     def insert_entity(self, entity, key, key_value):
-        query = f'''
+        query = f"""
             insert $entity isa {entity}, has {key} "{key_value}";
-        '''
+        """
         return self.insert_database(query)
 
     def get_attribute_from_entity_raw(self, entity, key, key_value, attr):
-        query = f'''
+        query = f"""
             match $entity isa {entity},
             has {key} "{key_value}",
             has {attr} $attribute;
             get $attribute;
-        '''
+        """
         return self.match_database(query)
 
     def get_attribute_from_entity(self, entity, key, key_value, attr):
@@ -227,21 +228,21 @@ class TypeDBInterface:
         return [r.get('attribute').get_value() for r in result]
 
     def delete_attribute_from_entity(self, entity, key, key_value, attr):
-        query = f'''
+        query = f"""
             match $entity isa {entity},
             has {key} "{key_value}",
             has {attr} $attribute;
             delete $entity has $attribute;
-        '''
+        """
         return self.delete_from_database(query)
 
     def insert_attribute_entity(
             self, entity, key, key_value, attr, attr_value):
-        query = f'''
+        query = f"""
             match $entity isa {entity},
             has {key} "{key_value}";
             insert $entity has {attr} {attr_value};
-        '''
+        """
         return self.insert_database(query)
 
     def update_attribute_entity(

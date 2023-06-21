@@ -19,8 +19,8 @@ from ros_typedb.typedb_interface import TypeDBInterface
 @pytest.fixture
 def typedb_interface():
     typedb_interface = TypeDBInterface(
-        "localhost:1729",
-        "test_database",
+        'localhost:1729',
+        'test_database',
         force_database=True,
         schema_path='test/typedb_test_data/schema.tql',
         data_path='test/typedb_test_data/data.tql',
@@ -30,10 +30,10 @@ def typedb_interface():
 
 def test_insert_entity(typedb_interface):
     typedb_interface.insert_entity('person', 'email', 'test@email.test')
-    query = '''
+    query = """
         match $entity isa person, has email "test@email.test";
         get $entity;
-    '''
+    """
     result = typedb_interface.match_database(query)
     assert len(result) > 0
 
@@ -41,10 +41,10 @@ def test_insert_entity(typedb_interface):
 def test_delete_entity(typedb_interface):
     typedb_interface.insert_entity('person', 'email', 'test@email.test')
     typedb_interface.delete_entity('person', 'email', 'test@email.test')
-    query = '''
+    query = """
         match $entity isa person, has email "test@email.test";
         get $entity;
-    '''
+    """
     result = typedb_interface.match_database(query)
     assert len(result) == 0
 

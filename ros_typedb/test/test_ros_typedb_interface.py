@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pathlib import Path
-import sys
-from threading import Event
-from threading import Thread
-
 import launch
 import launch_pytest
 import launch_ros
 
-import pytest
+from pathlib import Path
 
+import pytest
 import rclpy
-from rclpy.node import Node
+
+from threading import Event
+from threading import Thread
+
+import sys
 
 from lifecycle_msgs.srv import ChangeState
 from lifecycle_msgs.srv import GetState
+from rclpy.node import Node
 from ros_typedb_msgs.srv import Query
 from std_msgs.msg import String
 
@@ -101,9 +102,9 @@ def test_ros_typedb_lc_states():
         get_active_state_res = node.get_ros_typedb_state()
 
         assert configure_res.success is True and \
-               get_inactive_state_res.current_state.id == 2 and \
-               activate_res.success is True and \
-               get_active_state_res.current_state.id == 3
+            get_inactive_state_res.current_state.id == 2 and \
+            activate_res.success is True and \
+            get_active_state_res.current_state.id == 3
     finally:
         rclpy.shutdown()
 
@@ -149,10 +150,10 @@ def test_ros_typedb_delete_query(insert_query):
 
         query_req = Query.Request()
         query_req.query_type = 'delete'
-        query_req.query = '''
+        query_req.query = """
             match $entity isa person, has email "test@test.com";
             delete $entity isa person;
-        '''
+        """
         query_res = node.call_service(node.query_srv, query_req)
 
         assert query_res.success is True
@@ -172,10 +173,10 @@ def test_ros_typedb_delete_event(insert_query):
 
         query_req = Query.Request()
         query_req.query_type = 'delete'
-        query_req.query = '''
+        query_req.query = """
             match $entity isa person, has email "test@test.com";
             delete $entity isa person;
-        '''
+        """
         query_res = node.call_service(node.query_srv, query_req)
         event_flag = node.typedb_event.wait(timeout=5.0)
         assert event_flag and node.typedb_event_data == 'delete'
@@ -213,7 +214,7 @@ def test_ros_typedb_match_query_attribute(insert_query):
 
         query_req = Query.Request()
         query_req.query_type = 'match'
-        query_req.query = '''
+        query_req.query = """
             match $entity isa person,
                 has email "test@test.com",
                 has nickname $nick,
@@ -222,7 +223,7 @@ def test_ros_typedb_match_query_attribute(insert_query):
                 has alive $alive,
                 has birth-date $date;
             get $nick, $age, $height, $alive, $date;
-        '''
+        """
         query_res = node.call_service(node.query_srv, query_req)
 
         correct_nick = True
@@ -262,17 +263,17 @@ def test_ros_typedb_match_aggregate_query(insert_query):
 
         query_req = Query.Request()
         query_req.query_type = 'match_aggregate'
-        query_req.query = '''
+        query_req.query = """
             match
                 $person isa person,
                     has email "test@test.com";
                 (employee:$person) isa employment, has salary $s;
             get $s; sum $s;
-        '''
+        """
         query_res = node.call_service(node.query_srv, query_req)
 
         assert query_res.success is True and \
-               query_res.result[0].value.integer_value == 1500
+            query_res.result[0].value.integer_value == 1500
     finally:
         rclpy.shutdown()
 

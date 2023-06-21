@@ -14,11 +14,11 @@
 
 import rclpy
 
+from rcl_interfaces.msg import ParameterValue
 from rclpy.lifecycle import Node
 from rclpy.lifecycle import State
 from rclpy.lifecycle import TransitionCallbackReturn
 
-from rcl_interfaces.msg import ParameterValue
 from ros_typedb.typedb_interface import TypeDBInterface
 from ros_typedb_msgs.msg import QueryResult
 from ros_typedb_msgs.srv import Query
@@ -49,6 +49,7 @@ def set_query_result_value(value, value_type):
 
 
 class ROSTypeDBInterface(Node):
+
     def __init__(self, node_name, **kwargs):
         super().__init__(node_name, **kwargs)
         self.declare_parameter('address', 'localhost:1729')
@@ -100,7 +101,7 @@ class ROSTypeDBInterface(Node):
         self.data_event('delete')
 
     def on_configure(self, state: State) -> TransitionCallbackReturn:
-        self.get_logger().info("on_configure() is called.")
+        self.get_logger().info('on_configure() is called.')
 
         self.event_pub = self.create_lifecycle_publisher(
             String, 'typedb/events', 10)
