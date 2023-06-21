@@ -37,7 +37,7 @@ from std_msgs.msg import String
 def insert_query():
     query_req = Query.Request()
     query_req.query_type = 'insert'
-    query_req.query = '''
+    query_req.query = """
         insert
             $person isa person,
                 has email "test@test.com",
@@ -56,7 +56,7 @@ def insert_query():
                 has salary 1000;
             (employee:$person, employer:$person3) isa employment,
                 has salary 500;
-    '''
+    """
     return query_req
 
 
