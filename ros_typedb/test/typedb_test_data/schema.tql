@@ -6,43 +6,11 @@ define
 name sub attribute, value string;
 full-name sub attribute, value string;
 nickname sub attribute, value string;
-unemployed sub attribute, value boolean;
-
-title sub attribute,
-  value string;
 
 event-date sub attribute,
   abstract,
   value datetime;
-approved-date sub event-date;
 birth-date sub event-date;
-start-date sub event-date;
-end-date sub event-date;
-engagement-date sub event-date;
-
-published-date sub attribute,
-  value datetime;
-
-reference-id sub attribute,
-  value string;
-
-salary sub attribute,
-  value long;
-
-registration-number sub attribute,
-  value string;
-
-identifier sub attribute,
-  value string;
-
-graduated sub attribute,
-  value boolean;
-
-score sub attribute,
-  value double;
-
-ranking sub attribute,
-  value long;
 
 phone-number sub attribute,
   value string;
@@ -54,248 +22,31 @@ gender sub attribute,
   value string;
 
 height sub attribute,
-    value double;
+  value double;
 
 age sub attribute,
-    value long;
+  value long;
 
 alive sub attribute,
-    value boolean;
+  value boolean;
+
+salary sub attribute,
+  value long;
 
 person sub entity,
   owns full-name,
   owns nickname,
   owns gender,
   owns phone-number,
-  owns unemployed,
   owns height,
   owns age,
   owns alive,
   owns birth-date,
-  owns email @key;
+  owns email @key,
+  plays employment:employee,
+  plays employment:employer;
 
-###################
-## GENERIC TYPES ##
-###################
-
-localisation sub relation,
-  relates located,
-  relates location;
-
-location-hierarchy sub relation,
-  relates subordinate,
-  relates superior;
-
-ownership sub relation,
-  relates owner,
-  relates owned;
-
-location sub entity,
-  owns name @key,
-  plays location-hierarchy:subordinate,
-  plays location-hierarchy:superior;
-
-request sub relation,
-  abstract,
-  relates subject,
-  relates requester,
-  relates respondent;
-
-periodic-event sub relation,
-  abstract,
-  owns start-date,
-  owns end-date;
-################
-## PARENTSHIP ##
-################
-
-person sub entity,
-  plays parentship:parent,
-  plays parentship:father,
-  plays parentship:mother,
-  plays parentship:child,
-  plays parentship:son,
-  plays parentship:daughter,
-  plays siblings:sibling;
-
-parentship sub relation,
-  relates parent,
-  relates child,
-  relates father,
-  relates mother,
-  relates son,
-  relates daughter;
-
-siblings sub relation,
-    relates sibling;
-
-person-with-a-mother sub entity;
-person-with-a-father sub entity;
-
-rule genderizeParentships1:
-  when {
-    (parent: $p, child: $c) isa parentship;
-    $p has gender 'male';
-    $c has gender 'male';
-  } then {
-    (father: $p, son: $c) isa parentship;
-  };
-
-rule genderizeParentships2:
-  when {
-    (parent: $p, child: $c) isa parentship;
-    $p has gender 'male';
-    $c has gender 'female';
-  } then {
-    (father: $p, daughter: $c) isa parentship;
-  };
-
-rule genderizeParentships3:
-  when {
-    (parent: $p, child: $c) isa parentship;
-    $p has gender 'female';
-    $c has gender 'male';
-  } then {
-    (mother: $p, son: $c) isa parentship;
-  };
-
-rule genderizeParentships4:
-  when {
-    (parent: $p, child: $c) isa parentship;
-    $p has gender 'female';
-    $c has gender 'female';
-  } then {
-    (mother: $p, daughter: $c) isa parentship;
-  };
-
-###############
-## RESIDENCY ##
-###############
-
-## query the schema section
-# match
-# $per sub person;
-# $lls sub localisation;
-# $res sub residency;
-# $loc sub location;
-# get;
-
-residency sub periodic-event,
-  relates resident,
-  plays localisation:located;
-
-person sub entity,
-  plays residency:resident,
-  plays mutual-residency:resident;
-
-location sub entity,
-  plays localisation:location,
-  plays mutual-residency:residence;
-
-#########################
-## RESIDENCE IN COMMON ##
-#########################
-
-mutual-residency sub relation,
-  relates resident,
-  relates residence;
-
-rule people-resided-at-the-same-location:
-  when {
-    $r1 (resident: $p1) isa residency;
-    $r2 (resident: $p2) isa residency;
-    ($r1, location: $l) isa localisation;
-    ($r2, location: $l) isa localisation;
-    not {$p1 is $p2; };
-  } then {
-    (resident: $p1, resident: $p2, residence: $l) isa mutual-residency;
-  };
-
-###############
-## EDUCATION ##
-###############
-
-## query the schema section
-# match
-# $sco sub school-course-offering;
-# $los sub localisation;
-# $sts sub studentship;
-# $sch sub school;
-# $scc sub school-course;
-# $per sub person;
-# $loc sub location;
-# get;
-
-studentship sub periodic-event,
-  owns graduated,
-  owns score,
-  relates student,
-  relates course,
-  relates school;
-
-school sub entity,
-  owns name @key,
-  owns ranking,
-  plays school-course-offering:school,
-  plays localisation:located,
-  plays studentship:school,
-  plays schoolmates:school;
-
-school-course sub entity,
-  owns title @key,
-  plays school-course-offering:course,
-  plays studentship:course,
-  plays coursemates:course;
-
-person sub entity,
-  owns graduated,
-  plays studentship:student,
-  plays schoolmates:schoolmate,
-  plays coursemates:coursemate;
-
-##########################
-## school offerings ##
-##########################
-
-school-course-offering sub relation,
-  relates school,
-  relates course;
-
-rule school-offers-the-enrolled-courses:
-  when {
-    (student: $p, course: $c, school: $s) isa studentship;
-  } then {
-    (school: $s, course: $c) isa school-course-offering;
-  };
-
-##########################
-## EDUCATIONS IN COMMON ##
-##########################
-
-schoolmates sub relation,
-  relates schoolmate,
-  relates school;
-
-rule people-who-attended-the-same-school-are-schoolmates:
-  when {
-    (student: $p1, course: $c1) isa studentship;
-    (student: $p2, course: $c2) isa studentship;
-    (course: $c1, school: $s) isa school-course-offering;
-    (course: $c2, school: $s) isa school-course-offering;
-    not { $p1 is $p2; };
-  } then {
-    (schoolmate: $p1, schoolmate: $p2, school: $s) isa schoolmates;
-  };
-
-coursemates sub relation,
-  relates coursemate,
-  relates course;
-
-rule people-taken-the-same-course:
-  when {
-    $sce1 (student: $p1, course: $sc) isa studentship;
-    $sce2 (student: $p2, course: $sc) isa studentship;
-    not { $p1 is $p2; };
-  } then {
-    (coursemate: $p1, coursemate: $p2, course: $sc) isa coursemates;
-  };
+employment sub relation,
+  owns salary,
+  relates employee,
+  relates employer;

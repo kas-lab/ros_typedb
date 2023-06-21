@@ -1,68 +1,6 @@
 
 insert
 
-###########################
-## LOCATIONS | HIERARCHY ##
-###########################
-
-$loc-cou-1 isa location, has name "United States";
-$loc-cou-2 isa location, has name "United Kingdome";
-$loc-cou-3 isa location, has name "Australia";
-$loc-cou-4 isa location, has name "Canada";
-
-$loc-cit-1 isa location, has name "Renmark";
-$loc-hir-1-3 (subordinate: $loc-cit-1, superior: $loc-cou-3) isa location-hierarchy;
-$loc-cit-2 isa location, has name "Mansfield";
-$loc-hir-2-2 (subordinate: $loc-cit-2, superior: $loc-cou-2) isa location-hierarchy;
-$loc-cit-3 isa location, has name "Johnstown";
-$loc-hir-3-1 (subordinate: $loc-cit-3, superior: $loc-cou-1) isa location-hierarchy;
-$loc-cit-4 isa location, has name "West Nipissing";
-$loc-hir-4-2 (subordinate: $loc-cit-4, superior: $loc-cou-2) isa location-hierarchy;
-$loc-cit-5 isa location, has name "Fairmont";
-$loc-hir-5-1 (subordinate: $loc-cit-5, superior: $loc-cou-1) isa location-hierarchy;
-$loc-cit-6 isa location, has name "Holsworthy";
-$loc-hir-6-4 (subordinate: $loc-cit-6, superior: $loc-cou-4) isa location-hierarchy;
-$loc-cit-7 isa location, has name "Bourke";
-$loc-hir-7-3 (subordinate: $loc-cit-7, superior: $loc-cou-3) isa location-hierarchy;
-$loc-cit-8 isa location, has name "French Lick";
-$loc-hir-8-1 (subordinate: $loc-cit-8, superior: $loc-cou-1) isa location-hierarchy;
-
-###################################
-## SCHOOLS | COURSES | OFFERINGS ##
-###################################
-
-## SCHOOLS + LOCATIONS
-$sch-1 isa school, has name "WNC", has ranking 36;
-$los-1 (located: $sch-1, location: $loc-cit-2) isa localisation;
-$sch-2 isa school, has name "UPJ", has ranking 53;
-$los-2 (located: $sch-2, location: $loc-cit-3) isa localisation;
-$sch-3 isa school, has name "UPN", has ranking 136;
-$los-3 (located: $sch-3, location: $loc-cit-3) isa localisation;
-$sch-4 isa school, has name "UPK", has ranking 86;
-$los-4 (located: $sch-4, location: $loc-cit-3) isa localisation;
-$sch-5 isa school, has name "HCC", has ranking 24;
-$los-5 (located: $sch-5, location: $loc-cit-4) isa localisation;
-$sch-6 isa school, has name "UPT", has ranking 6;
-$los-6 (located: $sch-6, location: $loc-cit-3) isa localisation;
-$sch-7 isa school, has name "UPL", has ranking 192;
-$los-7 (located: $sch-7, location: $loc-cit-3) isa localisation;
-$sch-8 isa school, has name "UPA", has ranking 213;
-$los-8 (located: $sch-8, location: $loc-cit-3) isa localisation;
-
-## COURSES
-$cou-1 isa school-course, has title "Biomedical Engineering";
-$cou-2 isa school-course, has title "Management Information Systems";
-$cou-3 isa school-course, has title "Materials Science";
-$cou-4 isa school-course, has title "Software Engineering";
-$cou-5 isa school-course, has title "Biochemistry";
-$cou-6 isa school-course, has title "Microbiology";
-$cou-7 isa school-course, has title "International Law";
-$cou-8 isa school-course, has title "Accounting";
-
-#################################################################################
-## PERSON | BIRTH | EDUCATION | EMPLOYMENT | RESIDENCY | TRAVEL | RELATIONSHIP ##
-#################################################################################
-
 ## PERSON
 $per-1 isa person, has full-name "Miriam Morton", has nickname "Mitzi", has gender "female", has email "miriam.morton@gmail.com", has phone-number "+61-491-570-156", has phone-number "+44-1632-960007";
 $per-2 isa person, has full-name "Solomon Tran", has gender "male", has email "solomon.tran@gmail.com", has phone-number "+44-1632-12938", has phone-number "+61-491-570-158";
