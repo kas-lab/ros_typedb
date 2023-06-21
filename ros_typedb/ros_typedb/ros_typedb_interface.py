@@ -21,13 +21,13 @@ from rclpy.lifecycle import TransitionCallbackReturn
 
 from rcl_interfaces.msg import ParameterValue
 from ros_typedb.typedb_interface import TypeDBInterface
-from ros_typedb_msgs.msg import Attribute
+from ros_typedb_msgs.msg import QueryResult
 from ros_typedb_msgs.srv import Query
 
 from std_msgs.msg import String
 
 
-def set_attribute_value(value, value_type):
+def set_query_result_value(value, value_type):
     _param_value = ParameterValue()
     _type_dict = {
         'boolean': (1, 'bool_value'),
@@ -120,13 +120,13 @@ class ROSTypeDBInterface(Node):
             return response
 
         query_result = query_func(req.query)
-        if req.query_type in {'match', 'match_aggregate'}:
+        if req.query_type == 'match':
             for result in query_result:
                 for key, value in result.items():
                     if value.is_attribute():
-                        _attr = Attribute()
+                        _attr = QueryResult()
                         _attr.attribute_name = key
-                        _attr.value = set_attribute_value(
+                        _attr.value = set_query_result_value(
                             value.get_value(),
                             value.get_type().get_value_type())
                         response.result.append(_attr)
