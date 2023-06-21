@@ -39,13 +39,24 @@ def insert_query():
     query_req = Query.Request()
     query_req.query_type = 'insert'
     query_req.query = f'''
-        insert $entity isa person,
-            has email "test@test.com",
-            has nickname "test",
-            has age 33,
-            has height 1.75,
-            has alive true,
-            has birth-date 1990-06-01;
+        insert
+            $person isa person,
+                has email "test@test.com",
+                has nickname "test",
+                has age 33,
+                has height 1.75,
+                has alive true,
+                has birth-date 1990-06-01;
+            $person2 isa person,
+                has email "test2@test.com",
+                has nickname "employer";
+            $person3 isa person,
+                has email "test3@test.com",
+                has nickname "employer2";
+            (employee:$person, employer:$person2) isa employment,
+                has salary 1000;
+            (employee:$person, employer:$person3) isa employment,
+                has salary 500;
     '''
     return query_req
 
@@ -232,6 +243,33 @@ def test_ros_typedb_match_query_attribute(insert_query):
 
         assert query_res.success is True and correct_nick and correct_age and \
             correct_height and correct_alive and correct_date
+    finally:
+        rclpy.shutdown()
+
+
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_match_aggregate_query(insert_query):
+    rclpy.init()
+    try:
+        node = MakeTestNode()
+        node.start_node()
+        node.activate_ros_typedb()
+
+        node.call_service(node.query_srv, insert_query)
+
+        query_req = Query.Request()
+        query_req.query_type = 'match_aggregate'
+        query_req.query = f'''
+            match
+                $person isa person,
+                    has email "test@test.com";
+                (employee:$person) isa employment, has salary $s;
+            get $s; sum $s;
+        '''
+        query_res = node.call_service(node.query_srv, query_req)
+
+        assert query_res.success is True and \
+               query_res.result[0].value.integer_value == 1500
     finally:
         rclpy.shutdown()
 
