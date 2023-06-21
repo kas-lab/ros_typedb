@@ -31,13 +31,16 @@ def set_query_result_value(value, value_type):
     _param_value = ParameterValue()
     _type_dict = {
         'boolean': (1, 'bool_value'),
+        'bool': (1, 'bool_value'),
         'long': (2, 'integer_value'),
+        'int': (2, 'integer_value'),
         'double': (3, 'double_value'),
+        'float': (3, 'double_value'),
         'string': (4, 'string_value'),
+        'str': (4, 'string_value'),
         'datetime': (4, 'string_value')
     }
     value_type = str(value_type)
-    print('value_type {} and data_type {}'.format(value_type, type(value)))
     if value_type in _type_dict:
         if value_type == 'datetime':
             value = value.strftime('%Y-%m-%d')
@@ -130,6 +133,12 @@ class ROSTypeDBInterface(Node):
                             value.get_value(),
                             value.get_type().get_value_type())
                         response.result.append(_attr)
+        elif req.query_type == 'match_aggregate':
+            _result = QueryResult()
+            _result.value = set_query_result_value(
+                query_result,
+                type(query_result).__name__)
+            response.result.append(_result)
         if query_result is None:
             response.success = False
         else:
