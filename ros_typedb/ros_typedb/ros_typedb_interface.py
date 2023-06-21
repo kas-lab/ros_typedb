@@ -19,10 +19,31 @@ from rclpy.lifecycle import Publisher
 from rclpy.lifecycle import State
 from rclpy.lifecycle import TransitionCallbackReturn
 
+from rcl_interfaces.msg import ParameterValue
 from ros_typedb.typedb_interface import TypeDBInterface
+from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.srv import Query
 
 from std_msgs.msg import String
+
+
+def set_attribute_value(value, value_type):
+    _param_value = ParameterValue()
+    _type_dict = {
+        'boolean': (1, 'bool_value'),
+        'long': (2, 'integer_value'),
+        'double': (3, 'double_value'),
+        'string': (4, 'string_value'),
+        'datetime': (4, 'string_value')
+    }
+    value_type = str(value_type)
+    print('value_type {} and data_type {}'.format(value_type, type(value)))
+    if value_type in _type_dict:
+        if value_type == 'datetime':
+            value = value.strftime('%Y-%m-%d')
+        _param_value.type = _type_dict[value_type][0]
+        _value = setattr(_param_value, _type_dict[value_type][1], value)
+    return _param_value
 
 
 class ROSTypeDBInterface(Node):
@@ -98,8 +119,18 @@ class ROSTypeDBInterface(Node):
             response.success = False
             return response
 
-        result = query_func(req.query)
-        if result is None:
+        query_result = query_func(req.query)
+        if req.query_type in {'match', 'match_aggregate'}:
+            for result in query_result:
+                for key, value in result.items():
+                    if value.is_attribute():
+                        _attr = Attribute()
+                        _attr.attribute_name = key
+                        _attr.value = set_attribute_value(
+                            value.get_value(),
+                            value.get_type().get_value_type())
+                        response.result.append(_attr)
+        if query_result is None:
             response.success = False
         else:
             response.success = True
