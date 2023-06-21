@@ -29,10 +29,10 @@ class TypeDBInterface:
         self.connect_client(address)
         self.create_database(database_name, force=force_database)
 
-        if schema_path is not None:
+        if schema_path is not None and schema_path != '':
             self.load_schema(schema_path)
 
-        if data_path is not None:
+        if data_path is not None and data_path != '':
             self.load_data(data_path, force=force_data)
 
     def connect_client(self, address, parallelisation=2):
