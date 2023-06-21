@@ -51,6 +51,21 @@ def set_query_result_value(value, value_type):
 class ROSTypeDBInterface(Node):
     def __init__(self, node_name, **kwargs):
         super().__init__(node_name, **kwargs)
+        self.declare_parameter('address', 'localhost:1729')
+        self.declare_parameter('database_name', 'ros_typedb')
+        self.declare_parameter('force_database', True)
+        self.declare_parameter('force_data', True)
+        self.declare_parameter('schema_path', '')
+        self.declare_parameter('data_path', '')
+
+        self.init_typedb_interface(
+            address=self.get_parameter('address').value,
+            database_name=self.get_parameter('database_name').value,
+            schema_path=self.get_parameter('schema_path').value,
+            data_path=self.get_parameter('data_path').value,
+            force_database=self.get_parameter('force_database').value,
+            force_data=self.get_parameter('force_data').value
+        )
 
     def init_typedb_interface(
             self,
@@ -150,13 +165,6 @@ def main():
 
     executor = rclpy.executors.MultiThreadedExecutor()
     lc_node = ROSTypeDBInterface('ros_typedb_interface')
-    lc_node.init_typedb_interface(
-        "localhost:1729",
-        "test_database",
-        force_database=True,
-        schema_path='/home/gus/exp_metacontrol_ws/src/ros_typedb/ros_typedb/test/typedb_test_data/schema.tql',
-        data_path='/home/gus/exp_metacontrol_ws/src/ros_typedb/ros_typedb/test/typedb_test_data/data.tql',
-        force_data=True)
     executor.add_node(lc_node)
     try:
         executor.spin()
