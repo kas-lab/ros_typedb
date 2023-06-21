@@ -30,7 +30,7 @@ def typedb_interface():
 
 def test_insert_entity(typedb_interface):
     typedb_interface.insert_entity('person', 'email', 'test@email.test')
-    query = f'''
+    query = '''
         match $entity isa person, has email "test@email.test";
         get $entity;
     '''
@@ -41,7 +41,7 @@ def test_insert_entity(typedb_interface):
 def test_delete_entity(typedb_interface):
     typedb_interface.insert_entity('person', 'email', 'test@email.test')
     typedb_interface.delete_entity('person', 'email', 'test@email.test')
-    query = f'''
+    query = '''
         match $entity isa person, has email "test@email.test";
         get $entity;
     '''

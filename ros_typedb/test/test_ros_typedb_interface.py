@@ -26,8 +26,6 @@ import pytest
 import rclpy
 from rclpy.node import Node
 
-from ros_typedb.ros_typedb_interface import ROSTypeDBInterface
-
 from lifecycle_msgs.srv import ChangeState
 from lifecycle_msgs.srv import GetState
 from ros_typedb_msgs.srv import Query
@@ -38,7 +36,7 @@ from std_msgs.msg import String
 def insert_query():
     query_req = Query.Request()
     query_req.query_type = 'insert'
-    query_req.query = f'''
+    query_req.query = '''
         insert
             $person isa person,
                 has email "test@test.com",
@@ -127,7 +125,7 @@ def test_ros_typedb_insert_event(insert_query):
         node.start_node()
         node.activate_ros_typedb()
 
-        query_res = node.call_service(node.query_srv, insert_query)
+        node.call_service(node.query_srv, insert_query)
         event_flag = node.typedb_event.wait(timeout=5.0)
         assert event_flag and node.typedb_event_data == 'insert'
     finally:
@@ -146,7 +144,7 @@ def test_ros_typedb_delete_query(insert_query):
 
         query_req = Query.Request()
         query_req.query_type = 'delete'
-        query_req.query = f'''
+        query_req.query = '''
             match $entity isa person, has email "test@test.com";
             delete $entity isa person;
         '''
@@ -169,7 +167,7 @@ def test_ros_typedb_delete_event(insert_query):
 
         query_req = Query.Request()
         query_req.query_type = 'delete'
-        query_req.query = f'''
+        query_req.query = '''
             match $entity isa person, has email "test@test.com";
             delete $entity isa person;
         '''
@@ -210,7 +208,7 @@ def test_ros_typedb_match_query_attribute(insert_query):
 
         query_req = Query.Request()
         query_req.query_type = 'match'
-        query_req.query = f'''
+        query_req.query = '''
             match $entity isa person,
                 has email "test@test.com",
                 has nickname $nick,
@@ -259,7 +257,7 @@ def test_ros_typedb_match_aggregate_query(insert_query):
 
         query_req = Query.Request()
         query_req.query_type = 'match_aggregate'
-        query_req.query = f'''
+        query_req.query = '''
             match
                 $person isa person,
                     has email "test@test.com";
@@ -317,7 +315,7 @@ class MakeTestNode(Node):
         if self.executor.spin_until_future_complete(
                 future, timeout_sec=5.0) is False:
             self.get_logger().error(
-                "Future not completed {}".format(cli.srv_name))
+                'Future not completed {}'.format(cli.srv_name))
             return None
 
         return future.result()

@@ -15,7 +15,6 @@
 import rclpy
 
 from rclpy.lifecycle import Node
-from rclpy.lifecycle import Publisher
 from rclpy.lifecycle import State
 from rclpy.lifecycle import TransitionCallbackReturn
 
@@ -45,7 +44,7 @@ def set_query_result_value(value, value_type):
         if value_type == 'datetime':
             value = value.strftime('%Y-%m-%d')
         _param_value.type = _type_dict[value_type][0]
-        _value = setattr(_param_value, _type_dict[value_type][1], value)
+        setattr(_param_value, _type_dict[value_type][1], value)
     return _param_value
 
 
