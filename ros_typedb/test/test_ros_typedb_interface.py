@@ -62,6 +62,7 @@ def insert_query():
 @launch_pytest.fixture
 def generate_test_description():
     path_to_test = Path(__file__).parents[1]
+    path_tql = path_to_test / 'test' / 'typedb_test_data'
 
     ros_typedb_node = launch_ros.actions.Node(
         executable=sys.executable,
@@ -70,6 +71,10 @@ def generate_test_description():
         additional_env={'PYTHONUNBUFFERED': '1'},
         name='ros_typedb_interface',
         output='screen',
+        parameters=[{
+            'schema_path': str(path_tql / 'schema.tql'),
+            'data_path': str(path_tql / 'data.tql')
+        }]
     )
 
     return launch.LaunchDescription([
