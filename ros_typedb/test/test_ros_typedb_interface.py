@@ -34,6 +34,22 @@ from ros_typedb_msgs.srv import Query
 from std_msgs.msg import String
 
 
+@pytest.fixture
+def insert_query():
+    query_req = Query.Request()
+    query_req.query_type = 'insert'
+    query_req.query = f'''
+        insert $entity isa person,
+            has email "test@test.com",
+            has nickname "test",
+            has age 33,
+            has height 1.75,
+            has alive true,
+            has birth-date 1990-06-01;
+    '''
+    return query_req
+
+
 @launch_pytest.fixture
 def generate_test_description():
     path_to_test = Path(__file__).parents[1]
@@ -79,36 +95,28 @@ def test_ros_typedb_lc_states():
 
 
 @pytest.mark.launch(fixture=generate_test_description)
-def test_ros_typedb_insert_query():
+def test_ros_typedb_insert_query(insert_query):
     rclpy.init()
     try:
         node = MakeTestNode()
         node.start_node()
         node.activate_ros_typedb()
 
-        query_req = Query.Request()
-        query_req.query_type = 'insert'
-        query_req.query = \
-            'insert $entity isa person, has email \"test@test.com\";'
-        query_res = node.call_service(node.query_srv, query_req)
+        query_res = node.call_service(node.query_srv, insert_query)
         assert query_res.success is True
     finally:
         rclpy.shutdown()
 
 
 @pytest.mark.launch(fixture=generate_test_description)
-def test_ros_typedb_insert_event():
+def test_ros_typedb_insert_event(insert_query):
     rclpy.init()
     try:
         node = MakeTestNode()
         node.start_node()
         node.activate_ros_typedb()
 
-        query_req = Query.Request()
-        query_req.query_type = 'insert'
-        query_req.query = \
-            'insert $entity isa person, has email \"test@test.com\";'
-        query_res = node.call_service(node.query_srv, query_req)
+        query_res = node.call_service(node.query_srv, insert_query)
         event_flag = node.typedb_event.wait(timeout=5.0)
         assert event_flag and node.typedb_event_data == 'insert'
     finally:
@@ -116,24 +124,21 @@ def test_ros_typedb_insert_event():
 
 
 @pytest.mark.launch(fixture=generate_test_description)
-def test_ros_typedb_delete_query():
+def test_ros_typedb_delete_query(insert_query):
     rclpy.init()
     try:
         node = MakeTestNode()
         node.start_node()
         node.activate_ros_typedb()
 
-        query_req = Query.Request()
-        query_req.query_type = 'insert'
-        query_req.query = \
-            'insert $entity isa person, has email \"test@test.com\";'
-        query_res = node.call_service(node.query_srv, query_req)
+        node.call_service(node.query_srv, insert_query)
 
         query_req = Query.Request()
         query_req.query_type = 'delete'
-        query_req.query = \
-            'match $entity isa person, has email \"test@test.com\";' + \
-            ' delete $entity isa person;'
+        query_req.query = f'''
+            match $entity isa person, has email "test@test.com";
+            delete $entity isa person;
+        '''
         query_res = node.call_service(node.query_srv, query_req)
 
         assert query_res.success is True
@@ -142,24 +147,21 @@ def test_ros_typedb_delete_query():
 
 
 @pytest.mark.launch(fixture=generate_test_description)
-def test_ros_typedb_delete_event():
+def test_ros_typedb_delete_event(insert_query):
     rclpy.init()
     try:
         node = MakeTestNode()
         node.start_node()
         node.activate_ros_typedb()
 
-        query_req = Query.Request()
-        query_req.query_type = 'insert'
-        query_req.query = \
-            'insert $entity isa person, has email \"test@test.com\";'
-        query_res = node.call_service(node.query_srv, query_req)
+        node.call_service(node.query_srv, insert_query)
 
         query_req = Query.Request()
         query_req.query_type = 'delete'
-        query_req.query = \
-            'match $entity isa person, has email \"test@test.com\";' + \
-            ' delete $entity isa person;'
+        query_req.query = f'''
+            match $entity isa person, has email "test@test.com";
+            delete $entity isa person;
+        '''
         query_res = node.call_service(node.query_srv, query_req)
         event_flag = node.typedb_event.wait(timeout=5.0)
         assert event_flag and node.typedb_event_data == 'delete'
@@ -170,19 +172,66 @@ def test_ros_typedb_delete_event():
 
 
 @pytest.mark.launch(fixture=generate_test_description)
-def test_ros_typedb_wrong_query():
+def test_ros_typedb_wrong_query(insert_query):
     rclpy.init()
     try:
         node = MakeTestNode()
         node.start_node()
         node.activate_ros_typedb()
 
-        query_req = Query.Request()
-        query_req.query_type = 'wrong'
-        query_req.query = \
-            'insert $entity isa person, has email \"test@test.com\";'
-        query_res = node.call_service(node.query_srv, query_req)
+        insert_query_req = insert_query
+        insert_query_req.query_type = 'wrong'
+        query_res = node.call_service(node.query_srv, insert_query_req)
         assert query_res.success is False
+    finally:
+        rclpy.shutdown()
+
+
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_match_query_attribute(insert_query):
+    rclpy.init()
+    try:
+        node = MakeTestNode()
+        node.start_node()
+        node.activate_ros_typedb()
+
+        node.call_service(node.query_srv, insert_query)
+
+        query_req = Query.Request()
+        query_req.query_type = 'match'
+        query_req.query = f'''
+            match $entity isa person,
+                has email "test@test.com",
+                has nickname $nick,
+                has age $age,
+                has height $height,
+                has alive $alive,
+                has birth-date $date;
+            get $nick, $age, $height, $alive, $date;
+        '''
+        query_res = node.call_service(node.query_srv, query_req)
+
+        correct_nick = True
+        correct_age = True
+        correct_height = True
+        correct_alive = True
+        correct_date = True
+        for r in query_res.result:
+            if r.attribute_name == 'nick' and r.value.string_value != 'test':
+                correct_nick = False
+            if r.attribute_name == 'age' and r.value.integer_value != 33:
+                correct_age = False
+            if r.attribute_name == 'height' and r.value.double_value != 1.75:
+                correct_height = False
+            if r.attribute_name == 'alive' and \
+               r.value.bool_value is not True:
+                correct_alive = False
+            if r.attribute_name == 'date' and \
+               r.value.string_value != '1990-06-01':
+                correct_date = False
+
+        assert query_res.success is True and correct_nick and correct_age and \
+            correct_height and correct_alive and correct_date
     finally:
         rclpy.shutdown()
 
@@ -233,8 +282,6 @@ class MakeTestNode(Node):
                 "Future not completed {}".format(cli.srv_name))
             return None
 
-        self.get_logger().error("Future completed {}".format(cli.srv_name))
-        self.get_logger().error("Future result {}".format(future.result()))
         return future.result()
 
     def activate_ros_typedb(self):
