@@ -12,6 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3.3.0
+      - name: install typedb
+        run: .github/workflos/install_typedb.sh
+      - name: run typedb
+        run: typedb server&
       - uses: ros-tooling/setup-ros@v0.6
         with:
           required-ros-distributions: humble
