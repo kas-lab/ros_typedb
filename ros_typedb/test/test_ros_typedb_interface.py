@@ -79,11 +79,6 @@ def generate_test_description():
     )
 
     return launch.LaunchDescription([
-        # launch.actions.ExecuteProcess(
-        #     cmd=['typedb server'],
-        #     shell=True,
-        #     cached_output=True,
-        # ),
         ros_typedb_node,
     ])
 
