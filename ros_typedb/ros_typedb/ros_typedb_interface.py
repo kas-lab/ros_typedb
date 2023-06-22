@@ -15,6 +15,8 @@
 import rclpy
 
 from rcl_interfaces.msg import ParameterValue
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.lifecycle import Node
 from rclpy.lifecycle import State
 from rclpy.lifecycle import TransitionCallbackReturn
@@ -50,23 +52,18 @@ def set_query_result_value(value, value_type):
 
 class ROSTypeDBInterface(Node):
 
-    def __init__(self, node_name, **kwargs):
+    def __init__(self, node_name, schema_path='', data_path='', **kwargs):
         super().__init__(node_name, **kwargs)
         self.declare_parameter('address', 'localhost:1729')
         self.declare_parameter('database_name', 'ros_typedb')
         self.declare_parameter('force_database', True)
         self.declare_parameter('force_data', True)
-        self.declare_parameter('schema_path', '')
-        self.declare_parameter('data_path', '')
 
-        self.init_typedb_interface(
-            address=self.get_parameter('address').value,
-            database_name=self.get_parameter('database_name').value,
-            schema_path=self.get_parameter('schema_path').value,
-            data_path=self.get_parameter('data_path').value,
-            force_database=self.get_parameter('force_database').value,
-            force_data=self.get_parameter('force_data').value
-        )
+        self.default_schema_path = ''
+        self.declare_parameter('schema_path', schema_path)
+        self.declare_parameter('data_path', data_path)
+
+        self.typedb_interface_class = TypeDBInterface
 
     def init_typedb_interface(
             self,
@@ -77,7 +74,7 @@ class ROSTypeDBInterface(Node):
             force_database=False,
             force_data=False):
 
-        self.typedb_interface = TypeDBInterface(
+        self.typedb_interface = self.typedb_interface_class(
             address,
             database_name,
             schema_path,
@@ -103,13 +100,26 @@ class ROSTypeDBInterface(Node):
     def on_configure(self, state: State) -> TransitionCallbackReturn:
         self.get_logger().info('on_configure() is called.')
 
+        self.init_typedb_interface(
+            address=self.get_parameter('address').value,
+            database_name=self.get_parameter('database_name').value,
+            schema_path=self.get_parameter('schema_path').value,
+            data_path=self.get_parameter('data_path').value,
+            force_database=self.get_parameter('force_database').value,
+            force_data=self.get_parameter('force_data').value
+        )
+
         self.event_pub = self.create_lifecycle_publisher(
-            String, 'typedb/events', 10)
+            String,
+            'typedb/events',
+            10,
+            callback_group=ReentrantCallbackGroup())
 
         self.query_service = self.create_service(
             Query,
             'typedb/query',
-            self.query_service_cb)
+            self.query_service_cb,
+            callback_group=MutuallyExclusiveCallbackGroup())
 
         return TransitionCallbackReturn.SUCCESS
 
