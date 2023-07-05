@@ -287,10 +287,10 @@ class MakeTestNode(Node):
             GetState, '/ros_typedb_interface/get_state')
 
         self.query_srv = self.create_client(
-            Query, '/typedb/query')
+            Query, '/ros_typedb_interface/query')
 
         self.event_sub = self.create_subscription(
-            String, '/typedb/events', self.event_sub_cb, 10)
+            String, '/ros_typedb_interface/events', self.event_sub_cb, 10)
 
     def start_node(self):
         self.ros_spin_thread = Thread(

@@ -112,16 +112,17 @@ class ROSTypeDBInterface(Node):
 
         self.event_pub = self.create_lifecycle_publisher(
             String,
-            'typedb/events',
+            self.get_name() + '/events',
             10,
             callback_group=ReentrantCallbackGroup())
 
         self.query_service = self.create_service(
             Query,
-            'typedb/query',
+            self.get_name() + '/query',
             self.query_service_cb,
             callback_group=MutuallyExclusiveCallbackGroup())
 
+        self.get_logger().info('on_configure() completed.')
         return TransitionCallbackReturn.SUCCESS
 
     def on_cleanup(self, state: State) -> TransitionCallbackReturn:
@@ -132,8 +133,8 @@ class ROSTypeDBInterface(Node):
         return TransitionCallbackReturn.SUCCESS
 
     def query_service_cb(self, req, response):
-        self.get_logger().info(
-            '{} query requested: {}'.format(req.query_type, req.query))
+        # self.get_logger().info(
+        #     '{} query requested: {}'.format(req.query_type, req.query))
         if req.query_type == 'insert':
             query_func = self.typedb_interface.insert_database
         elif req.query_type == 'delete':
