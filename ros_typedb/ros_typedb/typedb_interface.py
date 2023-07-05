@@ -121,7 +121,7 @@ class TypeDBInterface:
         try:
             self.write_database_file(
                 SessionType.DATA, TransactionType.WRITE, 'insert', data_path)
-        except TypeDBClientException as err:
+        except Exception as err:
             print('Error in load_data method. Exception msg: ', err)
 
     # Events begining
@@ -155,7 +155,7 @@ class TypeDBInterface:
         try:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'insert', query)
-        except TypeDBClientException as err:
+        except Exception as err:
             print('Error with insert query! Exception retrieved: ', err)
         return result
 
@@ -166,7 +166,7 @@ class TypeDBInterface:
         try:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'delete', query)
-        except TypeDBClientException as err:
+        except Exception as err:
             print('Error with delete query! Exception retrieved: ', err)
         return result
 
@@ -179,7 +179,7 @@ class TypeDBInterface:
             options.infer = True
             result = self.database_query(
                SessionType.DATA, TransactionType.READ, 'match', query, options)
-        except TypeDBClientException as err:
+        except Exception as err:
             print('Error with match query! Exception retrieved: ', err)
         return result
 
@@ -194,7 +194,7 @@ class TypeDBInterface:
                 'match_aggregate',
                 query,
                 options)
-        except TypeDBClientException as err:
+        except Exception as err:
             print(
                 'Error with match_aggregate query! Exception retrieved: ', err)
         return result

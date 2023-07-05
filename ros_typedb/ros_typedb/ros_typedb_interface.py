@@ -19,6 +19,7 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.lifecycle import Node
 from rclpy.lifecycle import State
+from rclpy.lifecycle import Publisher
 from rclpy.lifecycle import TransitionCallbackReturn
 
 from ros_typedb.typedb_interface import TypeDBInterface
