@@ -66,6 +66,8 @@ class ROSTypeDBInterface(Node):
 
         self.typedb_interface_class = TypeDBInterface
 
+        self.query_cb_group = MutuallyExclusiveCallbackGroup()
+
     def init_typedb_interface(
             self,
             address,
@@ -120,7 +122,7 @@ class ROSTypeDBInterface(Node):
             Query,
             self.get_name() + '/query',
             self.query_service_cb,
-            callback_group=MutuallyExclusiveCallbackGroup())
+            callback_group=self.query_cb_group)
 
         self.get_logger().info('on_configure() completed.')
         return TransitionCallbackReturn.SUCCESS
