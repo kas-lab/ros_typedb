@@ -57,6 +57,16 @@ The [TypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_type
 
 The [ROSTypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/ros_typedb_interface.py) class is a ROS 2 [LifeCycle](https://design.ros2.org/articles/node_lifecycle.html) Node, and it implements 2 ROS interfaces. A ROS service server `ros_typedb_interface/query` that is used to query the database, which uses the [Query.srv](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb_msgs/srv/Query.srv) service type. And the ROS topic `ros_typedb_interface/events`, where it publishes insert and delete events when data is inserted or deleted from the database with the query service.
 
+Class diagram:
+<p align="center">
+  <img src="https://github.com/Rezenders/ros_typedb/assets/20564040/4cf4f799-3dab-40c4-a323-8d1e8e376e62" width="500">
+</p>
+
+Overview:
+<p align="center">
+  <img src="https://github.com/Rezenders/ros_typedb/assets/20564040/53793f23-0cb2-42c8-8c3b-fbfa5764ab5b" width="500">
+</p>
+
 ## Using the package
 
 To run the ros_typedb_interface:
