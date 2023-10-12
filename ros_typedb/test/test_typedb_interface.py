@@ -56,11 +56,21 @@ def test_insert_attribute_entity(typedb_interface):
     typedb_interface.insert_attribute_entity(
         'person', 'email', 'test@email.test', 'nickname', '"t"')
     typedb_interface.insert_attribute_entity(
-        'person', 'email', 'test@email.test', 'graduated', 'true')
+        'person', 'email', 'test@email.test', 'alive', 'true')
     typedb_interface.insert_attribute_entity(
         'person', 'email', 'test@email.test', 'age', '33')
     typedb_interface.insert_attribute_entity(
         'person', 'email', 'test@email.test', 'height', '3.237')
+
+    result_1 = typedb_interface.get_attribute_from_entity(
+        'person', 'email', 'test@email.test', 'nickname')
+    result_2 = typedb_interface.get_attribute_from_entity(
+        'person', 'email', 'test@email.test', 'alive')
+    result_3 = typedb_interface.get_attribute_from_entity(
+        'person', 'email', 'test@email.test', 'age')
+    result_4 = typedb_interface.get_attribute_from_entity(
+        'person', 'email', 'test@email.test', 'height')
+    assert result_1 and result_2 and result_3 and result_4
 
 
 def test_get_attribute_from_entity(typedb_interface):

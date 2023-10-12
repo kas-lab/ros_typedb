@@ -151,7 +151,16 @@ def test_ros_typedb_delete_query(insert_query):
         """
         query_res = node.call_service(node.query_srv, query_req)
 
-        assert query_res.success is True
+        match_query_req = Query.Request()
+        match_query_req.query_type = 'match'
+        match_query_req.query = """
+            match $entity isa person, has email "test@test.com";
+            get $entity;
+        """
+        match_query_res = node.call_service(node.query_srv, match_query_req)
+
+        assert query_res.success and match_query_res.success and \
+            len(match_query_res.result) == 0
     finally:
         rclpy.shutdown()
 
@@ -227,17 +236,17 @@ def test_ros_typedb_match_query_attribute(insert_query):
         correct_alive = True
         correct_date = True
         for r in query_res.result:
-            if r.attribute_name == 'nick' and r.value.string_value != 'test':
+            if r.name == 'nick' and r.value.string_value != 'test':
                 correct_nick = False
-            if r.attribute_name == 'age' and r.value.integer_value != 33:
+            if r.name == 'age' and r.value.integer_value != 33:
                 correct_age = False
-            if r.attribute_name == 'height' and r.value.double_value != 1.75:
+            if r.name == 'height' and r.value.double_value != 1.75:
                 correct_height = False
-            if r.attribute_name == 'alive' and \
+            if r.name == 'alive' and \
                r.value.bool_value is not True:
                 correct_alive = False
-            if r.attribute_name == 'date' and \
-               r.value.string_value != '1990-06-01':
+            if r.name == 'date' and \
+               r.value.string_value != '1990-06-01T00:00:00.000':
                 correct_date = False
 
         assert query_res.success is True and correct_nick and correct_age and \
