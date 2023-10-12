@@ -1,4 +1,3 @@
-std_msgs/Header header
-
-string attribute_name
+string name
+string type
 rcl_interfaces/ParameterValue value
