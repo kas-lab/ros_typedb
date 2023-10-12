@@ -45,7 +45,7 @@ class TypeDBInterface:
             self.client.databases().get(database_name).delete()
 
         if not self.client.databases().contains(database_name):
-            self.database = self.client.databases().create(database_name)
+            self.client.databases().create(database_name)
             self.database_name = database_name
         else:
             self.database_name = database_name
@@ -207,10 +207,56 @@ class TypeDBInterface:
         """
         return self.delete_from_database(query)
 
-    def insert_entity(self, entity, key, key_value):
+    def insert_entity(self, entity, attribute_list=[]):
         query = f"""
-            insert $entity isa {entity}, has {key} "{key_value}";
+            insert $entity isa {entity}
         """
+        for attribute in attribute_list:
+            if attribute[0] is not None:
+                if type(attribute[1]) is str:
+                    query += f""", has {attribute[0]} "{attribute[1]}" """
+                else:
+                    query += f""", has {attribute[0]} {attribute[1]}"""
+        query += ";"
+        return self.insert_database(query)
+
+    # related_dict is a dictionary with the keys being the roles and
+    # the values being the entities/relationships related
+    def insert_relationship(
+            self, relationship, related_dict, attribute_list=[]):
+        match_query = "match "
+        related_things = ""
+        t_counter = 0
+        for role, things in related_dict.items():
+            for thing in things:
+                match_query += f"""
+                    $t_{t_counter} isa {thing[0]},
+                """
+                if type(thing[2]) is str:
+                    match_query += f"""
+                        has {thing[1]} "{thing[2]}";
+                    """
+                else:
+                    match_query += f"""
+                        has {thing[1]} {thing[2]};
+                    """
+
+                aux = f"""{role}:$t_{t_counter}"""
+                if related_things != "":
+                    aux = "," + aux
+                related_things += aux
+                t_counter += 1
+
+        query = match_query
+        query += f"""
+            insert ({related_things}) isa {relationship}"""
+        for attribute in attribute_list:
+            if attribute[0] is not None:
+                if type(attribute[1]) is str:
+                    query += f""", has {attribute[0]} "{attribute[1]}" """
+                else:
+                    query += f""", has {attribute[0]} {attribute[1]}"""
+        query += ";"
         return self.insert_database(query)
 
     def get_attribute_from_entity_raw(self, entity, key, key_value, attr):

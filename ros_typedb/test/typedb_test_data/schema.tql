@@ -33,6 +33,9 @@ alive sub attribute,
 salary sub attribute,
   value long;
 
+role-name sub attribute,
+    value string;
+
 person sub entity,
   owns full-name,
   owns nickname,
@@ -47,6 +50,7 @@ person sub entity,
   plays employment:employer;
 
 employment sub relation,
+  owns role-name,
   owns salary,
   relates employee,
   relates employer;

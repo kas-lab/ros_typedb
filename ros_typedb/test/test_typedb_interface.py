@@ -29,17 +29,19 @@ def typedb_interface():
 
 
 def test_insert_entity(typedb_interface):
-    typedb_interface.insert_entity('person', 'email', 'test@email.test')
+    typedb_interface.insert_entity(
+        'person', [('email', 'test@email.test'), ('nickname', 't')])
     query = """
-        match $entity isa person, has email "test@email.test";
-        get $entity;
+        match $entity isa person,
+        has email "test@email.test",
+        has nickname "t";
     """
     result = typedb_interface.match_database(query)
     assert len(result) > 0
 
 
 def test_delete_entity(typedb_interface):
-    typedb_interface.insert_entity('person', 'email', 'test@email.test')
+    typedb_interface.insert_entity('person', [('email', 'test@email.test')])
     typedb_interface.delete_entity('person', 'email', 'test@email.test')
     query = """
         match $entity isa person, has email "test@email.test";
@@ -50,7 +52,7 @@ def test_delete_entity(typedb_interface):
 
 
 def test_insert_attribute_entity(typedb_interface):
-    typedb_interface.insert_entity('person', 'email', 'test@email.test')
+    typedb_interface.insert_entity('person', [('email', 'test@email.test')])
     typedb_interface.insert_attribute_entity(
         'person', 'email', 'test@email.test', 'nickname', '"t"')
     typedb_interface.insert_attribute_entity(
@@ -62,7 +64,7 @@ def test_insert_attribute_entity(typedb_interface):
 
 
 def test_get_attribute_from_entity(typedb_interface):
-    typedb_interface.insert_entity('person', 'email', 'test@email.test')
+    typedb_interface.insert_entity('person', [('email', 'test@email.test')])
     typedb_interface.insert_attribute_entity(
         'person', 'email', 'test@email.test', 'nickname', '"t"')
     result = typedb_interface.get_attribute_from_entity(
@@ -72,7 +74,7 @@ def test_get_attribute_from_entity(typedb_interface):
 
 
 def test_delete_attribute_from_entity(typedb_interface):
-    typedb_interface.insert_entity('person', 'email', 'test@email.test')
+    typedb_interface.insert_entity('person', [('email', 'test@email.test')])
     typedb_interface.insert_attribute_entity(
         'person', 'email', 'test@email.test', 'nickname', '"t"')
     typedb_interface.delete_attribute_from_entity(
@@ -84,7 +86,7 @@ def test_delete_attribute_from_entity(typedb_interface):
 
 
 def test_update_attribute_entity(typedb_interface):
-    typedb_interface.insert_entity('person', 'email', 'test@email.test')
+    typedb_interface.insert_entity('person', [('email', 'test@email.test')])
     typedb_interface.insert_attribute_entity(
         'person', 'email', 'test@email.test', 'nickname', '"t"')
     typedb_interface.update_attribute_entity(
@@ -93,3 +95,33 @@ def test_update_attribute_entity(typedb_interface):
         'person', 'email', 'test@email.test', 'nickname')
 
     assert result[0] == 'new_t'
+
+
+def test_insert_relationship(typedb_interface):
+    typedb_interface.insert_entity('person', [('email', 'test@email.test')])
+    typedb_interface.insert_entity('person', [('email', 'test2@email.test')])
+    typedb_interface.insert_entity('person', [('email', 'test3@email.test')])
+    typedb_interface.insert_entity('person', [('email', 'test4@email.test')])
+
+    related_things_dict = {
+        'employee': [
+            ('person', 'email', 'test@email.test'),
+            ('person', 'email', 'test2@email.test')],
+        'employer': [
+            ('person', 'email', 'test3@email.test'),
+            ('person', 'email', 'test4@email.test')
+        ]
+    }
+    attribute_list = [
+        ('salary', 2333), ('role-name', 'boss'), ('role-name', 'super boss')]
+    insert_result = typedb_interface.insert_relationship(
+        'employment', related_things_dict, attribute_list)
+
+    query = """
+        match $r (employee:$ee, employer:$er)isa employment,
+        has salary 2333,
+        has role-name "boss",
+        has role-name "super boss";
+    """
+    result = typedb_interface.match_database(query)
+    assert len(result) > 0
