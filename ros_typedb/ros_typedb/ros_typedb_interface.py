@@ -42,12 +42,13 @@ def set_query_result_value(value, value_type):
         'str': (4, 'string_value'),
         'datetime': (4, 'string_value')
     }
-    value_type = str(value_type)
     if value_type in _type_dict:
-        if value_type == 'datetime':
-            value = value.strftime('%Y-%m-%d')
         _param_value.type = _type_dict[value_type][0]
-        setattr(_param_value, _type_dict[value_type][1], value)
+        setattr(
+            _param_value,
+            _type_dict[value_type][1],
+            value
+        )
     return _param_value
 
 
@@ -154,14 +155,16 @@ class ROSTypeDBInterface(Node):
         query_result = query_func(req.query)
         if req.query_type == 'match':
             for result in query_result:
-                for key, value in result.items():
-                    if value.is_attribute():
-                        _attr = QueryResult()
-                        _attr.attribute_name = key
+                for key, value_dict in result.items():
+                    _attr = QueryResult()
+                    _attr.name = key
+                    if 'type' in value_dict:
+                        _attr.type = value_dict['type']
+                    if 'value' in value_dict:
                         _attr.value = set_query_result_value(
-                            value.get_value(),
-                            value.get_type().get_value_type())
-                        response.result.append(_attr)
+                            value_dict['value'],
+                            value_dict['value_type'])
+                    response.result.append(_attr)
         elif req.query_type == 'match_aggregate':
             _result = QueryResult()
             _result.value = set_query_result_value(

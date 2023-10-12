@@ -13,18 +13,18 @@
 # limitations under the License.
 import functools
 
-from typedb.client import SessionType
-from typedb.client import TransactionType
-from typedb.client import TypeDB
-from typedb.client import TypeDBClientException
-from typedb.client import TypeDBOptions
+from typedb.driver import SessionType
+from typedb.driver import TransactionType
+from typedb.driver import TypeDB
+from typedb.driver import TypeDBDriverException
+from typedb.driver import TypeDBOptions
 
 
 class TypeDBInterface:
 
     def __init__(self, address, database_name, schema_path=None,
                  data_path=None, force_database=False, force_data=False):
-        self.connect_client(address)
+        self.connect_driver(address)
         self.create_database(database_name, force=force_database)
 
         if schema_path is not None and schema_path != '':
@@ -34,18 +34,20 @@ class TypeDBInterface:
             self.load_data(data_path, force=force_data)
 
     def __del__(self):
-        self.client.close()
+        try:
+            self.driver.close()
+        except AttributeError:
+            pass
 
-    def connect_client(self, address, parallelisation=2):
-        self.client = TypeDB.core_client(
-            address=address, parallelisation=parallelisation)
+    def connect_driver(self, address):
+        self.driver = TypeDB.core_driver(address=address)
 
     def create_database(self, database_name, force=False):
-        if self.client.databases().contains(database_name) and force:
-            self.client.databases().get(database_name).delete()
+        if self.driver.databases.contains(database_name) and force:
+            self.driver.databases.get(database_name).delete()
 
-        if not self.client.databases().contains(database_name):
-            self.client.databases().create(database_name)
+        if not self.driver.databases.contains(database_name):
+            self.driver.databases.create(database_name)
             self.database_name = database_name
         else:
             self.database_name = database_name
@@ -56,8 +58,8 @@ class TypeDBInterface:
             self,
             database_name,
             session_type,
-            options=TypeDBOptions.core()):
-        return self.client.session(database_name, session_type, options)
+            options=TypeDBOptions()):
+        return self.driver.session(database_name, session_type, options)
 
     # Read/write database
     # Generic query method
@@ -67,24 +69,26 @@ class TypeDBInterface:
             transaction_type,
             query_type,
             query,
-            options=TypeDBOptions.core()):
+            options=TypeDBOptions()):
         with self.create_session(self.database_name, session_type) as session:
             options.infer = True
             with session.transaction(transaction_type, options) as transaction:
                 transaction_query_function = getattr(
-                    transaction.query(), query_type)
+                    transaction.query, query_type)
                 query_answer = transaction_query_function(query)
                 if transaction_type == TransactionType.WRITE:
                     transaction.commit()
+                    if query_type == 'delete':
+                        return True  # delete always return None
                     return query_answer
                 elif transaction_type == TransactionType.READ:
                     if query_type == 'match':
                         answer_list = []
                         for answer in query_answer:
-                            answer_list.append(answer.map())
+                            answer_list.append(answer.to_json())
                         return answer_list
                     elif query_type == 'match_aggregate':
-                        answer = query_answer.get()
+                        answer = query_answer
                         if answer.is_nan():
                             return None
                         if answer.is_int():
@@ -175,7 +179,7 @@ class TypeDBInterface:
     def match_database(self, query):
         result = None
         try:
-            options = TypeDBOptions.core()
+            options = TypeDBOptions()
             options.infer = True
             result = self.database_query(
                SessionType.DATA, TransactionType.READ, 'match', query, options)
@@ -186,7 +190,7 @@ class TypeDBInterface:
     def match_aggregate_database(self, query):
         result = None
         try:
-            options = TypeDBOptions.core()
+            options = TypeDBOptions()
             options.infer = True
             result = self.database_query(
                 SessionType.DATA,
@@ -271,7 +275,7 @@ class TypeDBInterface:
     def get_attribute_from_entity(self, entity, key, key_value, attr):
         result = self.get_attribute_from_entity_raw(
             entity, key, key_value, attr)
-        return [r.get('attribute').get_value() for r in result]
+        return [r.get('attribute').get('value') for r in result]
 
     def delete_attribute_from_entity(self, entity, key, key_value, attr):
         query = f"""
