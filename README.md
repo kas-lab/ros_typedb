@@ -129,7 +129,7 @@ def main():
         lc_node.destroy_node()
 ```
 
-## Acknowledgements
+## Acknowledgments
 
 <a href="https://remaro.eu/">
     <img height="60" alt="REMARO Logo" src="https://remaro.eu/wp-content/uploads/2020/09/remaro1-right-1024.png">

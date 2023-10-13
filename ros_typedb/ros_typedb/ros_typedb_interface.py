@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+ros_typedb_interface - python interface to interact with typedb via ROS.
+"""
 
 import rclpy
 
@@ -53,6 +56,7 @@ def set_query_result_value(value, value_type):
 
 
 class ROSTypeDBInterface(Node):
+    """ROS node to interact with typedb"""
 
     def __init__(self, node_name, schema_path='', data_path='', **kwargs):
         super().__init__(node_name, **kwargs)

@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+typedb_interface - python interface to interact with typedb.
+"""
+
 import functools
 
 from typedb.driver import SessionType
@@ -22,9 +26,29 @@ from datetime import datetime
 
 
 class TypeDBInterface:
+    """Class to interact with typedb"""
 
     def __init__(self, address, database_name, schema_path=None,
                  data_path=None, force_database=False, force_data=False):
+        """
+        Init TypeDBInterface by connecting to typeDB server, creating a
+        database, loading a schema and a data file.
+
+
+        :param address: TypeDB server address.
+        :type address: str
+        :param database_name: database name.
+        :type database_name: str
+        :param schema_path: path to the schema file (.tql).
+        :type schema_path: str
+        :param data_path: path to the data file (.tql).
+        :type data_path: str
+        :param force_database: if database should override an existing database
+        :type force_database: bool
+        :param force_data: if the database data should be overriden.
+        :type force_data: bool
+        """
+
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
 
@@ -255,6 +279,14 @@ class TypeDBInterface:
         return self.delete_from_database(query)
 
     def insert_entity(self, entity, attribute_list=[]):
+        """
+        Insert entity in the database
+
+        :param entity: entity name
+        :type address: str
+        :param attribute_list: list with attribute tuple (name, value)
+        :type attribute_list: list[(name, value)]
+        """
         query = f"""
             insert $entity isa {entity}
         """
