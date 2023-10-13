@@ -18,6 +18,7 @@ from typedb.driver import TransactionType
 from typedb.driver import TypeDB
 from typedb.driver import TypeDBDriverException
 from typedb.driver import TypeDBOptions
+from datetime import datetime
 
 
 class TypeDBInterface:
@@ -204,6 +205,48 @@ class TypeDBInterface:
         return result
     # Read/write database end
 
+    def create_match_query(self, things_list, prefix='t'):
+        match_query = ""
+        prefix_list = []
+        t_counter = 0
+        for thing in things_list:
+            match_query += " ${0}_{1} isa {2},".format(
+                prefix, t_counter, thing[0])
+            if type(thing[2]) is str:
+                match_query += " has {0} '{1}';".format(thing[1], thing[2])
+            else:
+                match_query += " has {0} {1};".format(thing[1], thing[2])
+            prefix_list.append("{0}_{1}".format(prefix, t_counter))
+            t_counter += 1
+        return match_query, prefix_list
+
+    def create_relationship_insert_query(
+         self, relationship, related_dict, attribute_list=[], prefix='r'):
+        related_things = ""
+        for role, variables in related_dict.items():
+            for v in variables:
+                aux = "{0}:${1}".format(role, v)
+                if related_things != "":
+                    aux = "," + aux
+                related_things += aux
+        insert_query = " ${0} ({1}) isa {2}".format(
+            prefix, related_things, relationship)
+        for attribute in attribute_list:
+            if attribute[0] is not None:
+                if type(attribute[1]) is str:
+                    insert_query += ", has {} '{}' ".format(
+                        attribute[0], attribute[1])
+                elif type(attribute[1]) is datetime:
+                    insert_query += ", has {} {} ".format(
+                        attribute[0],
+                        attribute[1].strftime("%Y-%m-%dT%H:%M:%S")
+                    )
+                else:
+                    insert_query += ", has {} {} ".format(
+                        attribute[0], attribute[1])
+        insert_query += ";"
+        return insert_query
+
     def delete_entity(self, entity, key, key_value):
         query = f"""
             match $entity isa {entity}, has {key} "{key_value}";
@@ -229,38 +272,21 @@ class TypeDBInterface:
     def insert_relationship(
             self, relationship, related_dict, attribute_list=[]):
         match_query = "match "
-        related_things = ""
-        t_counter = 0
-        for role, things in related_dict.items():
-            for thing in things:
-                match_query += f"""
-                    $t_{t_counter} isa {thing[0]},
-                """
-                if type(thing[2]) is str:
-                    match_query += f"""
-                        has {thing[1]} "{thing[2]}";
-                    """
-                else:
-                    match_query += f"""
-                        has {thing[1]} {thing[2]};
-                    """
+        insert_query = "insert "
+        _related_dict = dict()
+        for key, things in related_dict.items():
+            _match_query, _prefix_list = self.create_match_query(things, key)
+            match_query += _match_query
+            _related_dict[key] = _prefix_list
 
-                aux = f"""{role}:$t_{t_counter}"""
-                if related_things != "":
-                    aux = "," + aux
-                related_things += aux
-                t_counter += 1
-
-        query = match_query
-        query += f"""
-            insert ({related_things}) isa {relationship}"""
-        for attribute in attribute_list:
-            if attribute[0] is not None:
-                if type(attribute[1]) is str:
-                    query += f""", has {attribute[0]} "{attribute[1]}" """
-                else:
-                    query += f""", has {attribute[0]} {attribute[1]}"""
-        query += ";"
+        insert_query += self.create_relationship_insert_query(
+            relationship,
+            _related_dict,
+            attribute_list=attribute_list,
+            prefix=relationship
+        )
+        query = match_query + insert_query
+        print(query)
         return self.insert_database(query)
 
     def get_attribute_from_entity_raw(self, entity, key, key_value, attr):
