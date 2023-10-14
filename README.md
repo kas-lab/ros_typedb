@@ -1,5 +1,6 @@
 # ros_typedb
 [![tests](https://github.com/Rezenders/ros_typedb/actions/workflows/test.yml/badge.svg)](https://github.com/Rezenders/ros_typedb/actions/workflows/test.yml)
+[![documentation](https://github.com/Rezenders/ros_typedb/actions/workflows/doc.yml/badge.svg)](https://github.com/Rezenders/ros_typedb/actions/workflows/doc.yml)
 
 This package provides a basic generic integration between ROS and [typeDB](https://typedb.com/).
 The package was designed in a way to enable users to easily extend it to fulfill their needs, the package design is explained in the [Package Design](#package-design) section.
