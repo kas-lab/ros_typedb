@@ -27,7 +27,7 @@ jobs:
           pip install sphinx sphinx_rtd_theme myst_parser
       - name: Sphinx build
         run: |
-          source ros_ws/install/setup.bash && sphinx-build docs/source docs/build
+          source ${{ steps.action_ros_ci_step.outputs.ros-workspace-directory-name }}/install/setup.bash && sphinx-build docs/source docs/build
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
