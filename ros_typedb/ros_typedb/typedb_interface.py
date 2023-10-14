@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-typedb_interface - python interface to interact with typedb.
-"""
+"""typedb_interface - python interface to interact with typedb."""
 
 import functools
 
@@ -26,11 +24,13 @@ from datetime import datetime
 
 
 class TypeDBInterface:
-    """Class to interact with typedb"""
+    """Class to interact with typedb."""
 
     def __init__(self, address, database_name, schema_path=None,
                  data_path=None, force_database=False, force_data=False):
         """
+        Init TypeDBInterface.
+
         Init TypeDBInterface by connecting to typeDB server, creating a
         database, loading a schema and a data file.
 
@@ -48,7 +48,6 @@ class TypeDBInterface:
         :param force_data: if the database data should be overriden.
         :type force_data: bool
         """
-
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
 
@@ -280,7 +279,7 @@ class TypeDBInterface:
 
     def insert_entity(self, entity, attribute_list=[]):
         """
-        Insert entity in the database
+        Insert entity in the database.
 
         :param entity: entity name
         :type address: str
