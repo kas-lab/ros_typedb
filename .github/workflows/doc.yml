@@ -25,7 +25,7 @@ jobs:
           skip-tests: true
       - name: Install dependencies
         run: |
-          pip install sphinx sphinx_rtd_theme myst_parser
+          pip install sphinx sphinx_rtd_theme myst_parser sphinx-autopackagesummary
       - name: Sphinx build
         run: |
           source ${{ steps.action_ros_ci_step.outputs.ros-workspace-directory-name }}/install/setup.bash && sphinx-build docs/source docs/build
