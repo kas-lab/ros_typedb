@@ -262,7 +262,7 @@ class TypeDBInterface:
                 elif type(attribute[1]) is datetime:
                     insert_query += ", has {} {} ".format(
                         attribute[0],
-                        attribute[1].strftime("%Y-%m-%dT%H:%M:%S")
+                        attribute[1].isoformat(timespec='milliseconds')
                     )
                 else:
                     insert_query += ", has {} {} ".format(
