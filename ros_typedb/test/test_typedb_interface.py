@@ -40,9 +40,9 @@ def test_insert_entity(typedb_interface):
     assert len(result) > 0
 
 
-def test_delete_entity(typedb_interface):
+def test_delete_thing(typedb_interface):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
-    typedb_interface.delete_entity('person', 'email', 'test@email.test')
+    typedb_interface.delete_thing('person', 'email', 'test@email.test')
     query = """
         match $entity isa person, has email "test@email.test";
         get $entity;
@@ -51,57 +51,57 @@ def test_delete_entity(typedb_interface):
     assert len(result) == 0
 
 
-def test_insert_attribute_entity(typedb_interface):
+def test_insert_attribute_in_thing(typedb_interface):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
-    typedb_interface.insert_attribute_entity(
+    typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', 'nickname', '"t"')
-    typedb_interface.insert_attribute_entity(
+    typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', 'alive', 'true')
-    typedb_interface.insert_attribute_entity(
+    typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', 'age', '33')
-    typedb_interface.insert_attribute_entity(
+    typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', 'height', '3.237')
 
-    result_1 = typedb_interface.get_attribute_from_entity(
+    result_1 = typedb_interface.get_attribute_from_thing(
         'person', 'email', 'test@email.test', 'nickname')
-    result_2 = typedb_interface.get_attribute_from_entity(
+    result_2 = typedb_interface.get_attribute_from_thing(
         'person', 'email', 'test@email.test', 'alive')
-    result_3 = typedb_interface.get_attribute_from_entity(
+    result_3 = typedb_interface.get_attribute_from_thing(
         'person', 'email', 'test@email.test', 'age')
-    result_4 = typedb_interface.get_attribute_from_entity(
+    result_4 = typedb_interface.get_attribute_from_thing(
         'person', 'email', 'test@email.test', 'height')
     assert result_1 and result_2 and result_3 and result_4
 
 
-def test_get_attribute_from_entity(typedb_interface):
+def test_get_attribute_from_thing(typedb_interface):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
-    typedb_interface.insert_attribute_entity(
+    typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', 'nickname', '"t"')
-    result = typedb_interface.get_attribute_from_entity(
+    result = typedb_interface.get_attribute_from_thing(
         'person', 'email', 'test@email.test', 'nickname')
 
     assert result[0] == 't'
 
 
-def test_delete_attribute_from_entity(typedb_interface):
+def test_delete_attribute_from_thing(typedb_interface):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
-    typedb_interface.insert_attribute_entity(
+    typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', 'nickname', '"t"')
-    typedb_interface.delete_attribute_from_entity(
+    typedb_interface.delete_attribute_from_thing(
         'person', 'email', 'test@email.test', 'nickname')
-    result = typedb_interface.get_attribute_from_entity(
+    result = typedb_interface.get_attribute_from_thing(
         'person', 'email', 'test@email.test', 'nickname')
 
     assert len(result) == 0
 
 
-def test_update_attribute_entity(typedb_interface):
+def test_update_attribute_in_thing(typedb_interface):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
-    typedb_interface.insert_attribute_entity(
+    typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', 'nickname', '"t"')
-    typedb_interface.update_attribute_entity(
+    typedb_interface.update_attribute_in_thing(
         'person', 'email', 'test@email.test', 'nickname', '"new_t"')
-    result = typedb_interface.get_attribute_from_entity(
+    result = typedb_interface.get_attribute_from_thing(
         'person', 'email', 'test@email.test', 'nickname')
 
     assert result[0] == 'new_t'

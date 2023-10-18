@@ -270,10 +270,10 @@ class TypeDBInterface:
         insert_query += ";"
         return insert_query
 
-    def delete_entity(self, entity, key, key_value):
+    def delete_thing(self, thing, key, key_value):
         query = f"""
-            match $entity isa {entity}, has {key} "{key_value}";
-            delete $entity isa {entity};
+            match $thing isa {thing}, has {key} "{key_value}";
+            delete $thing isa {thing};
         """
         return self.delete_from_database(query)
 
@@ -317,44 +317,43 @@ class TypeDBInterface:
             prefix=relationship
         )
         query = match_query + insert_query
-        print(query)
         return self.insert_database(query)
 
-    def get_attribute_from_entity_raw(self, entity, key, key_value, attr):
+    def get_attribute_from_thing_raw(self, thing, key, key_value, attr):
         query = f"""
-            match $entity isa {entity},
+            match $thing isa {thing},
             has {key} "{key_value}",
             has {attr} $attribute;
             get $attribute;
         """
         return self.match_database(query)
 
-    def get_attribute_from_entity(self, entity, key, key_value, attr):
-        result = self.get_attribute_from_entity_raw(
-            entity, key, key_value, attr)
+    def get_attribute_from_thing(self, thing, key, key_value, attr):
+        result = self.get_attribute_from_thing_raw(
+            thing, key, key_value, attr)
         return [r.get('attribute').get('value') for r in result]
 
-    def delete_attribute_from_entity(self, entity, key, key_value, attr):
+    def delete_attribute_from_thing(self, thing, key, key_value, attr):
         query = f"""
-            match $entity isa {entity},
+            match $thing isa {thing},
             has {key} "{key_value}",
             has {attr} $attribute;
-            delete $entity has $attribute;
+            delete $thing has $attribute;
         """
         return self.delete_from_database(query)
 
-    def insert_attribute_entity(
-            self, entity, key, key_value, attr, attr_value):
+    def insert_attribute_in_thing(
+            self, thing, key, key_value, attr, attr_value):
         query = f"""
-            match $entity isa {entity},
+            match $thing isa {thing},
             has {key} "{key_value}";
-            insert $entity has {attr} {attr_value};
+            insert $thing has {attr} {attr_value};
         """
         return self.insert_database(query)
 
-    def update_attribute_entity(
-            self, entity, key, key_value, attr, attr_value):
-        self.delete_attribute_from_entity(
-            entity, key, key_value, attr)
-        return self.insert_attribute_entity(
-            entity, key, key_value, attr, attr_value)
+    def update_attribute_in_thing(
+            self, thing, key, key_value, attr, attr_value):
+        self.delete_attribute_from_thing(
+            thing, key, key_value, attr)
+        return self.insert_attribute_in_thing(
+            thing, key, key_value, attr, attr_value)
