@@ -228,6 +228,26 @@ class TypeDBInterface:
         return result
     # Read/write database end
 
+    def covert_query_type_to_py_type(self, data):
+        if data.get('value_type') == 'datetime':
+            return datetime.fromisoformat(data.get('value'))
+        elif data.get('value_type') == 'long':
+            return int(data.get('value'))
+        elif data.get('value_type') == 'string':
+            return str(data.get('value'))
+        elif data.get('value_type') == 'double':
+            return float(data.get('value'))
+        return data.get('value')
+
+    def convert_py_type_to_query_type(self, data):
+        if type(data) is str:
+            return "'{}'".format(data)
+        elif type(data) is datetime:
+            return data.isoformat(timespec='milliseconds')
+        elif type(data) is bool:
+            return str(data).lower()
+        return data
+
     def create_match_query(self, things_list, prefix='t'):
         match_query = ""
         prefix_list = []
@@ -235,10 +255,8 @@ class TypeDBInterface:
         for thing in things_list:
             match_query += " ${0}_{1} isa {2},".format(
                 prefix, t_counter, thing[0])
-            if type(thing[2]) is str:
-                match_query += " has {0} '{1}';".format(thing[1], thing[2])
-            else:
-                match_query += " has {0} {1};".format(thing[1], thing[2])
+            match_query += " has {0} {1};".format(
+                thing[1], self.convert_py_type_to_query_type(thing[2]))
             prefix_list.append("{0}_{1}".format(prefix, t_counter))
             t_counter += 1
         return match_query, prefix_list
@@ -256,17 +274,10 @@ class TypeDBInterface:
             prefix, related_things, relationship)
         for attribute in attribute_list:
             if attribute[0] is not None:
-                if type(attribute[1]) is str:
-                    insert_query += ", has {} '{}' ".format(
-                        attribute[0], attribute[1])
-                elif type(attribute[1]) is datetime:
-                    insert_query += ", has {} {} ".format(
-                        attribute[0],
-                        attribute[1].isoformat(timespec='milliseconds')
-                    )
-                else:
-                    insert_query += ", has {} {} ".format(
-                        attribute[0], attribute[1])
+                insert_query += ", has {} {} ".format(
+                    attribute[0],
+                    self.convert_py_type_to_query_type(attribute[1])
+                )
         insert_query += ";"
         return insert_query
 
@@ -355,9 +366,10 @@ class TypeDBInterface:
         :rtype: list[dict[str,
             dict[str, str or int or float or datetime or bool]]]
         """
+        key_value = self.convert_py_type_to_query_type(key_value)
         query = f"""
             match $thing isa {thing},
-            has {key} "{key_value}",
+            has {key} {key_value},
             has {attr} $attribute;
             get $attribute;
         """
@@ -380,7 +392,8 @@ class TypeDBInterface:
         """
         result = self.get_attribute_from_thing_raw(
             thing, key, key_value, attr)
-        return [r.get('attribute').get('value') for r in result]
+        return [self.covert_query_type_to_py_type(r.get('attribute'))
+                for r in result]
 
     def delete_attribute_from_thing(self, thing, key, key_value, attr):
         """
@@ -397,9 +410,10 @@ class TypeDBInterface:
         :return: True.
         :rtype: bool
         """
+        key_value = self.convert_py_type_to_query_type(key_value)
         query = f"""
             match $thing isa {thing},
-            has {key} "{key_value}",
+            has {key} {key_value},
             has {attr} $attribute;
             delete $thing has $attribute;
         """
@@ -423,9 +437,11 @@ class TypeDBInterface:
         :return: Insert query result.
         :rtype: typedb map
         """
+        key_value = self.convert_py_type_to_query_type(key_value)
+        attr_value = self.convert_py_type_to_query_type(attr_value)
         query = f"""
             match $thing isa {thing},
-            has {key} "{key_value}";
+            has {key} {key_value};
             insert $thing has {attr} {attr_value};
         """
         return self.insert_database(query)
