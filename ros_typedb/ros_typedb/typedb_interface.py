@@ -271,6 +271,18 @@ class TypeDBInterface:
         return insert_query
 
     def delete_thing(self, thing, key, key_value):
+        """
+        Delete thing individual in the database.
+
+        :param thing: thing name
+        :type thing: str
+        :param key: attribute name to identify the individual
+        :type key: str
+        :param key_value: attribute value to identify the individual
+        :type key_value: str or int or float or datetime or bool
+        :return: True.
+        :rtype: bool
+        """
         query = f"""
             match $thing isa {thing}, has {key} "{key_value}";
             delete $thing isa {thing};
@@ -279,12 +291,12 @@ class TypeDBInterface:
 
     def insert_entity(self, entity, attribute_list=[]):
         """
-        Insert entity in the database.
+        Insert entity individual in the database.
 
         :param entity: entity name
-        :type address: str
+        :type entity: str
         :param attribute_list: list with attribute tuple (name, value)
-        :type attribute_list: list[(name, value)]
+        :type attribute_list: list[tuple[str, str or int or float or datetime]]
         """
         query = f"""
             insert $entity isa {entity}
@@ -298,10 +310,18 @@ class TypeDBInterface:
         query += ";"
         return self.insert_database(query)
 
-    # related_dict is a dictionary with the keys being the roles and
-    # the values being the entities/relationships related
     def insert_relationship(
             self, relationship, related_dict, attribute_list=[]):
+        """
+        Insert relationship individual in the database.
+
+        :param relationship: relationship name
+        :type relationship: str
+        :param related_dict: Maps roles to individuals[(thing, key, key_value)]
+        :type related_dict: dict[list[tuple[str, str, str]]]
+        :param attribute_list: list with attribute tuple (name, value)
+        :type attribute_list: list[tuple[str, str or int or float or datetime]]
+        """
         match_query = "match "
         insert_query = "insert "
         _related_dict = dict()
@@ -320,6 +340,21 @@ class TypeDBInterface:
         return self.insert_database(query)
 
     def get_attribute_from_thing_raw(self, thing, key, key_value, attr):
+        """
+        Get raw attribute values from a instance of a thing.
+
+        :param thing: thing name
+        :type thing: str
+        :param key: attribute name to identify the individual
+        :type key: str
+        :param key_value: attribute value to identify the individual
+        :type key_value: str or int or float or datetime or bool
+        :param attr: attribute name to be return
+        :type attr: str
+        :return: List of dictionary with the query result.
+        :rtype: list[dict[str,
+            dict[str, str or int or float or datetime or bool]]]
+        """
         query = f"""
             match $thing isa {thing},
             has {key} "{key_value}",
@@ -329,11 +364,39 @@ class TypeDBInterface:
         return self.match_database(query)
 
     def get_attribute_from_thing(self, thing, key, key_value, attr):
+        """
+        Get attribute value from a instance of a thing.
+
+        :param thing: thing name
+        :type thing: str
+        :param key: attribute name to identify the instance
+        :type key: str
+        :param key_value: attribute value to identify the instance
+        :type key_value: str or int or float or datetime or bool
+        :param attr: attribute name to be return
+        :type attr: str
+        :return: List with the attribute values of type attr.
+        :rtype: list[str or int or float or datetime or bool]
+        """
         result = self.get_attribute_from_thing_raw(
             thing, key, key_value, attr)
         return [r.get('attribute').get('value') for r in result]
 
     def delete_attribute_from_thing(self, thing, key, key_value, attr):
+        """
+        Delete attribute value from a instance of a thing.
+
+        :param thing: thing name
+        :type thing: str
+        :param key: attribute name to identify the instance
+        :type key: str
+        :param key_value: attribute value to identify the instance
+        :type key_value: str or int or float or datetime or bool
+        :param attr: attribute name to be deleted
+        :type attr: str
+        :return: True.
+        :rtype: bool
+        """
         query = f"""
             match $thing isa {thing},
             has {key} "{key_value}",
@@ -344,6 +407,22 @@ class TypeDBInterface:
 
     def insert_attribute_in_thing(
             self, thing, key, key_value, attr, attr_value):
+        """
+        Insert attribute value in a instance of a thing.
+
+        :param thing: thing name
+        :type thing: str
+        :param key: attribute name to identify the instance
+        :type key: str
+        :param key_value: attribute value to identify the instance
+        :type key_value: str or int or float or datetime or bool
+        :param attr: attribute name to be inserted
+        :type attr: str
+        :param attr_value: attribute value to be inserted
+        :type attr_value: str or int or float or datetime or bool
+        :return: Insert query result.
+        :rtype: typedb map
+        """
         query = f"""
             match $thing isa {thing},
             has {key} "{key_value}";
@@ -353,6 +432,22 @@ class TypeDBInterface:
 
     def update_attribute_in_thing(
             self, thing, key, key_value, attr, attr_value):
+        """
+        Update attribute value in a instance of a thing.
+
+        :param thing: thing name
+        :type thing: str
+        :param key: attribute name to identify the instance
+        :type key: str
+        :param key_value: attribute value to identify the instance
+        :type key_value: str or int or float or datetime or bool
+        :param attr: attribute name to be updated
+        :type attr: str
+        :param attr_value: attribute value to be inserted
+        :type attr_value: str or int or float or datetime or bool
+        :return: Insert query result.
+        :rtype: typedb map
+        """
         self.delete_attribute_from_thing(
             thing, key, key_value, attr)
         return self.insert_attribute_in_thing(
