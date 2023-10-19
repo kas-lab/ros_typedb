@@ -36,6 +36,9 @@ salary sub attribute,
 role-name sub attribute,
     value string;
 
+robot-type sub attribute,
+    value string;
+
 person sub entity,
   owns full-name,
   owns nickname,
@@ -54,7 +57,8 @@ robot sub entity,
   owns height,
   owns age,
   owns alive,
-  owns birth-date;
+  owns birth-date,
+  owns robot-type;
 
 employment sub relation,
   owns role-name,

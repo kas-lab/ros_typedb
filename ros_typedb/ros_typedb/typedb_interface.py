@@ -264,8 +264,10 @@ class TypeDBInterface:
             first = False
         return _query
 
-    def dict_to_query(self, things_dict, attribute_str='attributes'):
+    def dict_to_query(
+       self, things_dict, attribute_str='attributes', delete_attribute_str='delete-attributes'):
         query = ''
+        delete_query = 'delete '
         for thing, prefix_attr_list in things_dict.items():
             thing_counter = 0
             _query = ''
@@ -293,8 +295,27 @@ class TypeDBInterface:
                 if attribute_str in prefix_attr:
                     _query += self.attribute_dict_to_query(
                         prefix_attr[attribute_str])
+
+                if delete_attribute_str in prefix_attr:
+                    _delete_query = ''
+                    _query += '; $' + prefix
+                    _delete_query += '$' + prefix
+                    first = True
+                    for attr in prefix_attr[delete_attribute_str]:
+                        if first is False:
+                            _query += ','
+                            _delete_query += ','
+                        first = False
+                        _query += ' has {0} ${1}_{0}'.format(
+                            attr, prefix)
+                        _delete_query += ' has ${1}_{0}'.format(attr, prefix)
+                    _delete_query += ';'
+                    delete_query += _delete_query
                 _query += ';'
             query += _query
+
+        if delete_query != 'delete ':
+            query += delete_query
         return query
 
     def create_match_query(self, things_list, prefix='t'):
@@ -470,24 +491,9 @@ class TypeDBInterface:
 
     def delete_attributes_from_thing(
        self, match_dict, attribute_str='delete-attributes'):
-        match_query = 'match ' + self.dict_to_query(match_dict)
-        delete_query = 'delete '
-        for thing, prefix_attr_list in match_dict.items():
-            for delete in prefix_attr_list:
-                match_query += '$' + delete['prefix']
-                delete_query += '$' + delete['prefix']
-                first = True
-                for attr in delete[attribute_str]:
-                    if first is False:
-                        match_query += ','
-                        delete_query += ','
-                    first = False
-                    match_query += ' has {0} ${1}_{0}'.format(
-                        attr, delete['prefix'])
-                    delete_query += ' has ${1}_{0}'.format(attr, delete['prefix'])
-                match_query += ';'
-                delete_query += ';'
-        return self.delete_from_database(match_query + delete_query)
+        match_query = 'match ' + self.dict_to_query(
+            match_dict, delete_attribute_str=attribute_str)
+        return self.delete_from_database(match_query)
 
     def insert_attribute_in_thing(
             self, thing, key, key_value, attr, attr_value):

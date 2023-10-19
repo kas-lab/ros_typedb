@@ -279,6 +279,19 @@ def test_insert_attributes(typedb_interface, match_dict, r_dict):
                     }
                 },
             ],
+            'robot': [
+                {
+                    'prefix': 'r',
+                    'attributes': {
+                        'full-name': 'robot123',
+                        'height': 1.0,
+                        'age': 0,
+                        'alive': True,
+                        'birth-date': datetime.now(),
+                        'robot-type': 'auv'
+                    }
+                },
+            ],
         },
         {
             'person': [
@@ -289,6 +302,14 @@ def test_insert_attributes(typedb_interface, match_dict, r_dict):
                     },
                     'delete-attributes': [
                         'nickname', 'height', 'age', 'alive', 'birth-date']
+                },
+            ],
+            'robot': [
+                {
+                    'attributes': {
+                        'full-name': 'robot123',
+                    },
+                    'delete-attributes': ['robot-type']
                 },
             ],
         },
