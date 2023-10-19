@@ -468,6 +468,27 @@ class TypeDBInterface:
         """
         return self.delete_from_database(query)
 
+    def delete_attributes_from_thing(
+       self, match_dict, attribute_str='delete-attributes'):
+        match_query = 'match ' + self.dict_to_query(match_dict)
+        delete_query = 'delete '
+        for thing, prefix_attr_list in match_dict.items():
+            for delete in prefix_attr_list:
+                match_query += '$' + delete['prefix']
+                delete_query += '$' + delete['prefix']
+                first = True
+                for attr in delete[attribute_str]:
+                    if first is False:
+                        match_query += ','
+                        delete_query += ','
+                    first = False
+                    match_query += ' has {0} ${1}_{0}'.format(
+                        attr, delete['prefix'])
+                    delete_query += ' has ${1}_{0}'.format(attr, delete['prefix'])
+                match_query += ';'
+                delete_query += ';'
+        return self.delete_from_database(match_query + delete_query)
+
     def insert_attribute_in_thing(
             self, thing, key, key_value, attr, attr_value):
         """
@@ -495,6 +516,13 @@ class TypeDBInterface:
         """
         return self.insert_database(query)
 
+    def insert_attributes_in_thing(
+       self, match_dict, attribute_str='insert-attributes'):
+        match_query = 'match ' + self.dict_to_query(match_dict)
+        insert_query = 'insert ' + self.dict_to_query(
+            match_dict, attribute_str)
+        return self.insert_database(match_query + insert_query)
+
     def update_attribute_in_thing(
             self, thing, key, key_value, attr, attr_value):
         """
@@ -517,3 +545,7 @@ class TypeDBInterface:
             thing, key, key_value, attr)
         return self.insert_attribute_in_thing(
             thing, key, key_value, attr, attr_value)
+
+    def update_attributes_in_thing(self, match_dict):
+        self.delete_attributes_from_thing(match_dict, 'update-attributes')
+        return self.insert_attributes_in_thing(match_dict, 'update-attributes')

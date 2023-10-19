@@ -221,3 +221,145 @@ def test_dict_to_query(typedb_interface, things_dict):
     match_result = typedb_interface.match_database("match " + query)
     assert insert_result is not None and insert_result is not False \
         and match_result is not None and match_result is not False
+
+
+@pytest.mark.parametrize("match_dict, r_dict", [
+    ({
+        'person': [
+            {
+                'prefix': 'p1',
+                'attributes': {
+                    'email': 'test_person@test.test',
+                },
+                'insert-attributes': {
+                    'nickname': 't',
+                    'height': 1.80,
+                    'age': 18,
+                    'alive': True,
+                    'birth-date': datetime.now()
+                }
+            },
+        ],
+    },
+    {
+        'person': [
+            {
+                'prefix': 'p1',
+                'attributes': {
+                    'email': 'test_person@test.test',
+                    'nickname': 't',
+                    'height': 1.80,
+                    'age': 18,
+                    'alive': True,
+                    'birth-date': datetime.now()
+                }
+            },
+        ],
+    },),
+])
+def test_insert_attributes(typedb_interface, match_dict, r_dict):
+    r = typedb_interface.insert_attributes_in_thing(match_dict)
+    query = typedb_interface.dict_to_query(r_dict)
+    match_result = typedb_interface.match_database("match " + query)
+    assert r is not None and r is not False and len(match_result) > 0
+
+
+@pytest.mark.parametrize("insert_dict, match_dict", [
+    ({
+            'person': [
+                {
+                    'prefix': 'p1',
+                    'attributes': {
+                        'email': 'test@test.test',
+                        'nickname': 't',
+                        'height': 1.80,
+                        'age': 18,
+                        'alive': True,
+                        'birth-date': datetime.now()
+                    }
+                },
+            ],
+        },
+        {
+            'person': [
+                {
+                    'prefix': 'p1',
+                    'attributes': {
+                        'email': 'test@test.test',
+                    },
+                    'delete-attributes': [
+                        'nickname', 'height', 'age', 'alive', 'birth-date']
+                },
+            ],
+        },
+    )
+])
+def test_delete_attributes(
+   typedb_interface, insert_dict, match_dict):
+
+    query = typedb_interface.dict_to_query(insert_dict)
+    insert_result = typedb_interface.insert_database("insert " + query)
+
+    r = typedb_interface.delete_attributes_from_thing(match_dict)
+
+    query = typedb_interface.dict_to_query(insert_dict)
+    match_result = typedb_interface.match_database("match " + query)
+    assert r is not None and r is not False and len(match_result) == 0
+
+
+@pytest.mark.parametrize("insert_dict, update_dict, r_dict", [
+    ({
+        'person': [
+            {
+                'prefix': 'p1',
+                'attributes': {
+                    'email': 'test@test.test',
+                    'nickname': 't',
+                    'height': 1.80,
+                    'age': 18,
+                    'alive': True,
+                    'birth-date': datetime.now()
+                }
+            },
+        ],
+    },
+    {
+        'person': [
+            {
+                'prefix': 'p1',
+                'attributes': {
+                    'email': 'test@test.test',
+                },
+                'update-attributes': {
+                    'nickname': 't2',
+                    'height': 1.50,
+                    'age': 17,
+                    'alive': False,
+                }
+            },
+        ],
+    },
+    {
+        'person': [
+            {
+                'prefix': 'p1',
+                'attributes': {
+                    'email': 'test@test.test',
+                    'nickname': 't2',
+                    'height': 1.50,
+                    'age': 17,
+                    'alive': False,
+                }
+            },
+        ],
+    },
+    ),
+])
+def test_update_attributes(typedb_interface, insert_dict, update_dict, r_dict):
+    query = typedb_interface.dict_to_query(insert_dict)
+    insert_result = typedb_interface.insert_database("insert " + query)
+
+    r = typedb_interface.update_attributes_in_thing(update_dict)
+    query = typedb_interface.dict_to_query(r_dict)
+    match_result = typedb_interface.match_database("match " + query)
+    assert r is not None and r is not False and len(match_result) > 0

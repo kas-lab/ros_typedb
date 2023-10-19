@@ -1,6 +1,8 @@
 
 insert
 
+$test_person isa person, has email "test_person@test.test";
+
 ## PERSON
 $per-1 isa person, has full-name "Miriam Morton", has nickname "Mitzi", has gender "female", has email "miriam.morton@gmail.com", has phone-number "+61-491-570-156", has phone-number "+44-1632-960007";
 $per-2 isa person, has full-name "Solomon Tran", has gender "male", has email "solomon.tran@gmail.com", has phone-number "+44-1632-12938", has phone-number "+61-491-570-158";
