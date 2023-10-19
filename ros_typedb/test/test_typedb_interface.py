@@ -159,3 +159,65 @@ def test_insert_relationship(typedb_interface):
     """
     result = typedb_interface.match_database(query)
     assert len(result) > 0
+
+
+@pytest.mark.parametrize("things_dict", [
+    ({
+        'person': [
+            {
+                'prefix': 'p1',
+                'attributes': {
+                    'email': 'test@email.test',
+                    'nickname': 't',
+                    'height': 1.80,
+                    'age': 18,
+                    'alive': True,
+                    'birth-date': datetime.now()
+                }
+            },
+            {
+                'prefix': 'p2',
+                'attributes': {
+                    'email': 'test2@email.test',
+                    'nickname': 't2',
+                    'height': 1.33,
+                    'age': 128,
+                    'alive': False,
+                    'birth-date': datetime.now()
+                }
+            },
+        ],
+        'robot': [
+            {
+                'prefix': 'r',
+                'attributes': {
+                    'full-name': 'robot123',
+                    'height': 1.0,
+                    'age': 0,
+                    'alive': True,
+                    'birth-date': datetime.now()
+                }
+            },
+        ],
+        'employment': [
+            {
+                'prefix': 'e',
+                'attributes': {
+                    'salary': 2333,
+                    'role-name': ['boss', 'super boss'],
+                },
+                'relationship': {
+                    'employee': 'p1',
+                    'employer': 'p2'
+                }
+            },
+        ]
+    }),
+])
+def test_dict_to_query(typedb_interface, things_dict):
+    query = typedb_interface.dict_to_query(things_dict)
+    print(query)
+    insert_result = typedb_interface.insert_database("insert " + query)
+    match_result = typedb_interface.match_database("match " + query)
+    assert insert_result is not None and insert_result is not False \
+        and match_result is not None and match_result is not False

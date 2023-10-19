@@ -248,6 +248,45 @@ class TypeDBInterface:
             return str(data).lower()
         return data
 
+    def dict_to_query(self, things_dict):
+        query = ''
+        for thing, prefix_attr_list in things_dict.items():
+            thing_counter = 0
+            _query = ''
+            for prefix_attr in prefix_attr_list:
+                prefix = 't_{}'.format(thing_counter)
+                thing_counter += 1
+                if 'prefix' in prefix_attr:
+                    prefix = prefix_attr['prefix']
+                _query += ' ${0} '.format(prefix)
+
+                if 'relationship' in prefix_attr:
+                    related_things = ''
+                    for role, variables in prefix_attr['relationship'].items():
+                        if type(variables) is not list:
+                            variables = [variables]
+                        for v in variables:
+                            aux = '{0}:${1}'.format(role, v)
+                            if related_things != '':
+                                aux = "," + aux
+                            related_things += aux
+                    _query += '({})'.format(related_things)
+
+                _query += ' isa {} '.format(thing)
+
+                if 'attributes' in prefix_attr:
+                    for attr, attr_value in prefix_attr['attributes'].items():
+                        if type(attr_value) is not list:
+                            attr_value = [attr_value]
+                        for v in attr_value:
+                            _query += ', has {0} {1}'.format(
+                                attr,
+                                self.convert_py_type_to_query_type(v)
+                            )
+                _query += ';'
+            query += _query
+        return query
+
     def create_match_query(self, things_list, prefix='t'):
         match_query = ""
         prefix_list = []
