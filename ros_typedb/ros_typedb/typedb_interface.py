@@ -248,7 +248,23 @@ class TypeDBInterface:
             return str(data).lower()
         return data
 
-    def dict_to_query(self, things_dict):
+    def attribute_dict_to_query(self, attribute_dict):
+        _query = ''
+        first = True
+        for attr, attr_value in attribute_dict.items():
+            if type(attr_value) is not list:
+                attr_value = [attr_value]
+            for v in attr_value:
+                if first is False:
+                    _query += ','
+                _query += ' has {0} {1}'.format(
+                    attr,
+                    self.convert_py_type_to_query_type(v)
+                )
+            first = False
+        return _query
+
+    def dict_to_query(self, things_dict, attribute_str='attributes'):
         query = ''
         for thing, prefix_attr_list in things_dict.items():
             thing_counter = 0
@@ -272,17 +288,11 @@ class TypeDBInterface:
                             related_things += aux
                     _query += '({})'.format(related_things)
 
-                _query += ' isa {} '.format(thing)
+                _query += ' isa {}, '.format(thing)
 
-                if 'attributes' in prefix_attr:
-                    for attr, attr_value in prefix_attr['attributes'].items():
-                        if type(attr_value) is not list:
-                            attr_value = [attr_value]
-                        for v in attr_value:
-                            _query += ', has {0} {1}'.format(
-                                attr,
-                                self.convert_py_type_to_query_type(v)
-                            )
+                if attribute_str in prefix_attr:
+                    _query += self.attribute_dict_to_query(
+                        prefix_attr[attribute_str])
                 _query += ';'
             query += _query
         return query
