@@ -11,7 +11,7 @@ find_package(rcl_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/QueryResult.msg"
+  "msg/Attribute.msg"
   "srv/Query.srv"
   DEPENDENCIES std_msgs rcl_interfaces
 )

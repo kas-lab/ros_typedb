@@ -24,7 +24,7 @@ from rclpy.lifecycle import Publisher
 from rclpy.lifecycle import TransitionCallbackReturn
 
 from ros_typedb.typedb_interface import TypeDBInterface
-from ros_typedb_msgs.msg import QueryResult
+from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.srv import Query
 
 from std_msgs.msg import String
@@ -51,6 +51,41 @@ def set_query_result_value(value, value_type):
             value
         )
     return _param_value
+
+
+def match_query_result_to_ros_msg(query_result):
+    response = Query.Response()
+    for result in query_result:
+        for key, value_dict in result.items():
+            _attr = Attribute()
+            _attr.name = key
+            if 'type' in value_dict:
+                _attr.type = value_dict['type']
+            if 'value' in value_dict:
+                _attr.value = set_query_result_value(
+                    value_dict['value'],
+                    value_dict['value_type'])
+            response.attributes.append(_attr)
+    return response
+
+
+def match_aggregate_query_result_to_ros_msg(query_result):
+    response = Query.Response()
+    _attr = Attribute()
+    _attr.value = set_query_result_value(
+        query_result,
+        type(query_result).__name__)
+    response.attributes.append(_attr)
+    return response
+
+
+def query_result_to_ros_msg(query_type, query_result):
+    response = Query.Response()
+    if query_type == 'match':
+        response = match_query_result_to_ros_msg(query_result)
+    elif query_type == 'match_aggregate':
+        response = match_aggregate_query_result_to_ros_msg(query_result)
+    return response
 
 
 class ROSTypeDBInterface(Node):
@@ -155,24 +190,7 @@ class ROSTypeDBInterface(Node):
             return response
 
         query_result = query_func(req.query)
-        if req.query_type == 'match':
-            for result in query_result:
-                for key, value_dict in result.items():
-                    _attr = QueryResult()
-                    _attr.name = key
-                    if 'type' in value_dict:
-                        _attr.type = value_dict['type']
-                    if 'value' in value_dict:
-                        _attr.value = set_query_result_value(
-                            value_dict['value'],
-                            value_dict['value_type'])
-                    response.result.append(_attr)
-        elif req.query_type == 'match_aggregate':
-            _result = QueryResult()
-            _result.value = set_query_result_value(
-                query_result,
-                type(query_result).__name__)
-            response.result.append(_result)
+        response = query_result_to_ros_msg(req.query_type, query_result)
         if query_result is None:
             response.success = False
         else:

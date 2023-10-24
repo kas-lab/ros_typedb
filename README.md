@@ -108,7 +108,7 @@ class MyModelROSInterface(ROSTypeDBInterface):
         self.typedb_interface_class = MyModelInterface
 ```
 
-Sping ROS node:
+Spin ROS node:
 ```python
 def main():
     rclpy.init()

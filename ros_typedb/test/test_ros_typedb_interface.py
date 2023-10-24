@@ -160,7 +160,7 @@ def test_ros_typedb_delete_query(insert_query):
         match_query_res = node.call_service(node.query_srv, match_query_req)
 
         assert query_res.success and match_query_res.success and \
-            len(match_query_res.result) == 0
+            len(match_query_res.attributes) == 0
     finally:
         rclpy.shutdown()
 
@@ -235,7 +235,7 @@ def test_ros_typedb_match_query_attribute(insert_query):
         correct_height = True
         correct_alive = True
         correct_date = True
-        for r in query_res.result:
+        for r in query_res.attributes:
             if r.name == 'nick' and r.value.string_value != 'test':
                 correct_nick = False
             if r.name == 'age' and r.value.integer_value != 33:
@@ -277,7 +277,7 @@ def test_ros_typedb_match_aggregate_query(insert_query):
         query_res = node.call_service(node.query_srv, query_req)
 
         assert query_res.success is True and \
-            query_res.result[0].value.integer_value == 1500
+            query_res.attributes[0].value.integer_value == 1500
     finally:
         rclpy.shutdown()
 

@@ -2,4 +2,4 @@ string query_type # insert, delete, match, or match_aggregate
 string query
 ---
 bool success
-ros_typedb_msgs/QueryResult[] result
+ros_typedb_msgs/Attribute[] attributes
