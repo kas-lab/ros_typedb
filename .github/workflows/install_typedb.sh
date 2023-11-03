@@ -8,4 +8,4 @@ echo "deb https://repo.vaticle.com/repository/apt/ trusty main" | sudo tee /etc/
 sudo apt update
 sudo apt install openjdk-11-jre
 sudo apt install typedb-server=2.24.17 typedb-console=2.24.15 typedb-bin=2.24.16
-pip3 install typedb-driver
+pip3 install typedb-driver==2.24.15
