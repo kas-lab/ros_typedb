@@ -96,6 +96,7 @@ class TypeDBInterface:
             options=TypeDBOptions()):
         with self.create_session(self.database_name, session_type) as session:
             options.infer = True
+            options.parallel = True
             with session.transaction(transaction_type, options) as transaction:
                 transaction_query_function = getattr(
                     transaction.query, query_type)
