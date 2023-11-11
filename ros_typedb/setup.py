@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'ros_typedb_interface = ros_typedb.ros_typedb_interface:main'
+            'ros_typedb = ros_typedb.ros_typedb_node:main'
         ],
     },
 )

@@ -68,9 +68,9 @@ def generate_test_description():
     ros_typedb_node = launch_ros.actions.Node(
         executable=sys.executable,
         arguments=[
-            str(path_to_test / 'ros_typedb' / 'ros_typedb_interface.py')],
+            str(path_to_test / 'ros_typedb' / 'ros_typedb_node.py')],
         additional_env={'PYTHONUNBUFFERED': '1'},
-        name='ros_typedb_interface',
+        name='ros_typedb',
         output='screen',
         parameters=[{
             'schema_path': str(path_tql / 'schema.tql'),
@@ -290,16 +290,16 @@ class MakeTestNode(Node):
         self.typedb_event_data = None
 
         self.change_state_srv = self.create_client(
-            ChangeState, '/ros_typedb_interface/change_state')
+            ChangeState, '/ros_typedb/change_state')
 
         self.get_state_srv = self.create_client(
-            GetState, '/ros_typedb_interface/get_state')
+            GetState, '/ros_typedb/get_state')
 
         self.query_srv = self.create_client(
-            Query, '/ros_typedb_interface/query')
+            Query, '/ros_typedb/query')
 
         self.event_sub = self.create_subscription(
-            String, '/ros_typedb_interface/events', self.event_sub_cb, 10)
+            String, '/ros_typedb/events', self.event_sub_cb, 10)
 
     def start_node(self):
         self.ros_spin_thread = Thread(

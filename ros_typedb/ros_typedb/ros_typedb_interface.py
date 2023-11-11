@@ -13,14 +13,11 @@
 # limitations under the License.
 """ros_typedb_interface - python interface to interact with typedb via ROS."""
 
-import rclpy
-
 from rcl_interfaces.msg import ParameterValue
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.lifecycle import Node
 from rclpy.lifecycle import State
-from rclpy.lifecycle import Publisher
 from rclpy.lifecycle import TransitionCallbackReturn
 
 from ros_typedb.typedb_interface import TypeDBInterface
@@ -196,19 +193,3 @@ class ROSTypeDBInterface(Node):
         else:
             response.success = True
         return response
-
-
-def main():
-    rclpy.init()
-
-    executor = rclpy.executors.MultiThreadedExecutor()
-    lc_node = ROSTypeDBInterface('ros_typedb_interface')
-    executor.add_node(lc_node)
-    try:
-        executor.spin()
-    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
-        lc_node.destroy_node()
-
-
-if __name__ == '__main__':
-    main()
