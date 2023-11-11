@@ -18,7 +18,6 @@ import functools
 from typedb.driver import SessionType
 from typedb.driver import TransactionType
 from typedb.driver import TypeDB
-from typedb.driver import TypeDBDriverException
 from typedb.driver import TypeDBOptions
 from datetime import datetime
 
@@ -39,10 +38,10 @@ class TypeDBInterface:
         :type address: str
         :param database_name: database name.
         :type database_name: str
-        :param schema_path: path to the schema file (.tql).
-        :type schema_path: str
-        :param data_path: path to the data file (.tql).
-        :type data_path: str
+        :param schema_path: list with paths to schema files (.tql).
+        :type schema_path: list[str] or str
+        :param data_path: list with paths to data files (.tql).
+        :type data_path: list[str] or str
         :param force_database: if database should override an existing database
         :type force_database: bool
         :param force_data: if the database data should be overriden.
@@ -51,11 +50,20 @@ class TypeDBInterface:
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
 
-        if schema_path is not None and schema_path != '':
+        if type(schema_path) is list:
+            for path in schema_path:
+                self.load_schema(path)
+        elif type(schema_path) is str:
             self.load_schema(schema_path)
 
-        if data_path is not None and data_path != '':
-            self.load_data(data_path, force=force_data)
+        if force_data:
+            self.delete_all_data()
+
+        if type(data_path) is list:
+            for path in data_path:
+                self.load_data(path)
+        elif type(data_path) is str:
+            self.load_data(data_path)
 
     def __del__(self):
         try:
@@ -135,23 +143,35 @@ class TypeDBInterface:
 
     # Load schema from file
     def load_schema(self, schema_path):
-        self.write_database_file(
-            SessionType.SCHEMA, TransactionType.WRITE, 'define', schema_path)
+        if schema_path is not None and schema_path != '':
+            return self.write_database_file(
+                SessionType.SCHEMA,
+                TransactionType.WRITE,
+                'define',
+                schema_path
+            )
+
+    def delete_all_data(self):
+        """Delete all data from database."""
+        self.delete_from_database(
+            'match $e isa entity; delete $e isa entity;')
+        self.delete_from_database(
+            'match $r isa relation; delete $r isa relation;')
+        self.delete_from_database(
+            'match $a isa attribute; delete $a isa attribute;')
 
     # Load data from file
     def load_data(self, data_path, force=False):
-        if force:
-            self.delete_from_database(
-                'match $e isa entity; delete $e isa entity;')
-            self.delete_from_database(
-                'match $r isa relation; delete $r isa relation;')
-            self.delete_from_database(
-                'match $a isa attribute; delete $a isa attribute;')
-        try:
-            self.write_database_file(
-                SessionType.DATA, TransactionType.WRITE, 'insert', data_path)
-        except Exception as err:
-            print('Error in load_data method. Exception msg: ', err)
+        if data_path is not None and data_path != '':
+            try:
+                self.write_database_file(
+                    SessionType.DATA,
+                    TransactionType.WRITE,
+                    'insert',
+                    data_path
+                )
+            except Exception as err:
+                print('Error in load_data method. Exception msg: ', err)
 
     # Events begining
     def insert_data_event(self):
@@ -266,7 +286,10 @@ class TypeDBInterface:
         return _query
 
     def dict_to_query(
-       self, things_dict, attribute_str='attributes', delete_attribute_str='delete-attributes'):
+       self,
+       things_dict,
+       attribute_str='attributes',
+       delete_attribute_str='delete-attributes'):
         query = ''
         delete_query = 'delete '
         for thing, prefix_attr_list in things_dict.items():

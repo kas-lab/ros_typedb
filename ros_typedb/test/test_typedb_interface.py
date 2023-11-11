@@ -23,8 +23,8 @@ def typedb_interface():
         'localhost:1729',
         'test_database',
         force_database=True,
-        schema_path='test/typedb_test_data/schema.tql',
-        data_path='test/typedb_test_data/data.tql',
+        schema_path=['test/typedb_test_data/schema.tql'],
+        data_path=['test/typedb_test_data/data.tql'],
         force_data=True)
     return typedb_interface
 
@@ -148,7 +148,7 @@ def test_insert_relationship(typedb_interface):
     }
     attribute_list = [
         ('salary', 2333), ('role-name', 'boss'), ('role-name', 'super boss')]
-    insert_result = typedb_interface.insert_relationship(
+    typedb_interface.insert_relationship(
         'employment', related_things_dict, attribute_list)
 
     query = """
@@ -224,38 +224,40 @@ def test_dict_to_query(typedb_interface, things_dict):
 
 
 @pytest.mark.parametrize("match_dict, r_dict", [
-    ({
-        'person': [
-            {
-                'prefix': 'p1',
-                'attributes': {
-                    'email': 'test_person@test.test',
+    (
+        {
+            'person': [
+                {
+                    'prefix': 'p1',
+                    'attributes': {
+                        'email': 'test_person@test.test',
+                    },
+                    'insert-attributes': {
+                        'nickname': 't',
+                        'height': 1.80,
+                        'age': 18,
+                        'alive': True,
+                        'birth-date': datetime.now()
+                    }
                 },
-                'insert-attributes': {
-                    'nickname': 't',
-                    'height': 1.80,
-                    'age': 18,
-                    'alive': True,
-                    'birth-date': datetime.now()
-                }
-            },
-        ],
-    },
-    {
-        'person': [
-            {
-                'prefix': 'p1',
-                'attributes': {
-                    'email': 'test_person@test.test',
-                    'nickname': 't',
-                    'height': 1.80,
-                    'age': 18,
-                    'alive': True,
-                    'birth-date': datetime.now()
-                }
-            },
-        ],
-    },),
+            ],
+        },
+        {
+            'person': [
+                {
+                    'prefix': 'p1',
+                    'attributes': {
+                        'email': 'test_person@test.test',
+                        'nickname': 't',
+                        'height': 1.80,
+                        'age': 18,
+                        'alive': True,
+                        'birth-date': datetime.now()
+                    }
+                },
+            ],
+        },
+    ),
 ])
 def test_insert_attributes(typedb_interface, match_dict, r_dict):
     r = typedb_interface.insert_attributes_in_thing(match_dict)
@@ -265,7 +267,8 @@ def test_insert_attributes(typedb_interface, match_dict, r_dict):
 
 
 @pytest.mark.parametrize("insert_dict, match_dict", [
-    ({
+    (
+        {
             'person': [
                 {
                     'prefix': 'p1',
@@ -319,7 +322,7 @@ def test_delete_attributes(
    typedb_interface, insert_dict, match_dict):
 
     query = typedb_interface.dict_to_query(insert_dict)
-    insert_result = typedb_interface.insert_database("insert " + query)
+    typedb_interface.insert_database("insert " + query)
 
     r = typedb_interface.delete_attributes_from_thing(match_dict)
 
@@ -329,56 +332,57 @@ def test_delete_attributes(
 
 
 @pytest.mark.parametrize("insert_dict, update_dict, r_dict", [
-    ({
-        'person': [
-            {
-                'prefix': 'p1',
-                'attributes': {
-                    'email': 'test@test.test',
-                    'nickname': 't',
-                    'height': 1.80,
-                    'age': 18,
-                    'alive': True,
-                    'birth-date': datetime.now()
-                }
-            },
-        ],
-    },
-    {
-        'person': [
-            {
-                'prefix': 'p1',
-                'attributes': {
-                    'email': 'test@test.test',
+    (
+        {
+            'person': [
+                {
+                    'prefix': 'p1',
+                    'attributes': {
+                        'email': 'test@test.test',
+                        'nickname': 't',
+                        'height': 1.80,
+                        'age': 18,
+                        'alive': True,
+                        'birth-date': datetime.now()
+                    }
                 },
-                'update-attributes': {
-                    'nickname': 't2',
-                    'height': 1.50,
-                    'age': 17,
-                    'alive': False,
-                }
-            },
-        ],
-    },
-    {
-        'person': [
-            {
-                'prefix': 'p1',
-                'attributes': {
-                    'email': 'test@test.test',
-                    'nickname': 't2',
-                    'height': 1.50,
-                    'age': 17,
-                    'alive': False,
-                }
-            },
-        ],
-    },
+            ],
+        },
+        {
+            'person': [
+                {
+                    'prefix': 'p1',
+                    'attributes': {
+                        'email': 'test@test.test',
+                    },
+                    'update-attributes': {
+                        'nickname': 't2',
+                        'height': 1.50,
+                        'age': 17,
+                        'alive': False,
+                    }
+                },
+            ],
+        },
+        {
+            'person': [
+                {
+                    'prefix': 'p1',
+                    'attributes': {
+                        'email': 'test@test.test',
+                        'nickname': 't2',
+                        'height': 1.50,
+                        'age': 17,
+                        'alive': False,
+                    }
+                },
+            ],
+        },
     ),
 ])
 def test_update_attributes(typedb_interface, insert_dict, update_dict, r_dict):
     query = typedb_interface.dict_to_query(insert_dict)
-    insert_result = typedb_interface.insert_database("insert " + query)
+    typedb_interface.insert_database("insert " + query)
 
     r = typedb_interface.update_attributes_in_thing(update_dict)
     query = typedb_interface.dict_to_query(r_dict)

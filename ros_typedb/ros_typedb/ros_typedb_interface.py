@@ -139,7 +139,7 @@ class ROSTypeDBInterface(Node):
         self.data_event('delete')
 
     def on_configure(self, state: State) -> TransitionCallbackReturn:
-        self.get_logger().info('on_configure() is called.')
+        self.get_logger().info(self.get_name() + ': on_configure() is called.')
 
         self.init_typedb_interface(
             address=self.get_parameter('address').value,
@@ -162,14 +162,14 @@ class ROSTypeDBInterface(Node):
             self.query_service_cb,
             callback_group=self.query_cb_group)
 
-        self.get_logger().info('on_configure() completed.')
+        self.get_logger().info(self.get_name() + ' :on_configure() completed.')
         return TransitionCallbackReturn.SUCCESS
 
     def on_cleanup(self, state: State) -> TransitionCallbackReturn:
         self.destroy_publisher(self.event_pub)
         self.destroy_service(self.insert_query_service)
 
-        self.get_logger().info('on_cleanup() is called.')
+        self.get_logger().info(self.get_name() + ' :on_cleanup() is called.')
         return TransitionCallbackReturn.SUCCESS
 
     def query_service_cb(self, req, response):
