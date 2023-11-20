@@ -123,12 +123,12 @@ def test_update_attribute_in_thing(typedb_interface, attr, attr_value, new_v):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
     typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', attr, attr_value)
-    typedb_interface.update_attribute_in_thing(
+    result_update = typedb_interface.update_attribute_in_thing(
         'person', 'email', 'test@email.test', attr, new_v)
     result = typedb_interface.get_attribute_from_thing(
         'person', 'email', 'test@email.test', attr)
 
-    assert result[0] == new_v
+    assert result_update is True and result[0] == new_v
 
 
 def test_insert_relationship(typedb_interface):

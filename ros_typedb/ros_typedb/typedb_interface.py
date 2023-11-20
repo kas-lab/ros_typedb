@@ -574,8 +574,10 @@ class TypeDBInterface:
         """
         self.delete_attribute_from_thing(
             thing, key, key_value, attr)
-        return self.insert_attribute_in_thing(
+        self.insert_attribute_in_thing(
             thing, key, key_value, attr, attr_value)
+        _result = self.get_attribute_from_thing(thing, key, key_value, attr)
+        return len(_result) > 0
 
     def update_attributes_in_thing(self, match_dict):
         self.delete_attributes_from_thing(match_dict, 'update-attributes')
