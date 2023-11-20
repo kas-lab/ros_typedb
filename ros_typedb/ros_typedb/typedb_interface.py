@@ -15,11 +15,12 @@
 
 import functools
 
+from datetime import datetime
+
 from typedb.driver import SessionType
 from typedb.driver import TransactionType
 from typedb.driver import TypeDB
 from typedb.driver import TypeDBOptions
-from datetime import datetime
 
 
 class TypeDBInterface:

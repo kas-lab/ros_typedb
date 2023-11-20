@@ -88,7 +88,7 @@ def query_result_to_ros_msg(query_type, query_result):
 class ROSTypeDBInterface(Node):
     """ROS node to interact with typedb."""
 
-    def __init__(self, node_name, schema_path='', data_path='', **kwargs):
+    def __init__(self, node_name, **kwargs):
         super().__init__(node_name, **kwargs)
         self.declare_parameter('address', 'localhost:1729')
         self.declare_parameter('database_name', 'ros_typedb')
@@ -96,8 +96,8 @@ class ROSTypeDBInterface(Node):
         self.declare_parameter('force_data', True)
 
         self.default_schema_path = ''
-        self.declare_parameter('schema_path', schema_path)
-        self.declare_parameter('data_path', data_path)
+        self.declare_parameter('schema_path', [''])
+        self.declare_parameter('data_path', [''])
 
         self.typedb_interface_class = TypeDBInterface
 
