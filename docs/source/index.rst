@@ -25,8 +25,8 @@ This package was tested in Ubuntu 22.04 with ROS Humble and typedb v2.24.17.
 Contribute
 ----------
 
-- Issue Tracker: https://github.com/Rezenders/ros_typedb/issues
-- Source Code: https://github.com/Rezenders/ros_typedb/
+- Issue Tracker: https://github.com/kas-lab/ros_typedb/issues
+- Source Code: https://github.com/kas-lab/ros_typedb/
 
 Support
 -------
