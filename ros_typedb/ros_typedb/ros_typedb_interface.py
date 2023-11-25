@@ -38,7 +38,11 @@ def set_query_result_value(value, value_type):
         'float': (3, 'double_value'),
         'string': (4, 'string_value'),
         'str': (4, 'string_value'),
-        'datetime': (4, 'string_value')
+        'datetime': (4, 'string_value'),
+        'boolean_array': (6, 'bool_array_value'),
+        'long_array': (7, 'integer_array_value'),
+        'double_array': (8, 'double_array_value'),
+        'string_array': (9, 'string_array_value'),
     }
     if value_type in _type_dict:
         _param_value.type = _type_dict[value_type][0]
