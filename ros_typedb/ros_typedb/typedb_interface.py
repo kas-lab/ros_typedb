@@ -75,9 +75,13 @@ class TypeDBInterface:
     def connect_driver(self, address):
         self.driver = TypeDB.core_driver(address=address)
 
-    def create_database(self, database_name, force=False):
-        if self.driver.databases.contains(database_name) and force:
+    def delete_database(self, database_name):
+        if self.driver.databases.contains(database_name):
             self.driver.databases.get(database_name).delete()
+
+    def create_database(self, database_name, force=False):
+        if force:
+            self.delete_database(database_name)
 
         if not self.driver.databases.contains(database_name):
             self.driver.databases.create(database_name)
