@@ -118,6 +118,8 @@ def test_ros_typedb_insert_query(insert_query):
         rclpy.shutdown()
 
 
+@pytest.mark.skip(
+    reason='Events deactivated')
 @pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_insert_event(insert_query):
     rclpy.init()
@@ -165,6 +167,8 @@ def test_ros_typedb_delete_query(insert_query):
         rclpy.shutdown()
 
 
+@pytest.mark.skip(
+    reason='Events deactivated')
 @pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_delete_event(insert_query):
     rclpy.init()

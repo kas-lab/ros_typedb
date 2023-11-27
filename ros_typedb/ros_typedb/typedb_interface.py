@@ -203,7 +203,7 @@ class TypeDBInterface:
     # Events end
 
     # Insert query
-    @insert_data_event_
+    # @insert_data_event_
     def insert_database(self, query):
         result = None
         try:
@@ -214,7 +214,7 @@ class TypeDBInterface:
         return result
 
     # Delete query
-    @delete_data_event_
+    # @delete_data_event_
     def delete_from_database(self, query):
         result = None
         try:

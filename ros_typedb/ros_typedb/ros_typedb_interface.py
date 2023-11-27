@@ -128,16 +128,14 @@ class ROSTypeDBInterface(Node):
         self.typedb_interface.insert_data_event = self.insert_data_event
         self.typedb_interface.delete_data_event = self.delete_data_event
 
-    def data_event(self, event_type):
-        event = String()
-        event.data = event_type
-        self.event_pub.publish(event)
+    def publish_data_event(self, event_type):
+        self.event_pub.publish(String(data=event_type))
 
     def insert_data_event(self):
-        self.data_event('insert')
+        self.publish_data_event('insert')
 
     def delete_data_event(self):
-        self.data_event('delete')
+        self.publish_data_event('delete')
 
     def on_configure(self, state: State) -> TransitionCallbackReturn:
         self.get_logger().info(self.get_name() + ': on_configure() is called.')
