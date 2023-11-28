@@ -23,6 +23,9 @@ from typedb.driver import TypeDB
 from typedb.driver import TypeDBOptions
 
 
+def string_to_string_array(string):
+    return [s.strip(' \'') for s in string.strip('[]').split(',')]
+
 class TypeDBInterface:
     """Class to interact with typedb."""
 
@@ -51,20 +54,22 @@ class TypeDBInterface:
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
 
+        if type(schema_path) is str:
+            schema_path = string_to_string_array(schema_path)
+
         if type(schema_path) is list:
             for path in schema_path:
                 self.load_schema(path)
-        elif type(schema_path) is str:
-            self.load_schema(schema_path)
 
         if force_data:
             self.delete_all_data()
 
+        if type(data_path) is str:
+            data_path = string_to_string_array(data_path)
+
         if type(data_path) is list:
             for path in data_path:
                 self.load_data(path)
-        elif type(data_path) is str:
-            self.load_data(data_path)
 
     def __del__(self):
         try:

@@ -100,8 +100,8 @@ class ROSTypeDBInterface(Node):
         self.declare_parameter('force_data', True)
 
         self.default_schema_path = ''
-        self.declare_parameter('schema_path', [''])
-        self.declare_parameter('data_path', [''])
+        self.declare_parameter('schema_path', '')
+        self.declare_parameter('data_path', '')
 
         self.typedb_interface_class = TypeDBInterface
 
