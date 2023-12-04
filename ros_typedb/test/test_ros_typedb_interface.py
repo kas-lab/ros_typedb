@@ -73,8 +73,8 @@ def generate_test_description():
         name='ros_typedb',
         output='screen',
         parameters=[{
-            'schema_path': str(path_tql / 'schema.tql'),
-            'data_path': str(path_tql / 'data.tql')
+            'schema_path': [str(path_tql / 'schema.tql')],
+            'data_path': [str(path_tql / 'data.tql')]
         }]
     )
 
