@@ -452,48 +452,47 @@ class TypeDBInterface:
         query = match_query + insert_query
         return self.insert_database(query)
 
-    def get_attribute_from_thing_raw(self, thing, key, key_value, attr):
+    def get_attribute_from_thing_raw(self, thing, key_attr_list, attr):
         """
         Get raw attribute values from a instance of a thing.
 
         :param thing: thing name
         :type thing: str
-        :param key: attribute name to identify the individual
-        :type key: str
-        :param key_value: attribute value to identify the individual
-        :type key_value: str or int or float or datetime or bool
+        :param key_attr_list: list with attribute tuple (name, value)
+        :type key_attr_list: list[tuple[str, str or int or float or datetime]]
         :param attr: attribute name to be return
         :type attr: str
         :return: List of dictionary with the query result.
         :rtype: list[dict[str,
             dict[str, str or int or float or datetime or bool]]]
         """
-        key_value = self.convert_py_type_to_query_type(key_value)
         query = f"""
-            match $thing isa {thing},
-            has {key} {key_value},
-            has {attr} $attribute;
+            match $thing isa {thing}
+        """
+        for (key, value) in key_attr_list:
+            value = self.convert_py_type_to_query_type(value)
+            query += f""", has {key} {value} """
+        query += f"""
+            , has {attr} $attribute;
             get $attribute;
         """
         return self.match_database(query)
 
-    def get_attribute_from_thing(self, thing, key, key_value, attr):
+    def get_attribute_from_thing(self, thing, key_attr_list, attr):
         """
         Get attribute value from a instance of a thing.
 
         :param thing: thing name
         :type thing: str
-        :param key: attribute name to identify the instance
-        :type key: str
-        :param key_value: attribute value to identify the instance
-        :type key_value: str or int or float or datetime or bool
+        :param key_attr_list: list with attribute tuple (name, value)
+        :type key_attr_list: list[tuple[str, str or int or float or datetime]]
         :param attr: attribute name to be return
         :type attr: str
         :return: List with the attribute values of type attr.
         :rtype: list[str or int or float or datetime or bool]
         """
         result = self.get_attribute_from_thing_raw(
-            thing, key, key_value, attr)
+            thing, key_attr_list, attr)
         return [self.covert_query_type_to_py_type(r.get('attribute'))
                 for r in result]
 
@@ -583,7 +582,8 @@ class TypeDBInterface:
             thing, key, key_value, attr)
         self.insert_attribute_in_thing(
             thing, key, key_value, attr, attr_value)
-        _result = self.get_attribute_from_thing(thing, key, key_value, attr)
+        _result = self.get_attribute_from_thing(
+            thing, [(key, key_value)], attr)
         return len(_result) > 0
 
     def update_attributes_in_thing(self, match_dict):

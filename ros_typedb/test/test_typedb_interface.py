@@ -64,7 +64,7 @@ def test_insert_attribute_in_thing(typedb_interface, attr, attr_value):
     typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', attr, attr_value)
     result = typedb_interface.get_attribute_from_thing(
-        'person', 'email', 'test@email.test', attr)
+        'person', [('email', 'test@email.test')], attr)
     assert result
 
 
@@ -77,12 +77,15 @@ def test_insert_attribute_in_thing(typedb_interface, attr, attr_value):
         datetime.now().isoformat(timespec='milliseconds'))),
 ])
 def test_get_attribute_from_thing(typedb_interface, attr, attr_value):
-    typedb_interface.insert_entity('person', [('email', 'test@email.test')])
+    typedb_interface.insert_entity(
+        'person',
+        [('email', 'test@email.test'), ('gender', 'male')]
+    )
     typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', attr, attr_value)
 
     result = typedb_interface.get_attribute_from_thing(
-        'person', 'email', 'test@email.test', attr)
+        'person', [('email', 'test@email.test'), ('gender', 'male')], attr)
 
     assert result[0] == attr_value
 
@@ -104,7 +107,7 @@ def test_delete_attribute_from_thing(typedb_interface, attr, attr_value):
         'person', 'email', 'test@email.test', attr)
 
     result = typedb_interface.get_attribute_from_thing(
-        'person', 'email', 'test@email.test', attr)
+        'person', [('email', 'test@email.test')], attr)
 
     assert len(result) == 0
 
@@ -126,7 +129,7 @@ def test_update_attribute_in_thing(typedb_interface, attr, attr_value, new_v):
     result_update = typedb_interface.update_attribute_in_thing(
         'person', 'email', 'test@email.test', attr, new_v)
     result = typedb_interface.get_attribute_from_thing(
-        'person', 'email', 'test@email.test', attr)
+        'person', [('email', 'test@email.test')], attr)
 
     assert result_update is True and result[0] == new_v
 
