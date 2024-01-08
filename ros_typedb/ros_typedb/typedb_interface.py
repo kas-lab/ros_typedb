@@ -270,7 +270,8 @@ class TypeDBInterface:
 
     def convert_py_type_to_query_type(self, data):
         if type(data) is str:
-            return "'{}'".format(data)
+            if data[0] != '$':
+                return "'{}'".format(data)
         elif type(data) is datetime:
             return data.isoformat(timespec='milliseconds')
         elif type(data) is bool:
@@ -363,7 +364,7 @@ class TypeDBInterface:
             t_counter += 1
         return match_query, prefix_list
 
-    def create_relationship_insert_query(
+    def create_relationship_query(
          self, relationship, related_dict, attribute_list=[], prefix='r'):
         related_things = ""
         for role, variables in related_dict.items():
@@ -372,16 +373,16 @@ class TypeDBInterface:
                 if related_things != "":
                     aux = "," + aux
                 related_things += aux
-        insert_query = " ${0} ({1}) isa {2}".format(
+        query = " ${0} ({1}) isa {2}".format(
             prefix, related_things, relationship)
         for attribute in attribute_list:
             if attribute[0] is not None:
-                insert_query += ", has {} {} ".format(
+                query += ", has {} {} ".format(
                     attribute[0],
                     self.convert_py_type_to_query_type(attribute[1])
                 )
-        insert_query += ";"
-        return insert_query
+        query += ";"
+        return query
 
     def delete_thing(self, thing, key, key_value):
         """
