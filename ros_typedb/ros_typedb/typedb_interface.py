@@ -129,7 +129,7 @@ class TypeDBInterface:
                 query_answer = transaction_query_function(query)
                 if transaction_type == TransactionType.WRITE:
                     transaction.commit()
-                    if query_type == 'delete':
+                    if query_type == 'delete' or query_type == 'define':
                         return True  # delete always return None
                     return query_answer
                 elif transaction_type == TransactionType.READ:
@@ -536,7 +536,7 @@ class TypeDBInterface:
         return self.delete_from_database(query)
 
     def delete_attributes_from_thing(
-            self, match_dict, attribute_str='delete-attributes'):
+            self, match_dict, attribute_str='delete_attributes'):
         match_query = 'match ' + self.dict_to_query(
             match_dict, delete_attribute_str=attribute_str)
         return self.delete_from_database(match_query)
@@ -569,7 +569,7 @@ class TypeDBInterface:
         return self.insert_database(query)
 
     def insert_attributes_in_thing(
-            self, match_dict, attribute_str='insert-attributes'):
+            self, match_dict, attribute_str='insert_attributes'):
         match_query = 'match ' + self.dict_to_query(match_dict)
         insert_query = 'insert ' + self.dict_to_query(
             match_dict, attribute_str)
@@ -602,5 +602,5 @@ class TypeDBInterface:
         return len(_result) > 0
 
     def update_attributes_in_thing(self, match_dict):
-        self.delete_attributes_from_thing(match_dict, 'update-attributes')
-        return self.insert_attributes_in_thing(match_dict, 'update-attributes')
+        self.delete_attributes_from_thing(match_dict, 'update_attributes')
+        return self.insert_attributes_in_thing(match_dict, 'update_attributes')
