@@ -98,6 +98,7 @@ class ROSTypeDBInterface(Node):
         self.declare_parameter('database_name', 'ros_typedb')
         self.declare_parameter('force_database', True)
         self.declare_parameter('force_data', True)
+        self.declare_parameter('infer', True)
 
         self.default_schema_path = ''
         self.declare_parameter('schema_path', [''])
@@ -114,7 +115,8 @@ class ROSTypeDBInterface(Node):
             schema_path=None,
             data_path=None,
             force_database=False,
-            force_data=False):
+            force_data=False,
+            infer=False):
 
         self.typedb_interface = self.typedb_interface_class(
             address,
@@ -122,7 +124,8 @@ class ROSTypeDBInterface(Node):
             schema_path,
             data_path,
             force_database,
-            force_data
+            force_data,
+            infer
         )
 
         self.typedb_interface.insert_data_event = self.insert_data_event
@@ -146,7 +149,8 @@ class ROSTypeDBInterface(Node):
             schema_path=self.get_parameter('schema_path').value,
             data_path=self.get_parameter('data_path').value,
             force_database=self.get_parameter('force_database').value,
-            force_data=self.get_parameter('force_data').value
+            force_data=self.get_parameter('force_data').value,
+            infer=self.get_parameter('infer').value
         )
 
         self.event_pub = self.create_lifecycle_publisher(

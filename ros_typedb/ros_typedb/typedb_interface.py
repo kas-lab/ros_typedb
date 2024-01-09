@@ -30,8 +30,15 @@ def string_to_string_array(string):
 class TypeDBInterface:
     """Class to interact with typedb."""
 
-    def __init__(self, address, database_name, schema_path=None,
-                 data_path=None, force_database=False, force_data=False):
+    def __init__(
+            self,
+            address,
+            database_name,
+            schema_path=None,
+            data_path=None,
+            force_database=False,
+            force_data=False,
+            infer=False):
         """
         Init TypeDBInterface.
 
@@ -51,7 +58,10 @@ class TypeDBInterface:
         :type force_database: bool
         :param force_data: if the database data should be overriden.
         :type force_data: bool
+        :param infer: if inference engine should be used.
+        :type infer: bool
         """
+        self._infer = infer
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
 
@@ -111,7 +121,7 @@ class TypeDBInterface:
             query,
             options=TypeDBOptions()):
         with self.create_session(self.database_name, session_type) as session:
-            options.infer = True
+            options.infer = self._infer
             options.parallel = True
             with session.transaction(transaction_type, options) as transaction:
                 transaction_query_function = getattr(
@@ -233,7 +243,7 @@ class TypeDBInterface:
         result = None
         try:
             options = TypeDBOptions()
-            options.infer = True
+            options.infer = self._infer
             result = self.database_query(
                SessionType.DATA, TransactionType.READ, 'match', query, options)
         except Exception as err:
@@ -244,7 +254,7 @@ class TypeDBInterface:
         result = None
         try:
             options = TypeDBOptions()
-            options.infer = True
+            options.infer = self._infer
             result = self.database_query(
                 SessionType.DATA,
                 TransactionType.READ,
