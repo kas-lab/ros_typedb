@@ -21,7 +21,12 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
+    "sphinx_autodoc_typehints",
 ]
+
+autodoc_default_options = {
+    'members': True,
+}
 
 intersphinx_mapping = {
     "rtd": ("https://docs.readthedocs.io/en/stable/", None),
