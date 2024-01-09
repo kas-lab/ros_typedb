@@ -444,7 +444,7 @@ class TypeDBInterface:
             match_query += _match_query
             _related_dict[key] = _prefix_list
 
-        insert_query += self.create_relationship_insert_query(
+        insert_query += self.create_relationship_query(
             relationship,
             _related_dict,
             attribute_list=attribute_list,
