@@ -65,17 +65,17 @@ class TypeDBInterface:
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
 
-        if type(schema_path) is str:
+        if isinstance(schema_path, str):
             schema_path = string_to_string_array(schema_path)
-        if type(schema_path) is list:
+        if isinstance(schema_path, list):
             for path in schema_path:
                 self.load_schema(path)
 
         if force_data:
             self.delete_all_data()
-        if type(data_path) is str:
+        if isinstance(data_path, str):
             data_path = string_to_string_array(data_path)
-        if type(data_path) is list:
+        if isinstance(data_path, list):
             for path in data_path:
                 self.load_data(path)
 
@@ -245,7 +245,11 @@ class TypeDBInterface:
             options = TypeDBOptions()
             options.infer = self._infer
             result = self.database_query(
-               SessionType.DATA, TransactionType.READ, 'match', query, options)
+                SessionType.DATA,
+                TransactionType.READ,
+                'match',
+                query,
+                options)
         except Exception as err:
             print('Error with match query! Exception retrieved: ', err)
         return result
@@ -279,12 +283,12 @@ class TypeDBInterface:
         return data.get('value')
 
     def convert_py_type_to_query_type(self, data):
-        if type(data) is str:
+        if isinstance(data, str):
             if data[0] != '$':
                 return "'{}'".format(data)
-        elif type(data) is datetime:
+        elif isinstance(data, datetime):
             return data.isoformat(timespec='milliseconds')
-        elif type(data) is bool:
+        elif isinstance(data, bool):
             return str(data).lower()
         return data
 
@@ -292,7 +296,7 @@ class TypeDBInterface:
         _query = ''
         first = True
         for attr, attr_value in attribute_dict.items():
-            if type(attr_value) is not list:
+            if not isinstance(attr_value, list):
                 attr_value = [attr_value]
             for v in attr_value:
                 if first is False:
@@ -305,10 +309,10 @@ class TypeDBInterface:
         return _query
 
     def dict_to_query(
-       self,
-       things_dict,
-       attribute_str='attributes',
-       delete_attribute_str='delete-attributes'):
+            self,
+            things_dict,
+            attribute_str='attributes',
+            delete_attribute_str='delete-attributes'):
         query = ''
         delete_query = 'delete '
         for thing, prefix_attr_list in things_dict.items():
@@ -324,7 +328,7 @@ class TypeDBInterface:
                 if 'relationship' in prefix_attr:
                     related_things = ''
                     for role, variables in prefix_attr['relationship'].items():
-                        if type(variables) is not list:
+                        if not isinstance(variables, list):
                             variables = [variables]
                         for v in variables:
                             aux = '{0}:${1}'.format(role, v)
@@ -375,7 +379,7 @@ class TypeDBInterface:
         return match_query, prefix_list
 
     def create_relationship_query(
-         self, relationship, related_dict, attribute_list=[], prefix='r'):
+            self, relationship, related_dict, attribute_list=[], prefix='r'):
         related_things = ""
         for role, variables in related_dict.items():
             for v in variables:
@@ -427,7 +431,7 @@ class TypeDBInterface:
         """
         for attribute in attribute_list:
             if attribute[0] is not None:
-                if type(attribute[1]) is str:
+                if isinstance(attribute[1], str):
                     query += f""", has {attribute[0]} "{attribute[1]}" """
                 else:
                     query += f""", has {attribute[0]} {attribute[1]}"""
@@ -532,7 +536,7 @@ class TypeDBInterface:
         return self.delete_from_database(query)
 
     def delete_attributes_from_thing(
-       self, match_dict, attribute_str='delete-attributes'):
+            self, match_dict, attribute_str='delete-attributes'):
         match_query = 'match ' + self.dict_to_query(
             match_dict, delete_attribute_str=attribute_str)
         return self.delete_from_database(match_query)
@@ -565,7 +569,7 @@ class TypeDBInterface:
         return self.insert_database(query)
 
     def insert_attributes_in_thing(
-       self, match_dict, attribute_str='insert-attributes'):
+            self, match_dict, attribute_str='insert-attributes'):
         match_query = 'match ' + self.dict_to_query(match_dict)
         insert_query = 'insert ' + self.dict_to_query(
             match_dict, attribute_str)

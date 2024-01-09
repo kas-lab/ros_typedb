@@ -25,7 +25,8 @@ def typedb_interface():
         force_database=True,
         schema_path=['test/typedb_test_data/schema.tql'],
         data_path=['test/typedb_test_data/data.tql'],
-        force_data=True)
+        force_data=True,
+    )
     return typedb_interface
 
 
