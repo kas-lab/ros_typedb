@@ -339,7 +339,7 @@ class TypeDBInterface:
         return result
 
     def match_database(
-            self, query: str) -> list[dict[str, MatchResultDict]] | None:
+            self, query: str) -> list[dict[str, MatchResultDict]]:
         """
         Perform match query.
 
@@ -358,6 +358,7 @@ class TypeDBInterface:
                 options)
         except Exception as err:
             print('Error with match query! Exception retrieved: ', err)
+            return []
         return result
 
     def match_aggregate_database(self, query: str) -> int | float | None:
@@ -383,7 +384,7 @@ class TypeDBInterface:
         return result
     # Read/write database end
 
-    def covert_query_type_to_py_type(
+    def convert_query_type_to_py_type(
             self, data: str) -> datetime | int | str | float:
         """
         Convert typedb 'value_type' to python type.
@@ -899,7 +900,7 @@ class TypeDBInterface:
             thing: str,
             key_attr_list: list[
                 Tuple[str, str | int | float | bool | datetime]],
-            attr: str) -> list[dict[str, MatchResultDict]] | None:
+            attr: str) -> list[dict[str, MatchResultDict]]:
         """
         Get raw attribute values from a instance of a thing.
 
@@ -936,7 +937,7 @@ class TypeDBInterface:
         """
         result = self.get_attribute_from_thing_raw(
             thing, key_attr_list, attr)
-        return [self.covert_query_type_to_py_type(r.get('attribute'))
+        return [self.convert_query_type_to_py_type(r.get('attribute'))
                 for r in result]
 
     def delete_attribute_from_thing(
