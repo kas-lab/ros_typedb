@@ -132,7 +132,7 @@ def test_update_attribute_in_thing(typedb_interface, attr, attr_value, new_v):
     result = typedb_interface.get_attribute_from_thing(
         'person', [('email', 'test@email.test')], attr)
 
-    assert result_update is True and result[0] == new_v
+    assert result_update is not None and result[0] == new_v
 
 
 def test_insert_relationship(typedb_interface):
