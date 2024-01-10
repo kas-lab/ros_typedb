@@ -35,9 +35,9 @@ from typing import Optional
 
 
 def set_query_result_value(
-     value: bool | int | float | str | list[bool] | list[int] | list[float]
-     | list[str],
-     value_type: str) -> rcl_interfaces.msg.ParameterValue:
+    value: bool | int | float | str | list[bool] | list[int] | list[float]
+    | list[str],
+        value_type: str) -> rcl_interfaces.msg.ParameterValue:
     """
     Convert value to :class:`rcl_interfaces.msg.ParameterValue`.
 
@@ -72,8 +72,8 @@ def set_query_result_value(
 
 
 def match_query_result_to_ros_msg(
-     query_result: list[dict[str, MatchResultDict]] | None
-     ) -> ros_typedb_msgs.srv.Query.Response:
+    query_result: list[dict[str, MatchResultDict]] | None
+) -> ros_typedb_msgs.srv.Query.Response:
     """
     Convert typedb match query result to :class:`ros_typedb_msgs.srv.Query`.
 
@@ -96,7 +96,7 @@ def match_query_result_to_ros_msg(
 
 
 def match_aggregate_query_result_to_ros_msg(
-     query_result: int | float | None) -> ros_typedb_msgs.srv.Query.Response:
+        query_result: int | float | None) -> ros_typedb_msgs.srv.Query.Response:
     """
     Convert match aggregate query result to :class:`ros_typedb_msgs.srv.Query`.
 
@@ -113,9 +113,9 @@ def match_aggregate_query_result_to_ros_msg(
 
 
 def query_result_to_ros_msg(
-     query_type: Literal['match', 'match_aggregate'],
-     query_result: list[dict[str, MatchResultDict]] | int | float | None
-     ) -> ros_typedb_msgs.srv.Query.Response:
+    query_type: Literal['match', 'match_aggregate'],
+    query_result: list[dict[str, MatchResultDict]] | int | float | None
+) -> ros_typedb_msgs.srv.Query.Response:
     """
     Convert typedb query result to :class:`ros_typedb_msgs.srv.Query`.
 
@@ -246,10 +246,10 @@ class ROSTypeDBInterface(Node):
         return TransitionCallbackReturn.SUCCESS
 
     def query_service_cb(
-         self,
-         req: ros_typedb_msgs.srv.Query.Request,
-         response: ros_typedb_msgs.srv.Query.Response
-         ) -> ros_typedb_msgs.srv.Query.Response:
+        self,
+        req: ros_typedb_msgs.srv.Query.Request,
+        response: ros_typedb_msgs.srv.Query.Response
+    ) -> ros_typedb_msgs.srv.Query.Response:
         """
         Handle callback for ~/query service.
 

@@ -154,11 +154,11 @@ class TypeDBInterface:
         self.driver.databases.create(database_name)
 
     def create_session(
-            self,
-            database_name: str,
-            session_type: SessionType,
-            options: Optional[TypeDBOptions] = TypeDBOptions()
-         ) -> TypeDBSession:
+        self,
+        database_name: str,
+        session_type: SessionType,
+        options: Optional[TypeDBOptions] = TypeDBOptions()
+    ) -> TypeDBSession:
         """
         Create session with the database.
 
@@ -178,7 +178,7 @@ class TypeDBInterface:
                 'define', 'insert', 'delete', 'match', 'match_aggregate'],
             query: str,
             options: Optional[TypeDBOptions] = TypeDBOptions()
-         ) -> Literal[True] | Iterator[ConceptMap] | \
+        ) -> Literal[True] | Iterator[ConceptMap] | \
             list[dict[str, MatchResultDict]] | None | int | float:
         """
         Query database.
@@ -423,9 +423,9 @@ class TypeDBInterface:
         return data
 
     def attribute_dict_to_query(
-         self,
-         attribute_dict: dict[str, str | int | float | bool | datetime]
-         ) -> str:
+        self,
+        attribute_dict: dict[str, str | int | float | bool | datetime]
+    ) -> str:
         """
         Convert python dict with typedb attributes to a query.
 
@@ -667,9 +667,9 @@ class TypeDBInterface:
         return query
 
     def create_match_query(
-         self,
-         things_list: list[Tuple[str, str, str]],
-         prefix: Optional[str] = 't') -> Tuple[str, list[str]]:
+            self,
+            things_list: list[Tuple[str, str, str]],
+            prefix: Optional[str] = 't') -> Tuple[str, list[str]]:
         """
         Create match query from a list of tuples specifying a Thing individual.
 
@@ -783,11 +783,11 @@ class TypeDBInterface:
         return query
 
     def delete_thing(
-            self,
-            thing: str,
-            key: str,
-            key_value: str | int | float | bool | datetime
-         ) -> Literal[True] | None:
+        self,
+        thing: str,
+        key: str,
+        key_value: str | int | float | bool | datetime
+    ) -> Literal[True] | None:
         """
         Delete thing individual in the database.
 
@@ -803,11 +803,11 @@ class TypeDBInterface:
         return self.delete_from_database(query)
 
     def insert_entity(
-            self,
-            entity: str,
-            attribute_list: Optional[
-                list[Tuple[str,  str | int | float | bool | datetime]]] = []
-         ) -> Iterator[ConceptMap] | None:
+        self,
+        entity: str,
+        attribute_list: Optional[
+            list[Tuple[str, str | int | float | bool | datetime]]] = []
+    ) -> Iterator[ConceptMap] | None:
         """
         Insert entity individual in the database.
 
@@ -828,12 +828,12 @@ class TypeDBInterface:
         return self.insert_database(query)
 
     def insert_relationship(
-            self,
-            relationship: str,
-            related_dict: dict[str, list[Tuple[str, str, str]]],
-            attribute_list: Optional[list[
-                Tuple[str, str | int | float | bool | datetime]]] = []
-         ) -> Iterator[ConceptMap] | None:
+        self,
+        relationship: str,
+        related_dict: dict[str, list[Tuple[str, str, str]]],
+        attribute_list: Optional[list[
+            Tuple[str, str | int | float | bool | datetime]]] = []
+    ) -> Iterator[ConceptMap] | None:
         """
         Insert relationship individual in the database.
 
@@ -965,10 +965,10 @@ class TypeDBInterface:
         return self.delete_from_database(query)
 
     def delete_attributes_from_thing(
-            self,
-            match_dict: dict[str, list[ThingPrefixAttrDict]],
-            attribute_str: Optional[str] = 'delete_attributes'
-         ) -> Literal[True] | None:
+        self,
+        match_dict: dict[str, list[ThingPrefixAttrDict]],
+        attribute_str: Optional[str] = 'delete_attributes'
+    ) -> Literal[True] | None:
         """
         Delete attributes from thing individual.
 
@@ -1011,13 +1011,13 @@ class TypeDBInterface:
         return self.delete_from_database(match_query)
 
     def insert_attribute_in_thing(
-            self,
-            thing: str,
-            key: str,
-            key_value: str | int | float | bool | datetime,
-            attr: str,
-            attr_value: str | int | float | bool | datetime
-         ) -> Iterator[ConceptMap] | None:
+        self,
+        thing: str,
+        key: str,
+        key_value: str | int | float | bool | datetime,
+        attr: str,
+        attr_value: str | int | float | bool | datetime
+    ) -> Iterator[ConceptMap] | None:
         """
         Insert attribute value in a instance of a thing.
 
@@ -1038,10 +1038,10 @@ class TypeDBInterface:
         return self.insert_database(query)
 
     def insert_attributes_in_thing(
-            self,
-            match_dict: dict[str, list[ThingPrefixAttrDict]],
-            attribute_str: Optional[str] = 'insert_attributes'
-         ) -> Iterator[ConceptMap] | None:
+        self,
+        match_dict: dict[str, list[ThingPrefixAttrDict]],
+        attribute_str: Optional[str] = 'insert_attributes'
+    ) -> Iterator[ConceptMap] | None:
         """
         Insert attributes to thing individual.
 
@@ -1085,13 +1085,13 @@ class TypeDBInterface:
         return self.insert_database(match_query + insert_query)
 
     def update_attribute_in_thing(
-            self,
-            thing: str,
-            key: str,
-            key_value: str | int | float | bool | datetime,
-            attr: str,
-            attr_value: str | int | float | bool | datetime
-         ) -> Iterator[ConceptMap] | None:
+        self,
+        thing: str,
+        key: str,
+        key_value: str | int | float | bool | datetime,
+        attr: str,
+        attr_value: str | int | float | bool | datetime
+    ) -> Iterator[ConceptMap] | None:
         """
         Update attribute value in a instance of a thing.
 
@@ -1108,9 +1108,9 @@ class TypeDBInterface:
             thing, key, key_value, attr, attr_value)
 
     def update_attributes_in_thing(
-            self,
-            match_dict: dict[str, list[ThingPrefixAttrDict]]
-         ) -> Iterator[ConceptMap] | None:
+        self,
+        match_dict: dict[str, list[ThingPrefixAttrDict]]
+    ) -> Iterator[ConceptMap] | None:
         """
         Update attributes of a thing individual.
 
