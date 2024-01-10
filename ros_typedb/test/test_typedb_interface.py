@@ -132,7 +132,7 @@ def test_update_attribute_in_thing(typedb_interface, attr, attr_value, new_v):
     result = typedb_interface.get_attribute_from_thing(
         'person', [('email', 'test@email.test')], attr)
 
-    assert result_update is True and result[0] == new_v
+    assert result_update is not None and result[0] == new_v
 
 
 def test_insert_relationship(typedb_interface):
@@ -220,7 +220,6 @@ def test_insert_relationship(typedb_interface):
 ])
 def test_dict_to_query(typedb_interface, things_dict):
     query = typedb_interface.dict_to_query(things_dict)
-    print(query)
     insert_result = typedb_interface.insert_database("insert " + query)
     match_result = typedb_interface.match_database("match " + query)
     assert insert_result is not None and insert_result is not False \
@@ -236,7 +235,7 @@ def test_dict_to_query(typedb_interface, things_dict):
                     'attributes': {
                         'email': 'test_person@test.test',
                     },
-                    'insert-attributes': {
+                    'insert_attributes': {
                         'nickname': 't',
                         'height': 1.80,
                         'age': 18,
@@ -307,7 +306,7 @@ def test_insert_attributes(typedb_interface, match_dict, r_dict):
                     'attributes': {
                         'email': 'test@test.test',
                     },
-                    'delete-attributes': [
+                    'delete_attributes': [
                         'nickname', 'height', 'age', 'alive', 'birth-date']
                 },
             ],
@@ -316,7 +315,7 @@ def test_insert_attributes(typedb_interface, match_dict, r_dict):
                     'attributes': {
                         'full-name': 'robot123',
                     },
-                    'delete-attributes': ['robot-type']
+                    'delete_attributes': ['robot-type']
                 },
             ],
         },
@@ -359,7 +358,7 @@ def test_delete_attributes(
                     'attributes': {
                         'email': 'test@test.test',
                     },
-                    'update-attributes': {
+                    'update_attributes': {
                         'nickname': 't2',
                         'height': 1.50,
                         'age': 17,

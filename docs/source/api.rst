@@ -1,8 +1,10 @@
 API
 =====
 
-.. autosummary::
-   :toctree: generated
 
-   ros_typedb.typedb_interface.TypeDBInterface
-   ros_typedb.ros_typedb_interface.ROSTypeDBInterface
+.. autosummary::
+   :toctree: _autosummary
+   :recursive:
+
+   ros_typedb.typedb_interface
+   ros_typedb.ros_typedb_interface
