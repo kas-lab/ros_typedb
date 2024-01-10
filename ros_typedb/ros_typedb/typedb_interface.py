@@ -383,7 +383,7 @@ class TypeDBInterface:
         return result
     # Read/write database end
 
-    def covert_query_type_to_py_type(
+    def convert_query_type_to_py_type(
             self, data: str) -> datetime | int | str | float:
         """
         Convert typedb 'value_type' to python type.
@@ -936,7 +936,7 @@ class TypeDBInterface:
         """
         result = self.get_attribute_from_thing_raw(
             thing, key_attr_list, attr)
-        return [self.covert_query_type_to_py_type(r.get('attribute'))
+        return [self.convert_query_type_to_py_type(r.get('attribute'))
                 for r in result]
 
     def delete_attribute_from_thing(
