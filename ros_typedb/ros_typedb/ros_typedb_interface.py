@@ -193,11 +193,11 @@ class ROSTypeDBInterface(Node):
         self.event_pub.publish(String(data=event_type))
 
     def insert_data_event(self) -> None:
-        """Publish 'insert' in the /event topic"""
+        """Publish 'insert' in the /event topic."""
         self.publish_data_event('insert')
 
     def delete_data_event(self) -> None:
-        """Publish 'delete' in the /event topic"""
+        """Publish 'delete' in the /event topic."""
         self.publish_data_event('delete')
 
     def on_configure(self, state: State) -> TransitionCallbackReturn:
@@ -251,7 +251,7 @@ class ROSTypeDBInterface(Node):
          response: ros_typedb_msgs.srv.Query.Response
          ) -> ros_typedb_msgs.srv.Query.Response:
         """
-        Callback for ~/query service.
+        Handle callback for ~/query service.
 
         Perform the query requested with the ~/query service.
 
