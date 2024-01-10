@@ -339,7 +339,7 @@ class TypeDBInterface:
         return result
 
     def match_database(
-            self, query: str) -> list[dict[str, MatchResultDict]] | None:
+            self, query: str) -> list[dict[str, MatchResultDict]]:
         """
         Perform match query.
 
@@ -358,6 +358,7 @@ class TypeDBInterface:
                 options)
         except Exception as err:
             print('Error with match query! Exception retrieved: ', err)
+            return []
         return result
 
     def match_aggregate_database(self, query: str) -> int | float | None:
@@ -899,7 +900,7 @@ class TypeDBInterface:
             thing: str,
             key_attr_list: list[
                 Tuple[str, str | int | float | bool | datetime]],
-            attr: str) -> list[dict[str, MatchResultDict]] | None:
+            attr: str) -> list[dict[str, MatchResultDict]]:
         """
         Get raw attribute values from a instance of a thing.
 
