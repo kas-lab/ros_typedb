@@ -20,6 +20,7 @@ This package was tested in Ubuntu 22.04 with ROS Humble and typedb v2.24.17.
   installation
   usage
   api
+  :maxdepth: 1
 
 
 Contribute
