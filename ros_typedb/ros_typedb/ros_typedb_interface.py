@@ -96,7 +96,8 @@ def match_query_result_to_ros_msg(
 
 
 def match_aggregate_query_result_to_ros_msg(
-        query_result: int | float | None) -> ros_typedb_msgs.srv.Query.Response:
+        query_result: int | float | None
+     ) -> ros_typedb_msgs.srv.Query.Response:
     """
     Convert match aggregate query result to :class:`ros_typedb_msgs.srv.Query`.
 
