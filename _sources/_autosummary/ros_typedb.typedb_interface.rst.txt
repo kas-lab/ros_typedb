@@ -1,0 +1,39 @@
+﻿ros\_typedb.typedb\_interface
+=============================
+
+.. automodule:: ros_typedb.typedb_interface
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      string_to_string_array
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+   
+      MatchResultDict
+      ThingPrefixAttrDict
+      TypeDBInterface
+   
+   
+
+   
+   
+   
+
+
+

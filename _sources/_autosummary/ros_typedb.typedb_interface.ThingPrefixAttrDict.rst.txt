@@ -1,0 +1,29 @@
+ThingPrefixAttrDict
+===================
+
+.. currentmodule:: ros_typedb.typedb_interface
+
+.. autoclass:: ThingPrefixAttrDict
+  :members:
+  :undoc-members:
+  :special-members: __init__
+
+  
+  .. rubric:: Methods
+
+  .. autosummary::
+  
+  
+
+  
+  .. rubric:: Attributes
+
+  .. autosummary::
+  
+     ~ThingPrefixAttrDict.prefix
+     ~ThingPrefixAttrDict.attributes
+     ~ThingPrefixAttrDict.insert_attributes
+     ~ThingPrefixAttrDict.delete_attributes
+     ~ThingPrefixAttrDict.update_attributes
+     ~ThingPrefixAttrDict.relationship
+  

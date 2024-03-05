@@ -1,0 +1,6 @@
+ros\_typedb.ros\_typedb\_interface.set\_query\_result\_value
+============================================================
+
+.. currentmodule:: ros_typedb.ros_typedb_interface
+
+.. autofunction:: set_query_result_value
