@@ -820,10 +820,8 @@ class TypeDBInterface:
         """
         for attribute in attribute_list:
             if attribute[0] is not None:
-                if isinstance(attribute[1], str):
-                    query += f""", has {attribute[0]} "{attribute[1]}" """
-                else:
-                    query += f""", has {attribute[0]} {attribute[1]}"""
+                value = self.convert_py_type_to_query_type(attribute[1])
+                query += f""", has {attribute[0]} {value} """
         query += ";"
         return self.insert_database(query)
 
