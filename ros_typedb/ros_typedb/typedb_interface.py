@@ -414,7 +414,7 @@ class TypeDBInterface:
         :return: Converted data.
         """
         if isinstance(data, str):
-            if data[0] != '$':
+            if len(data) > 0 and data[0] != '$':
                 return "'{}'".format(data)
         elif isinstance(data, datetime):
             return data.isoformat(timespec='milliseconds')
