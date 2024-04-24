@@ -154,15 +154,17 @@ def test_ros_typedb_delete_query(insert_query):
         query_res = node.call_service(node.query_srv, query_req)
 
         match_query_req = Query.Request()
-        match_query_req.query_type = 'match'
+        match_query_req.query_type = 'get_aggregate'
         match_query_req.query = """
             match $entity isa person, has email "test@test.com";
             get $entity;
+            count;
         """
         match_query_res = node.call_service(node.query_srv, match_query_req)
 
         assert query_res.success and match_query_res.success and \
-            len(match_query_res.attributes) == 0
+            match_query_res.attributes[0].value.type == 2 and \
+            match_query_res.attributes[0].value.integer_value == 0
     finally:
         rclpy.shutdown()
 
@@ -211,7 +213,7 @@ def test_ros_typedb_wrong_query(insert_query):
 
 
 @pytest.mark.launch(fixture=generate_test_description)
-def test_ros_typedb_match_query_attribute(insert_query):
+def test_ros_typedb_fetch_query_attribute(insert_query):
     rclpy.init()
     try:
         node = MakeTestNode()
@@ -221,7 +223,7 @@ def test_ros_typedb_match_query_attribute(insert_query):
         node.call_service(node.query_srv, insert_query)
 
         query_req = Query.Request()
-        query_req.query_type = 'match'
+        query_req.query_type = 'fetch'
         query_req.query = """
             match $entity isa person,
                 has email "test@test.com",
@@ -230,7 +232,7 @@ def test_ros_typedb_match_query_attribute(insert_query):
                 has height $height,
                 has alive $alive,
                 has birth-date $date;
-            get $nick, $age, $height, $alive, $date;
+            fetch $nick, $age, $height, $alive, $date;
         """
         query_res = node.call_service(node.query_srv, query_req)
 
@@ -260,7 +262,7 @@ def test_ros_typedb_match_query_attribute(insert_query):
 
 
 @pytest.mark.launch(fixture=generate_test_description)
-def test_ros_typedb_match_aggregate_query(insert_query):
+def test_ros_typedb_get_aggregate_query(insert_query):
     rclpy.init()
     try:
         node = MakeTestNode()
@@ -270,7 +272,7 @@ def test_ros_typedb_match_aggregate_query(insert_query):
         node.call_service(node.query_srv, insert_query)
 
         query_req = Query.Request()
-        query_req.query_type = 'match_aggregate'
+        query_req.query_type = 'get_aggregate'
         query_req.query = """
             match
                 $person isa person,

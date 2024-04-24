@@ -71,13 +71,13 @@ def set_query_result_value(
     return _param_value
 
 
-def match_query_result_to_ros_msg(
+def fetch_query_result_to_ros_msg(
     query_result: list[dict[str, MatchResultDict]] | None
 ) -> ros_typedb_msgs.srv.Query.Response:
     """
-    Convert typedb match query result to :class:`ros_typedb_msgs.srv.Query`.
+    Convert typedb fetch query result to :class:`ros_typedb_msgs.srv.Query`.
 
-    :param query_result: typedb match query result.
+    :param query_result: typedb fetch query result.
     :return: converted query response.
     """
     response = Query.Response()
@@ -95,13 +95,13 @@ def match_query_result_to_ros_msg(
     return response
 
 
-def match_aggregate_query_result_to_ros_msg(
+def get_aggregate_query_result_to_ros_msg(
         query_result: int | float | None
      ) -> ros_typedb_msgs.srv.Query.Response:
     """
-    Convert match aggregate query result to :class:`ros_typedb_msgs.srv.Query`.
+    Convert get aggregate query result to :class:`ros_typedb_msgs.srv.Query`.
 
-    :param query_result: typedb match aggreate query result.
+    :param query_result: typedb get aggreate query result.
     :return: converted query response.
     """
     response = Query.Response()
@@ -114,21 +114,21 @@ def match_aggregate_query_result_to_ros_msg(
 
 
 def query_result_to_ros_msg(
-    query_type: Literal['match', 'match_aggregate'],
+    query_type: Literal['fetch', 'get_aggregate'],
     query_result: list[dict[str, MatchResultDict]] | int | float | None
 ) -> ros_typedb_msgs.srv.Query.Response:
     """
     Convert typedb query result to :class:`ros_typedb_msgs.srv.Query`.
 
-    :param query_type: query_type, e.g., 'match' or 'match_aggregate'
+    :param query_type: query_type, e.g., 'fetch' or 'get_aggregate'
     :param query_result: typedb  query result.
     :return: converted query response.
     """
     response = Query.Response()
-    if query_type == 'match':
-        response = match_query_result_to_ros_msg(query_result)
-    elif query_type == 'match_aggregate':
-        response = match_aggregate_query_result_to_ros_msg(query_result)
+    if query_type == 'fetch':
+        response = fetch_query_result_to_ros_msg(query_result)
+    elif query_type == 'get_aggregate':
+        response = get_aggregate_query_result_to_ros_msg(query_result)
     return response
 
 
@@ -264,10 +264,10 @@ class ROSTypeDBInterface(Node):
             query_func = self.typedb_interface.insert_database
         elif req.query_type == 'delete':
             query_func = self.typedb_interface.delete_from_database
-        elif req.query_type == 'match':
-            query_func = self.typedb_interface.match_database
-        elif req.query_type == 'match_aggregate':
-            query_func = self.typedb_interface.match_aggregate_database
+        elif req.query_type == 'fetch':
+            query_func = self.typedb_interface.fetch_database
+        elif req.query_type == 'get_aggregate':
+            query_func = self.typedb_interface.get_aggregate_database
         else:
             self.get_logger().warning(
                 'Query type {} not recognized'.format(req.query_type))
