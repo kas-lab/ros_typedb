@@ -5,7 +5,7 @@
 This package provides a basic generic integration between ROS and [typeDB](https://typedb.com/).
 The package was designed in a way to enable users to easily extend it to fulfill their needs, the package design is explained in the [Package Design](#package-design) section.
 
-This package was tested in Ubuntu 22.04 with ROS Humble and typedb v2.24.17.
+This package was tested in Ubuntu 22.04 with ROS Humble and typedb v2.27.0.
 
 **This repository is in an initial stage and under constant development**
 

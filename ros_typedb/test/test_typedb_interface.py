@@ -37,9 +37,11 @@ def test_insert_entity(typedb_interface):
         match $entity isa person,
         has email "test@email.test",
         has nickname "t";
+        get $entity;
+        count;
     """
-    result = typedb_interface.match_database(query)
-    assert len(result) > 0
+    result = typedb_interface.get_aggregate_database(query)
+    assert result > 0
 
 
 def test_delete_thing(typedb_interface):
@@ -49,7 +51,7 @@ def test_delete_thing(typedb_interface):
         match $entity isa person, has email "test@email.test";
         get $entity;
     """
-    result = typedb_interface.match_database(query)
+    result = typedb_interface.fetch_database(query)
     assert len(result) == 0
 
 
@@ -64,7 +66,7 @@ def test_insert_attribute_in_thing(typedb_interface, attr, attr_value):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
     typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', attr, attr_value)
-    result = typedb_interface.get_attribute_from_thing(
+    result = typedb_interface.fetch_attribute_from_thing(
         'person', [('email', 'test@email.test')], attr)
     assert result
 
@@ -77,7 +79,7 @@ def test_insert_attribute_in_thing(typedb_interface, attr, attr_value):
     ('birth-date', datetime.fromisoformat(
         datetime.now().isoformat(timespec='milliseconds'))),
 ])
-def test_get_attribute_from_thing(typedb_interface, attr, attr_value):
+def test_fetch_attribute_from_thing(typedb_interface, attr, attr_value):
     typedb_interface.insert_entity(
         'person',
         [('email', 'test@email.test'), ('gender', 'male')]
@@ -85,7 +87,7 @@ def test_get_attribute_from_thing(typedb_interface, attr, attr_value):
     typedb_interface.insert_attribute_in_thing(
         'person', 'email', 'test@email.test', attr, attr_value)
 
-    result = typedb_interface.get_attribute_from_thing(
+    result = typedb_interface.fetch_attribute_from_thing(
         'person', [('email', 'test@email.test'), ('gender', 'male')], attr)
 
     assert result[0] == attr_value
@@ -107,7 +109,7 @@ def test_delete_attribute_from_thing(typedb_interface, attr, attr_value):
     typedb_interface.delete_attribute_from_thing(
         'person', 'email', 'test@email.test', attr)
 
-    result = typedb_interface.get_attribute_from_thing(
+    result = typedb_interface.fetch_attribute_from_thing(
         'person', [('email', 'test@email.test')], attr)
 
     assert len(result) == 0
@@ -129,7 +131,7 @@ def test_update_attribute_in_thing(typedb_interface, attr, attr_value, new_v):
         'person', 'email', 'test@email.test', attr, attr_value)
     result_update = typedb_interface.update_attribute_in_thing(
         'person', 'email', 'test@email.test', attr, new_v)
-    result = typedb_interface.get_attribute_from_thing(
+    result = typedb_interface.fetch_attribute_from_thing(
         'person', [('email', 'test@email.test')], attr)
 
     assert result_update is not None and result[0] == new_v
@@ -160,9 +162,11 @@ def test_insert_relationship(typedb_interface):
         has salary 2333,
         has role-name "boss",
         has role-name "super boss";
+        get $r;
+        count;
     """
-    result = typedb_interface.match_database(query)
-    assert len(result) > 0
+    result = typedb_interface.get_aggregate_database(query)
+    assert result > 0
 
 
 @pytest.mark.parametrize("things_dict", [
@@ -221,7 +225,7 @@ def test_insert_relationship(typedb_interface):
 def test_dict_to_query(typedb_interface, things_dict):
     query = typedb_interface.dict_to_query(things_dict)
     insert_result = typedb_interface.insert_database("insert " + query)
-    match_result = typedb_interface.match_database("match " + query)
+    match_result = typedb_interface.fetch_database("match " + query)
     assert insert_result is not None and insert_result is not False \
         and match_result is not None and match_result is not False
 
@@ -265,8 +269,9 @@ def test_dict_to_query(typedb_interface, things_dict):
 def test_insert_attributes(typedb_interface, match_dict, r_dict):
     r = typedb_interface.insert_attributes_in_thing(match_dict)
     query = typedb_interface.dict_to_query(r_dict)
-    match_result = typedb_interface.match_database("match " + query)
-    assert r is not None and r is not False and len(match_result) > 0
+    match_result = typedb_interface.get_aggregate_database(
+        "match " + query + "get; count;")
+    assert r is not None and r is not False and match_result > 0
 
 
 @pytest.mark.parametrize("insert_dict, match_dict", [
@@ -330,7 +335,7 @@ def test_delete_attributes(
     r = typedb_interface.delete_attributes_from_thing(match_dict)
 
     query = typedb_interface.dict_to_query(insert_dict)
-    match_result = typedb_interface.match_database("match " + query)
+    match_result = typedb_interface.fetch_database("match " + query)
     assert r is not None and r is not False and len(match_result) == 0
 
 
@@ -389,5 +394,6 @@ def test_update_attributes(typedb_interface, insert_dict, update_dict, r_dict):
 
     r = typedb_interface.update_attributes_in_thing(update_dict)
     query = typedb_interface.dict_to_query(r_dict)
-    match_result = typedb_interface.match_database("match " + query)
-    assert r is not None and r is not False and len(match_result) > 0
+    match_result = typedb_interface.get_aggregate_database(
+        "match " + query + "get; count;")
+    assert r is not None and r is not False and match_result > 0

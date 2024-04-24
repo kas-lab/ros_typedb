@@ -175,7 +175,7 @@ class TypeDBInterface:
             session_type: SessionType,
             transaction_type: TransactionType,
             query_type: Literal[
-                'define', 'insert', 'delete', 'match', 'match_aggregate'],
+                'define', 'insert', 'delete', 'fetch', 'get_aggregate'],
             query: str,
             options: Optional[TypeDBOptions] = TypeDBOptions()
         ) -> Literal[True] | Iterator[ConceptMap] | \
@@ -185,7 +185,7 @@ class TypeDBInterface:
 
         Helper method to query the database, it handles creating a session and
         managaging a transaction. It can perform queries of the type define,
-        insert, match, match_aggregate, or delete.
+        insert, fetch, get_aggregate, or delete.
 
         :param session_type: TypeDB session type.
         :param transaction_type: TypeDB transaction type.
@@ -207,19 +207,18 @@ class TypeDBInterface:
                         return True  # delete always return None
                     return query_answer
                 elif transaction_type == TransactionType.READ:
-                    if query_type == 'match':
+                    if query_type == 'fetch':
                         answer_list = []
                         for answer in query_answer:
-                            answer_list.append(answer.to_json())
+                            answer_list.append(answer)
                         return answer_list
-                    elif query_type == 'match_aggregate':
-                        answer = query_answer
-                        if answer.is_nan():
-                            return None
-                        if answer.is_int():
-                            return answer.as_int()
+                    elif query_type == 'get_aggregate':
+                        answer = query_answer.resolve()
+                        if answer.is_long():
+                            return answer.as_long()
                         if answer.is_float():
                             return answer.as_float()
+                        return None
 
     def write_database_file(
             self,
@@ -338,7 +337,7 @@ class TypeDBInterface:
             print('Error with delete query! Exception retrieved: ', err)
         return result
 
-    def match_database(
+    def fetch_database(
             self, query: str) -> list[dict[str, MatchResultDict]]:
         """
         Perform match query.
@@ -353,7 +352,7 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA,
                 TransactionType.READ,
-                'match',
+                'fetch',
                 query,
                 options)
         except Exception as err:
@@ -361,9 +360,9 @@ class TypeDBInterface:
             return []
         return result
 
-    def match_aggregate_database(self, query: str) -> int | float | None:
+    def get_aggregate_database(self, query: str) -> int | float | None:
         """
-        Perform match aggregate query.
+        Perform get aggregate query.
 
         :param query: Query to be performed.
         :return: Query result.
@@ -375,12 +374,12 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA,
                 TransactionType.READ,
-                'match_aggregate',
+                'get_aggregate',
                 query,
                 options)
         except Exception as err:
             print(
-                'Error with match_aggregate query! Exception retrieved: ', err)
+                'Error with get_aggregate query! Exception retrieved: ', err)
         return result
     # Read/write database end
 
@@ -392,15 +391,17 @@ class TypeDBInterface:
         :param data: Data to be converted.
         :return: Converted data.
         """
-        if data.get('value_type') == 'datetime':
-            return datetime.fromisoformat(data.get('value'))
-        elif data.get('value_type') == 'long':
-            return int(data.get('value'))
-        elif data.get('value_type') == 'string':
-            return str(data.get('value'))
-        elif data.get('value_type') == 'double':
-            return float(data.get('value'))
-        return data.get('value')
+        _value_type = data.get('type').get('value_type')
+        _value = data.get('value')
+        if _value_type == 'datetime':
+            return datetime.fromisoformat(_value)
+        elif _value_type == 'long':
+            return int(_value)
+        elif _value_type == 'string':
+            return str(_value)
+        elif _value_type == 'double':
+            return float(_value)
+        return _value
 
     def convert_py_type_to_query_type(
             self, data: datetime | str | bool) -> str:
@@ -893,7 +894,7 @@ class TypeDBInterface:
         query = match_query + insert_query
         return self.insert_database(query)
 
-    def get_attribute_from_thing_raw(
+    def fetch_attribute_from_thing_raw(
             self,
             thing: str,
             key_attr_list: list[
@@ -915,11 +916,11 @@ class TypeDBInterface:
             query += f""", has {key} {value} """
         query += f"""
             , has {attr} $attribute;
-            get $attribute;
+            fetch $attribute;
         """
-        return self.match_database(query)
+        return self.fetch_database(query)
 
-    def get_attribute_from_thing(
+    def fetch_attribute_from_thing(
             self,
             thing: str,
             key_attr_list: list[
@@ -933,7 +934,7 @@ class TypeDBInterface:
         :param attr: attribute name to be fetched, e.g., 'person-name'
         :return: List with the attribute values of type attr.
         """
-        result = self.get_attribute_from_thing_raw(
+        result = self.fetch_attribute_from_thing_raw(
             thing, key_attr_list, attr)
         return [self.convert_query_type_to_py_type(r.get('attribute'))
                 for r in result]
