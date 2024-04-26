@@ -25,6 +25,7 @@ from rclpy.lifecycle import TransitionCallbackReturn
 
 from ros_typedb.typedb_interface import MatchResultDict
 from ros_typedb.typedb_interface import TypeDBInterface
+from ros_typedb.typedb_interface import convert_query_type_to_py_type
 from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import QueryResult
 from ros_typedb_msgs.srv import Query
@@ -50,13 +51,13 @@ def set_query_result_value(
     _type_dict = {
         'boolean': (1, 'bool_value'),
         'bool': (1, 'bool_value'),
-        'long': (2, 'integer_value'),
-        'int': (2, 'integer_value'),
-        'double': (3, 'double_value'),
-        'float': (3, 'double_value'),
-        'string': (4, 'string_value'),
-        'str': (4, 'string_value'),
-        'datetime': (4, 'string_value'),
+        'long': (2, 'integer_value', 'long'),
+        'int': (2, 'integer_value', 'long'),
+        'double': (3, 'double_value', 'double'),
+        'float': (3, 'double_value', 'double'),
+        'string': (4, 'string_value', 'string'),
+        'str': (4, 'string_value', 'string'),
+        'datetime': (4, 'string_value', 'string'),
         'boolean_array': (6, 'bool_array_value'),
         'long_array': (7, 'integer_array_value'),
         'double_array': (8, 'double_array_value'),
@@ -64,6 +65,11 @@ def set_query_result_value(
     }
     if value_type in _type_dict:
         _param_value.type = _type_dict[value_type][0]
+        try:
+            value = convert_query_type_to_py_type(
+                value=value, value_type=_type_dict[value_type][2])
+        except IndexError:
+            pass
         setattr(
             _param_value,
             _type_dict[value_type][1],

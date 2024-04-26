@@ -30,6 +30,54 @@ from typing import Tuple
 from typing import TypedDict
 
 
+def convert_query_type_to_py_type(
+        value_dict: Optional[dict] = None,
+        value: Optional[str] = None,
+        value_type: Optional[str] = None) -> datetime | int | str | float:
+    """
+    Convert typedb 'value_type' to python type.
+
+    :param value: Data to be converted.
+    :param value_type: Data to be converted.
+    :param value_dict: Typedb value dict to be converted, overrides value and
+     value_type.
+    :return: Converted data.
+    """
+    if value_dict is not None:
+        value_type = value_dict.get('type').get('value_type')
+        value = value_dict.get('value')
+    if value_type == 'datetime':
+        return datetime.fromisoformat(value)
+    elif value_type == 'long':
+        return int(value)
+    elif value_type == 'string':
+        return str(value)
+    elif value_type == 'double':
+        return float(value)
+    return value
+
+
+def convert_py_type_to_query_type(
+        data: datetime | str | bool) -> str:
+    """
+    Convert python type to string.
+
+    Convert python type to a properly formatted string to be used with
+    a typedb query.
+
+    :param data: Data to be converted.
+    :return: Converted data.
+    """
+    if isinstance(data, str):
+        if len(data) > 0 and data[0] != '$':
+            return "'{}'".format(data)
+    elif isinstance(data, datetime):
+        return data.isoformat(timespec='milliseconds')
+    elif isinstance(data, bool):
+        return str(data).lower()
+    return data
+
+
 def string_to_string_array(string: str) -> list[str]:
     """
     Convert string to string array.
@@ -407,46 +455,6 @@ class TypeDBInterface:
         return result
     # Read/write database end
 
-    def convert_query_type_to_py_type(
-            self, data: str) -> datetime | int | str | float:
-        """
-        Convert typedb 'value_type' to python type.
-
-        :param data: Data to be converted.
-        :return: Converted data.
-        """
-        _value_type = data.get('type').get('value_type')
-        _value = data.get('value')
-        if _value_type == 'datetime':
-            return datetime.fromisoformat(_value)
-        elif _value_type == 'long':
-            return int(_value)
-        elif _value_type == 'string':
-            return str(_value)
-        elif _value_type == 'double':
-            return float(_value)
-        return _value
-
-    def convert_py_type_to_query_type(
-            self, data: datetime | str | bool) -> str:
-        """
-        Convert python type to string.
-
-        Convert python type to a properly formatted string to be used with
-        a typedb query.
-
-        :param data: Data to be converted.
-        :return: Converted data.
-        """
-        if isinstance(data, str):
-            if len(data) > 0 and data[0] != '$':
-                return "'{}'".format(data)
-        elif isinstance(data, datetime):
-            return data.isoformat(timespec='milliseconds')
-        elif isinstance(data, bool):
-            return str(data).lower()
-        return data
-
     def attribute_dict_to_query(
         self,
         attribute_dict: dict[str, str | int | float | bool | datetime]
@@ -492,7 +500,7 @@ class TypeDBInterface:
                     _query += ','
                 _query += ' has {0} {1}'.format(
                     attr,
-                    self.convert_py_type_to_query_type(v)
+                    convert_py_type_to_query_type(v)
                 )
             first = False
         return _query
@@ -741,7 +749,7 @@ class TypeDBInterface:
             match_query += " ${0}_{1} isa {2},".format(
                 prefix, t_counter, thing[0])
             match_query += " has {0} {1};".format(
-                thing[1], self.convert_py_type_to_query_type(thing[2]))
+                thing[1], convert_py_type_to_query_type(thing[2]))
             prefix_list.append("{0}_{1}".format(prefix, t_counter))
             t_counter += 1
         return match_query, prefix_list
@@ -802,7 +810,7 @@ class TypeDBInterface:
             if attribute[0] is not None:
                 query += ", has {} {} ".format(
                     attribute[0],
-                    self.convert_py_type_to_query_type(attribute[1])
+                    convert_py_type_to_query_type(attribute[1])
                 )
         query += ";"
         return query
@@ -845,7 +853,7 @@ class TypeDBInterface:
         """
         for attribute in attribute_list:
             if attribute[0] is not None:
-                value = self.convert_py_type_to_query_type(attribute[1])
+                value = convert_py_type_to_query_type(attribute[1])
                 query += f""", has {attribute[0]} {value} """
         query += ";"
         return self.insert_database(query)
@@ -936,7 +944,7 @@ class TypeDBInterface:
             match $thing isa {thing}
         """
         for (key, value) in key_attr_list:
-            value = self.convert_py_type_to_query_type(value)
+            value = convert_py_type_to_query_type(value)
             query += f""", has {key} {value} """
         query += f"""
             , has {attr} $attribute;
@@ -960,7 +968,7 @@ class TypeDBInterface:
         """
         result = self.fetch_attribute_from_thing_raw(
             thing, key_attr_list, attr)
-        return [self.convert_query_type_to_py_type(r.get('attribute'))
+        return [convert_query_type_to_py_type(value_dict=r.get('attribute'))
                 for r in result]
 
     def delete_attribute_from_thing(
@@ -978,7 +986,7 @@ class TypeDBInterface:
         :param attr: attribute name to be deleted
         :return: True.
         """
-        key_value = self.convert_py_type_to_query_type(key_value)
+        key_value = convert_py_type_to_query_type(key_value)
         query = f"""
             match $thing isa {thing},
             has {key} {key_value},
@@ -1051,8 +1059,8 @@ class TypeDBInterface:
         :param attr_value: attribute value to be inserted
         :return: Insert query result.
         """
-        key_value = self.convert_py_type_to_query_type(key_value)
-        attr_value = self.convert_py_type_to_query_type(attr_value)
+        key_value = convert_py_type_to_query_type(key_value)
+        attr_value = convert_py_type_to_query_type(attr_value)
         query = f"""
             match $thing isa {thing},
             has {key} {key_value};

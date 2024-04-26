@@ -43,7 +43,7 @@ def insert_query():
                 has email "test@test.com",
                 has nickname "test",
                 has age 33,
-                has height 1.75,
+                has height 1.00,
                 has alive true,
                 has birth-date 1990-06-01;
             $person2 isa person,
@@ -250,7 +250,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
                    r.value.integer_value == 33:
                     correct_age = True
                 if r.name == 'height' and r.label == 'height' and \
-                   r.value.double_value == 1.75:
+                   r.value.double_value == 1.0:
                     correct_height = True
                 if r.name == 'alive' and r.label == 'alive' and \
                    r.value.bool_value is True:
