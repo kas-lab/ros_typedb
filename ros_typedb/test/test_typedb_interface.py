@@ -397,3 +397,15 @@ def test_update_attributes(typedb_interface, insert_dict, update_dict, r_dict):
     match_result = typedb_interface.get_aggregate_database(
         "match " + query + "get; count;")
     assert r is not None and r is not False and match_result > 0
+
+
+def test_get_query(typedb_interface):
+    query = """
+        match
+            $p isa person, has full-name $name, has email $email;
+        get $name, $email;
+        sort $name asc; limit 3;
+    """
+    result = typedb_interface.get_database(query)
+    name = result[0].get("name").as_attribute().get_value()
+    assert len(result) == 3 and name == "Ahmed Frazier"

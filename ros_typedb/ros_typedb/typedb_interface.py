@@ -175,7 +175,7 @@ class TypeDBInterface:
             session_type: SessionType,
             transaction_type: TransactionType,
             query_type: Literal[
-                'define', 'insert', 'delete', 'fetch', 'get_aggregate'],
+                'define', 'insert', 'delete', 'fetch', 'get', 'get_aggregate'],
             query: str,
             options: Optional[TypeDBOptions] = TypeDBOptions()
         ) -> Literal[True] | Iterator[ConceptMap] | \
@@ -212,6 +212,8 @@ class TypeDBInterface:
                         for answer in query_answer:
                             answer_list.append(answer)
                         return answer_list
+                    elif query_type == 'get':
+                        return list(query_answer)
                     elif query_type == 'get_aggregate':
                         answer = query_answer.resolve()
                         if answer.is_long():
@@ -358,6 +360,28 @@ class TypeDBInterface:
         except Exception as err:
             print('Error with match query! Exception retrieved: ', err)
             return []
+        return result
+
+    def get_database(self, query: str) -> int | float | None:
+        """
+        Perform get query.
+
+        :param query: Query to be performed.
+        :return: Query result.
+        """
+        result = None
+        try:
+            options = TypeDBOptions()
+            options.infer = self._infer
+            result = self.database_query(
+                SessionType.DATA,
+                TransactionType.READ,
+                'get',
+                query,
+                options)
+        except Exception as err:
+            print(
+                'Error with get query! Exception retrieved: ', err)
         return result
 
     def get_aggregate_database(self, query: str) -> int | float | None:

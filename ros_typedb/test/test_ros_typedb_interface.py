@@ -263,6 +263,41 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
 
 
 @pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_get_query(insert_query):
+    rclpy.init()
+    try:
+        node = MakeTestNode()
+        node.start_node()
+        node.activate_ros_typedb()
+
+        node.call_service(node.query_srv, insert_query)
+
+        query_req = Query.Request()
+        query_req.query_type = 'get'
+        query_req.query = """
+            match
+                $p isa person, has full-name $name, has email $email;
+            get $name, $email;
+            sort $name asc; limit 3;
+        """
+        query_res = node.call_service(node.query_srv, query_req)
+
+        correct_name = False
+        correct_email = False
+        for r in query_res.results[0].attributes:
+            if r.name == 'name' and r.value.string_value == 'Ahmed Frazier':
+                correct_name = True
+            if r.name == 'email' and \
+               r.value.string_value == 'ahmed.frazier@gmail.com':
+                correct_email = True
+
+        assert query_res.success is True and \
+            len(query_res.results) == 3 and correct_name and correct_email
+    finally:
+        rclpy.shutdown()
+
+
+@pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_get_aggregate_query(insert_query):
     rclpy.init()
     try:

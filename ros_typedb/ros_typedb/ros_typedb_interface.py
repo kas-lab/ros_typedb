@@ -96,6 +96,29 @@ def fetch_query_result_to_ros_msg(
     return response
 
 
+def get_query_result_to_ros_msg(
+        query_result: int | float | None
+     ) -> ros_typedb_msgs.srv.Query.Response:
+    """
+    Convert get query result to :class:`ros_typedb_msgs.srv.Query`.
+
+    :param query_result: typedb get aggreate query result.
+    :return: converted query response.
+    """
+    response = Query.Response()
+    for result in query_result:
+        _result = QueryResult()
+        _variables = result.variables()
+        for variable in _variables:
+            if result.get(variable).is_attribute():
+                _typedb_attr = result.get(variable).as_attribute()
+                _attr = Parameter()
+                _attr.name = variable
+                _attr.value = set_query_result_value(
+                    _typedb_attr.get_value(),
+                    str(_typedb_attr.get_type().get_value_type()))
+                _result.attributes.append(_attr)
+        response.results.append(_result)
     return response
 
 
@@ -134,6 +157,8 @@ def query_result_to_ros_msg(
     response = Query.Response()
     if query_type == 'fetch':
         response = fetch_query_result_to_ros_msg(query_result)
+    elif query_type == 'get':
+        response = get_query_result_to_ros_msg(query_result)
     elif query_type == 'get_aggregate':
         response = get_aggregate_query_result_to_ros_msg(query_result)
     return response
@@ -273,6 +298,8 @@ class ROSTypeDBInterface(Node):
             query_func = self.typedb_interface.delete_from_database
         elif req.query_type == 'fetch':
             query_func = self.typedb_interface.fetch_database
+        elif req.query_type == 'get':
+            query_func = self.typedb_interface.get_database
         elif req.query_type == 'get_aggregate':
             query_func = self.typedb_interface.get_aggregate_database
         else:
