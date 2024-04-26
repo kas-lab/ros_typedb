@@ -1,1 +1,1 @@
-rcl_interfaces/Parameter[] attributes
+ros_typedb_msgs/Attribute[] attributes

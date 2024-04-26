@@ -243,16 +243,19 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         correct_date = False
         for result in query_res.results:
             for r in result.attributes:
-                if r.name == 'nick' and r.value.string_value == 'test':
+                if r.name == 'nick' and r.label == 'nickname' and \
+                   r.value.string_value == 'test':
                     correct_nick = True
-                if r.name == 'age' and r.value.integer_value == 33:
+                if r.name == 'age' and r.label == 'age' and \
+                   r.value.integer_value == 33:
                     correct_age = True
-                if r.name == 'height' and r.value.double_value == 1.75:
+                if r.name == 'height' and r.label == 'height' and \
+                   r.value.double_value == 1.75:
                     correct_height = True
-                if r.name == 'alive' and \
+                if r.name == 'alive' and r.label == 'alive' and \
                    r.value.bool_value is True:
                     correct_alive = True
-                if r.name == 'date' and \
+                if r.name == 'date' and r.label == 'birth-date' and \
                    r.value.string_value == '1990-06-01T00:00:00.000':
                     correct_date = True
 
@@ -285,9 +288,10 @@ def test_ros_typedb_get_query(insert_query):
         correct_name = False
         correct_email = False
         for r in query_res.results[0].attributes:
-            if r.name == 'name' and r.value.string_value == 'Ahmed Frazier':
+            if r.name == 'name' and r.label == 'full-name' \
+               and r.value.string_value == 'Ahmed Frazier':
                 correct_name = True
-            if r.name == 'email' and \
+            if r.name == 'email' and r.label == 'email' and \
                r.value.string_value == 'ahmed.frazier@gmail.com':
                 correct_email = True
 

@@ -17,7 +17,6 @@ import rcl_interfaces
 import ros_typedb_msgs
 
 from rcl_interfaces.msg import ParameterValue
-from rcl_interfaces.msg import Parameter
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.lifecycle import Node
@@ -26,6 +25,7 @@ from rclpy.lifecycle import TransitionCallbackReturn
 
 from ros_typedb.typedb_interface import MatchResultDict
 from ros_typedb.typedb_interface import TypeDBInterface
+from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import QueryResult
 from ros_typedb_msgs.srv import Query
 
@@ -85,8 +85,9 @@ def fetch_query_result_to_ros_msg(
     for result in query_result:
         _result = QueryResult()
         for key, value_dict in result.items():
-            _attr = Parameter()
+            _attr = Attribute()
             _attr.name = key
+            _attr.label = value_dict.get('type').get('label')
             if 'value' in value_dict:
                 _attr.value = set_query_result_value(
                     value_dict.get('value'),
@@ -112,8 +113,9 @@ def get_query_result_to_ros_msg(
         for variable in _variables:
             if result.get(variable).is_attribute():
                 _typedb_attr = result.get(variable).as_attribute()
-                _attr = Parameter()
+                _attr = Attribute()
                 _attr.name = variable
+                _attr.label = _typedb_attr.get_type().get_label().name
                 _attr.value = set_query_result_value(
                     _typedb_attr.get_value(),
                     str(_typedb_attr.get_type().get_value_type()))
@@ -132,7 +134,7 @@ def get_aggregate_query_result_to_ros_msg(
     :return: converted query response.
     """
     response = Query.Response()
-    _attr = Parameter()
+    _attr = Attribute()
     _attr.value = set_query_result_value(
         query_result,
         type(query_result).__name__)
