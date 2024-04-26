@@ -163,8 +163,8 @@ def test_ros_typedb_delete_query(insert_query):
         match_query_res = node.call_service(node.query_srv, match_query_req)
 
         assert query_res.success and match_query_res.success and \
-            match_query_res.attributes[0].value.type == 2 and \
-            match_query_res.attributes[0].value.integer_value == 0
+            match_query_res.results[0].attributes[0].value.type == 2 and \
+            match_query_res.results[0].attributes[0].value.integer_value == 0
     finally:
         rclpy.shutdown()
 
@@ -232,28 +232,29 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
                 has height $height,
                 has alive $alive,
                 has birth-date $date;
-            fetch $nick, $age, $height, $alive, $date;
+            fetch $nick; $age; $height; $alive; $date;
         """
         query_res = node.call_service(node.query_srv, query_req)
 
-        correct_nick = True
-        correct_age = True
-        correct_height = True
-        correct_alive = True
-        correct_date = True
-        for r in query_res.attributes:
-            if r.name == 'nick' and r.value.string_value != 'test':
-                correct_nick = False
-            if r.name == 'age' and r.value.integer_value != 33:
-                correct_age = False
-            if r.name == 'height' and r.value.double_value != 1.75:
-                correct_height = False
-            if r.name == 'alive' and \
-               r.value.bool_value is not True:
-                correct_alive = False
-            if r.name == 'date' and \
-               r.value.string_value != '1990-06-01T00:00:00.000':
-                correct_date = False
+        correct_nick = False
+        correct_age = False
+        correct_height = False
+        correct_alive = False
+        correct_date = False
+        for result in query_res.results:
+            for r in result.attributes:
+                if r.name == 'nick' and r.value.string_value == 'test':
+                    correct_nick = True
+                if r.name == 'age' and r.value.integer_value == 33:
+                    correct_age = True
+                if r.name == 'height' and r.value.double_value == 1.75:
+                    correct_height = True
+                if r.name == 'alive' and \
+                   r.value.bool_value is True:
+                    correct_alive = True
+                if r.name == 'date' and \
+                   r.value.string_value == '1990-06-01T00:00:00.000':
+                    correct_date = True
 
         assert query_res.success is True and correct_nick and correct_age and \
             correct_height and correct_alive and correct_date
@@ -283,7 +284,7 @@ def test_ros_typedb_get_aggregate_query(insert_query):
         query_res = node.call_service(node.query_srv, query_req)
 
         assert query_res.success is True and \
-            query_res.attributes[0].value.integer_value == 1500
+            query_res.results[0].attributes[0].value.integer_value == 1500
     finally:
         rclpy.shutdown()
 
