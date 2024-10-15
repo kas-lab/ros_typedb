@@ -130,6 +130,10 @@ def main():
         lc_node.destroy_node()
 ```
 
+## Example of packages using ros_type
+- [ROSA](https://github.com/kas-lab/rosa/tree/main/rosa_kb)
+- [navigation_graph_map](https://github.com/kas-lab/navigation_graph_map/tree/main/navigation_kb)
+
 ## Acknowledgments
 
 <a href="https://remaro.eu/">
