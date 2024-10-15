@@ -1,0 +1,6 @@
+ros\_typedb.typedb\_interface.string\_to\_string\_array
+=======================================================
+
+.. currentmodule:: ros_typedb.typedb_interface
+
+.. autofunction:: string_to_string_array

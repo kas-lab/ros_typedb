@@ -1,0 +1,6 @@
+ros\_typedb.typedb\_interface.convert\_query\_type\_to\_py\_type
+================================================================
+
+.. currentmodule:: ros_typedb.typedb_interface
+
+.. autofunction:: convert_query_type_to_py_type

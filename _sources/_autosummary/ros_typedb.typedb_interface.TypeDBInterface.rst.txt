@@ -1,0 +1,52 @@
+TypeDBInterface
+===============
+
+.. currentmodule:: ros_typedb.typedb_interface
+
+.. autoclass:: TypeDBInterface
+  :members:
+  :undoc-members:
+  :special-members: __init__
+
+  
+  .. rubric:: Methods
+
+  .. autosummary::
+  
+     ~TypeDBInterface.__init__
+     ~TypeDBInterface.attribute_dict_to_query
+     ~TypeDBInterface.connect_driver
+     ~TypeDBInterface.create_database
+     ~TypeDBInterface.create_match_query
+     ~TypeDBInterface.create_relationship_query
+     ~TypeDBInterface.create_session
+     ~TypeDBInterface.database_query
+     ~TypeDBInterface.delete_all_data
+     ~TypeDBInterface.delete_attribute_from_thing
+     ~TypeDBInterface.delete_attributes_from_thing
+     ~TypeDBInterface.delete_data_event
+     ~TypeDBInterface.delete_data_event_
+     ~TypeDBInterface.delete_database
+     ~TypeDBInterface.delete_from_database
+     ~TypeDBInterface.delete_thing
+     ~TypeDBInterface.dict_to_query
+     ~TypeDBInterface.fetch_attribute_from_thing
+     ~TypeDBInterface.fetch_attribute_from_thing_raw
+     ~TypeDBInterface.fetch_database
+     ~TypeDBInterface.get_aggregate_database
+     ~TypeDBInterface.get_database
+     ~TypeDBInterface.insert_attribute_in_thing
+     ~TypeDBInterface.insert_attributes_in_thing
+     ~TypeDBInterface.insert_data_event
+     ~TypeDBInterface.insert_data_event_
+     ~TypeDBInterface.insert_database
+     ~TypeDBInterface.insert_entity
+     ~TypeDBInterface.insert_relationship
+     ~TypeDBInterface.load_data
+     ~TypeDBInterface.load_schema
+     ~TypeDBInterface.update_attribute_in_thing
+     ~TypeDBInterface.update_attributes_in_thing
+     ~TypeDBInterface.write_database_file
+  
+
+  

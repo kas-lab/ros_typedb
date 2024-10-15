@@ -1,0 +1,6 @@
+ros\_typedb.ros\_typedb\_interface.get\_query\_result\_to\_ros\_msg
+===================================================================
+
+.. currentmodule:: ros_typedb.ros_typedb_interface
+
+.. autofunction:: get_query_result_to_ros_msg

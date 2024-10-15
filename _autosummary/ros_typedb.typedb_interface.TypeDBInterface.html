@@ -1,0 +1,1145 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TypeDBInterface &mdash; ros_typedb 0.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7026087e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ros_typedb.ros_typedb_interface" href="ros_typedb.ros_typedb_interface.html" />
+    <link rel="prev" title="ThingPrefixAttrDict" href="ros_typedb.typedb_interface.ThingPrefixAttrDict.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ros_typedb
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Home</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ros_typedb.typedb_interface.html">ros_typedb.typedb_interface</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ros_typedb.typedb_interface.convert_py_type_to_query_type.html">ros_typedb.typedb_interface.convert_py_type_to_query_type</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ros_typedb.typedb_interface.convert_query_type_to_py_type.html">ros_typedb.typedb_interface.convert_query_type_to_py_type</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ros_typedb.typedb_interface.string_to_string_array.html">ros_typedb.typedb_interface.string_to_string_array</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ros_typedb.typedb_interface.MatchResultDict.html">MatchResultDict</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ros_typedb.typedb_interface.ThingPrefixAttrDict.html">ThingPrefixAttrDict</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">TypeDBInterface</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface"><code class="docutils literal notranslate"><span class="pre">TypeDBInterface</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ros_typedb.ros_typedb_interface.html">ros_typedb.ros_typedb_interface</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ros_typedb</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../api.html">API</a></li>
+          <li class="breadcrumb-item"><a href="ros_typedb.typedb_interface.html">ros_typedb.typedb_interface</a></li>
+      <li class="breadcrumb-item active">TypeDBInterface</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/ros_typedb.typedb_interface.TypeDBInterface.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="typedbinterface">
+<h1>TypeDBInterface<a class="headerlink" href="#typedbinterface" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ros_typedb.typedb_interface.</span></span><span class="sig-name descname"><span class="pre">TypeDBInterface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_database</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">infer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface" title="Link to this definition"></a></dt>
+<dd><p>Class used to interact with typeDB databases.</p>
+<p>Connect to a typeDB server and interacts with it.</p>
+<p>Connects TypeDBInterface to typeDB server, creating a database,
+loading a schema and a data file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>address</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – TypeDB server address.</p></li>
+<li><p><strong>database_name</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – database name.</p></li>
+<li><p><strong>schema_path</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</span>) – list with paths to schema files (.tql).</p></li>
+<li><p><strong>data_path</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</span>) – list with paths to data files (.tql).</p></li>
+<li><p><strong>force_database</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>]</span>) – if database should override an existing database</p></li>
+<li><p><strong>force_data</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>]</span>) – if the database data should be overriden.</p></li>
+<li><p><strong>infer</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>]</span>) – if inference engine should be used.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.__init__" title="ros_typedb.typedb_interface.TypeDBInterface.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(address, database_name[, ...])</p></td>
+<td><p>Connect to a typeDB server and interacts with it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.attribute_dict_to_query" title="ros_typedb.typedb_interface.TypeDBInterface.attribute_dict_to_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">attribute_dict_to_query</span></code></a>(attribute_dict)</p></td>
+<td><p>Convert python dict with typedb attributes to a query.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.connect_driver" title="ros_typedb.typedb_interface.TypeDBInterface.connect_driver"><code class="xref py py-obj docutils literal notranslate"><span class="pre">connect_driver</span></code></a>(address)</p></td>
+<td><p>Connect to typedb server.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.create_database" title="ros_typedb.typedb_interface.TypeDBInterface.create_database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_database</span></code></a>(database_name[, force])</p></td>
+<td><p>Create database.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.create_match_query" title="ros_typedb.typedb_interface.TypeDBInterface.create_match_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_match_query</span></code></a>(things_list[, prefix])</p></td>
+<td><p>Create match query from a list of tuples specifying a Thing individual.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.create_relationship_query" title="ros_typedb.typedb_interface.TypeDBInterface.create_relationship_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_relationship_query</span></code></a>(relationship, ...)</p></td>
+<td><p>Create a query for relationships.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.create_session" title="ros_typedb.typedb_interface.TypeDBInterface.create_session"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_session</span></code></a>(database_name, session_type)</p></td>
+<td><p>Create session with the database.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.database_query" title="ros_typedb.typedb_interface.TypeDBInterface.database_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">database_query</span></code></a>(session_type, ...[, options])</p></td>
+<td><p>Query database.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_all_data" title="ros_typedb.typedb_interface.TypeDBInterface.delete_all_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_all_data</span></code></a>()</p></td>
+<td><p>Delete all data from database.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_attribute_from_thing" title="ros_typedb.typedb_interface.TypeDBInterface.delete_attribute_from_thing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_attribute_from_thing</span></code></a>(thing, key, ...)</p></td>
+<td><p>Delete attribute value from a instance of a thing.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_attributes_from_thing" title="ros_typedb.typedb_interface.TypeDBInterface.delete_attributes_from_thing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_attributes_from_thing</span></code></a>(match_dict[, ...])</p></td>
+<td><p>Delete attributes from thing individual.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_data_event" title="ros_typedb.typedb_interface.TypeDBInterface.delete_data_event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_data_event</span></code></a>()</p></td>
+<td><p>Delete data event.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_data_event_" title="ros_typedb.typedb_interface.TypeDBInterface.delete_data_event_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_data_event_</span></code></a>()</p></td>
+<td><p>Generate delete data event.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_database" title="ros_typedb.typedb_interface.TypeDBInterface.delete_database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_database</span></code></a>(database_name)</p></td>
+<td><p>Delete database.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_from_database" title="ros_typedb.typedb_interface.TypeDBInterface.delete_from_database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_from_database</span></code></a>(query)</p></td>
+<td><p>Perform delete query.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_thing" title="ros_typedb.typedb_interface.TypeDBInterface.delete_thing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_thing</span></code></a>(thing, key, key_value)</p></td>
+<td><p>Delete thing individual in the database.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.dict_to_query" title="ros_typedb.typedb_interface.TypeDBInterface.dict_to_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dict_to_query</span></code></a>(things_dict[, attribute_str, ...])</p></td>
+<td><p>Convert python dict to query.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.fetch_attribute_from_thing" title="ros_typedb.typedb_interface.TypeDBInterface.fetch_attribute_from_thing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_attribute_from_thing</span></code></a>(thing, ...)</p></td>
+<td><p>Get attribute value from a instance of a thing.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.fetch_attribute_from_thing_raw" title="ros_typedb.typedb_interface.TypeDBInterface.fetch_attribute_from_thing_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_attribute_from_thing_raw</span></code></a>(thing, ...)</p></td>
+<td><p>Get raw attribute values from a instance of a thing.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.fetch_database" title="ros_typedb.typedb_interface.TypeDBInterface.fetch_database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_database</span></code></a>(query)</p></td>
+<td><p>Perform match query.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.get_aggregate_database" title="ros_typedb.typedb_interface.TypeDBInterface.get_aggregate_database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_aggregate_database</span></code></a>(query)</p></td>
+<td><p>Perform get aggregate query.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.get_database" title="ros_typedb.typedb_interface.TypeDBInterface.get_database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_database</span></code></a>(query)</p></td>
+<td><p>Perform get query.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_attribute_in_thing" title="ros_typedb.typedb_interface.TypeDBInterface.insert_attribute_in_thing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_attribute_in_thing</span></code></a>(thing, key, ...)</p></td>
+<td><p>Insert attribute value in a instance of a thing.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_attributes_in_thing" title="ros_typedb.typedb_interface.TypeDBInterface.insert_attributes_in_thing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_attributes_in_thing</span></code></a>(match_dict[, ...])</p></td>
+<td><p>Insert attributes to thing individual.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_data_event" title="ros_typedb.typedb_interface.TypeDBInterface.insert_data_event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_data_event</span></code></a>()</p></td>
+<td><p>Insert data event.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_data_event_" title="ros_typedb.typedb_interface.TypeDBInterface.insert_data_event_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_data_event_</span></code></a>()</p></td>
+<td><p>Generate insert data event.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_database" title="ros_typedb.typedb_interface.TypeDBInterface.insert_database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_database</span></code></a>(query)</p></td>
+<td><p>Perform insert query.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_entity" title="ros_typedb.typedb_interface.TypeDBInterface.insert_entity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_entity</span></code></a>(entity[, attribute_list])</p></td>
+<td><p>Insert entity individual in the database.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_relationship" title="ros_typedb.typedb_interface.TypeDBInterface.insert_relationship"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_relationship</span></code></a>(relationship, related_dict)</p></td>
+<td><p>Insert relationship individual in the database.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.load_data" title="ros_typedb.typedb_interface.TypeDBInterface.load_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_data</span></code></a>(data_path[, force])</p></td>
+<td><p>Load .tql data file to database.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.load_schema" title="ros_typedb.typedb_interface.TypeDBInterface.load_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_schema</span></code></a>(schema_path)</p></td>
+<td><p>Load .tql schema file to database.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.update_attribute_in_thing" title="ros_typedb.typedb_interface.TypeDBInterface.update_attribute_in_thing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_attribute_in_thing</span></code></a>(thing, key, ...)</p></td>
+<td><p>Update attribute value in a instance of a thing.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.update_attributes_in_thing" title="ros_typedb.typedb_interface.TypeDBInterface.update_attributes_in_thing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_attributes_in_thing</span></code></a>(match_dict)</p></td>
+<td><p>Update attributes of a thing individual.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.typedb_interface.TypeDBInterface.write_database_file" title="ros_typedb.typedb_interface.TypeDBInterface.write_database_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_database_file</span></code></a>(session_type, ...)</p></td>
+<td><p>Write .tql schema or data file content to database.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_database</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">infer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.__init__" title="Link to this definition"></a></dt>
+<dd><p>Connect to a typeDB server and interacts with it.</p>
+<p>Connects TypeDBInterface to typeDB server, creating a database,
+loading a schema and a data file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>address</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – TypeDB server address.</p></li>
+<li><p><strong>database_name</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – database name.</p></li>
+<li><p><strong>schema_path</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</span>) – list with paths to schema files (.tql).</p></li>
+<li><p><strong>data_path</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</span>) – list with paths to data files (.tql).</p></li>
+<li><p><strong>force_database</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>]</span>) – if database should override an existing database</p></li>
+<li><p><strong>force_data</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>]</span>) – if the database data should be overriden.</p></li>
+<li><p><strong>infer</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>]</span>) – if inference engine should be used.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.attribute_dict_to_query">
+<span class="sig-name descname"><span class="pre">attribute_dict_to_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attribute_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.attribute_dict_to_query" title="Link to this definition"></a></dt>
+<dd><p>Convert python dict with typedb attributes to a query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>attribute_dict</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a>]</span>) – Dictionary with attributes to be converted.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Converted query.</p>
+</dd>
+<dt class="field-even">Example<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+</dl>
+<p>The following dict:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s1">&#39;email&#39;</span><span class="p">:</span> <span class="s1">&#39;test@test.test&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">1.8</span><span class="p">,</span>
+    <span class="s1">&#39;age&#39;</span><span class="p">:</span> <span class="mi">18</span><span class="p">,</span>
+    <span class="s1">&#39;alive&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;birth-date&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">997315</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Converts to the string:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">has</span> <span class="n">email</span> <span class="s1">&#39;test@test.test&#39;</span><span class="p">,</span>
+<span class="n">has</span> <span class="n">height</span> <span class="mf">1.8</span><span class="p">,</span>
+<span class="n">has</span> <span class="n">age</span> <span class="mi">18</span><span class="p">,</span>
+<span class="n">has</span> <span class="n">alive</span> <span class="n">true</span><span class="p">,</span>
+<span class="n">has</span> <span class="n">birth</span><span class="o">-</span><span class="n">date</span> <span class="mi">2024</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">09</span><span class="n">T15</span><span class="p">:</span><span class="mi">27</span><span class="p">:</span><span class="mf">10.385</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.connect_driver">
+<span class="sig-name descname"><span class="pre">connect_driver</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.connect_driver" title="Link to this definition"></a></dt>
+<dd><p>Connect to typedb server.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>address</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – typedb server address.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.create_database">
+<span class="sig-name descname"><span class="pre">create_database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">database_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.create_database" title="Link to this definition"></a></dt>
+<dd><p>Create database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>database_name</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – database name.</p></li>
+<li><p><strong>force</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>]</span>) – if database should override an existing database</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.create_match_query">
+<span class="sig-name descname"><span class="pre">create_match_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">things_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'t'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.create_match_query" title="Link to this definition"></a></dt>
+<dd><p>Create match query from a list of tuples specifying a Thing individual.</p>
+<p>Create match query from list of tuples specifying a Thing individual.
+A tuple has the following form: (THING_NAME, ATTR_NAME, ATTR_VALUE).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>things_list</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</span>) – list of tuples specifying a Thing individual.
+E.g., [(‘person’, ‘email’, <a class="reference external" href="mailto:'test&#37;&#52;&#48;email&#46;test">‘test<span>&#64;</span>email<span>&#46;</span>test</a>’),
+(‘person’, ‘email’, <a class="reference external" href="mailto:'test2&#37;&#52;&#48;email&#46;test">‘test2<span>&#64;</span>email<span>&#46;</span>test</a>’)].</p></li>
+<li><p><strong>prefix</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]</span>) – prefix for the variable of each individual in the match
+query. E.g., <cite>employee</cite> results in the typedb variables
+<cite>$employee_0</cite>, <cite>$employee_1</cite> etc.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Converted query.</p>
+</dd>
+<dt class="field-even">Example<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+</dl>
+<p>The following list:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">my_list</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;test@email.test&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;test2@email.test&#39;</span><span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">query</span><span class="p">,</span> <span class="n">prefix_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_match_query</span><span class="p">(</span><span class="n">my_list</span><span class="p">,</span> <span class="s1">&#39;employee&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Results in:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># query
+$employee_0 isa person, has email &#39;test@email.test&#39;;
+$employee_1 isa person, has email &#39;test2@email.test&#39;;
+
+# prefix_list
+[&#39;employee_0&#39;, &#39;employee_1&#39;]
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.create_relationship_query">
+<span class="sig-name descname"><span class="pre">create_relationship_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationship</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">related_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'r'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.create_relationship_query" title="Link to this definition"></a></dt>
+<dd><p>Create a query for relationships.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>relationship</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – relationship name.</p></li>
+<li><p><strong>related_dict</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]]</span>) – dictionary with related things.</p></li>
+<li><p><strong>attribute_list</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a>]]]</span>) – list with the relationships attributes.</p></li>
+<li><p><strong>prefix</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]</span>) – prefix for query variables.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Example<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
+</dd>
+</dl>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">related_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;employee&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;test@email.test&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;test2@email.test&#39;</span><span class="p">)],</span>
+    <span class="s1">&#39;employer&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;test3@email.test&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;test4@email.test&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+
+<span class="n">attribute_list</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;salary&#39;</span><span class="p">,</span> <span class="mi">2333</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;role-name&#39;</span><span class="p">,</span> <span class="s1">&#39;boss&#39;</span><span class="p">)]</span>
+
+<span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_relationship_query</span><span class="p">(</span>
+    <span class="s1">&#39;employment&#39;</span><span class="p">,</span> <span class="n">related_dict</span><span class="p">,</span> <span class="n">attribute_list</span><span class="p">,</span> <span class="s1">&#39;employment&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># query
+$employment (employee:$employee_0, employee:$employee_1,
+    employer:$employer_0, employer:$employer_1) isa employment,
+    has salary 2333 , has role-name &#39;boss&#39;;
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.create_session">
+<span class="sig-name descname"><span class="pre">create_session</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">database_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options=&lt;typedb.api.connection.options.TypeDBOptions</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.create_session" title="Link to this definition"></a></dt>
+<dd><p>Create session with the database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>database_name</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – database name.</p></li>
+<li><p><strong>session_type</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">SessionType</span></code></span>) – session type, e.g., schema or data.</p></li>
+<li><p><strong>options</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDBOptions</span></code>]</span>) – typedb options.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDBSession</span></code></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.database_query">
+<span class="sig-name descname"><span class="pre">database_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transaction_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options=&lt;typedb.api.connection.options.TypeDBOptions</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.database_query" title="Link to this definition"></a></dt>
+<dd><p>Query database.</p>
+<p>Helper method to query the database, it handles creating a session and
+managaging a transaction. It can perform queries of the type define,
+insert, fetch, get_aggregate, or delete.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>session_type</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">SessionType</span></code></span>) – TypeDB session type.</p></li>
+<li><p><strong>transaction_type</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">TransactionType</span></code></span>) – TypeDB transaction type.</p></li>
+<li><p><strong>query_type</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a>[<code class="docutils literal notranslate"><span class="pre">'define'</span></code>, <code class="docutils literal notranslate"><span class="pre">'insert'</span></code>, <code class="docutils literal notranslate"><span class="pre">'delete'</span></code>, <code class="docutils literal notranslate"><span class="pre">'fetch'</span></code>, <code class="docutils literal notranslate"><span class="pre">'get'</span></code>, <code class="docutils literal notranslate"><span class="pre">'get_aggregate'</span></code>]</span>) – TypeDB query type.</p></li>
+<li><p><strong>query</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Query to be performed.</p></li>
+<li><p><strong>options</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">TypeDBOptions</span></code>]</span>) – TypeDB options.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a>[<code class="docutils literal notranslate"><span class="pre">True</span></code>], <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">ConceptMap</span></code>], <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference internal" href="ros_typedb.typedb_interface.MatchResultDict.html#ros_typedb.typedb_interface.MatchResultDict" title="ros_typedb.typedb_interface.MatchResultDict"><code class="xref py py-class docutils literal notranslate"><span class="pre">MatchResultDict</span></code></a>]], <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Query result, type depends on the query_type.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.delete_all_data">
+<span class="sig-name descname"><span class="pre">delete_all_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_all_data" title="Link to this definition"></a></dt>
+<dd><p>Delete all data from database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.delete_attribute_from_thing">
+<span class="sig-name descname"><span class="pre">delete_attribute_from_thing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attr</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_attribute_from_thing" title="Link to this definition"></a></dt>
+<dd><p>Delete attribute value from a instance of a thing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>thing</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – thing name</p></li>
+<li><p><strong>key</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – attribute name to identify the instance</p></li>
+<li><p><strong>key_value</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a></span>) – attribute value to identify the instance</p></li>
+<li><p><strong>attr</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – attribute name to be deleted</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a>[<code class="docutils literal notranslate"><span class="pre">True</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.delete_attributes_from_thing">
+<span class="sig-name descname"><span class="pre">delete_attributes_from_thing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">match_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute_str</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'delete_attributes'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_attributes_from_thing" title="Link to this definition"></a></dt>
+<dd><p>Delete attributes from thing individual.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>match_dict</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference internal" href="ros_typedb.typedb_interface.ThingPrefixAttrDict.html#ros_typedb.typedb_interface.ThingPrefixAttrDict" title="ros_typedb.typedb_interface.ThingPrefixAttrDict"><code class="xref py py-class docutils literal notranslate"><span class="pre">ThingPrefixAttrDict</span></code></a>]]</span>) – Dictionary describing the delete operation.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a>[<code class="docutils literal notranslate"><span class="pre">True</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Delete query result.</p>
+</dd>
+<dt class="field-even">Example<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+</dl>
+<p>The following code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">delete_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;p1&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;email&#39;</span><span class="p">:</span> <span class="s1">&#39;test@test.test&#39;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;delete_attributes&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;height&#39;</span><span class="p">,</span> <span class="s1">&#39;age&#39;</span><span class="p">]</span>
+        <span class="p">},</span>
+    <span class="p">],</span>
+<span class="p">},</span>
+
+<span class="bp">self</span><span class="o">.</span><span class="n">delete_attributes_from_thing</span><span class="p">(</span>
+    <span class="n">delete_dict</span><span class="p">,</span> <span class="n">delete_attribute_str</span><span class="o">=</span><span class="s1">&#39;delete_attributes&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Performs the query:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># query
+match $p1 isa person, has email &#39;test@test.test&#39;;
+    $p1 has height $p1_height, has age $p1_age;
+delete $p1 has $p1_height, has $p1_age;
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.delete_data_event">
+<span class="sig-name descname"><span class="pre">delete_data_event</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_data_event" title="Link to this definition"></a></dt>
+<dd><p>Delete data event.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.delete_data_event_">
+<span class="sig-name descname"><span class="pre">delete_data_event_</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_data_event_" title="Link to this definition"></a></dt>
+<dd><p>Generate delete data event.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.delete_database">
+<span class="sig-name descname"><span class="pre">delete_database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">database_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_database" title="Link to this definition"></a></dt>
+<dd><p>Delete database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>database_name</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – database name.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.delete_from_database">
+<span class="sig-name descname"><span class="pre">delete_from_database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_from_database" title="Link to this definition"></a></dt>
+<dd><p>Perform delete query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Query to be performed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a>[<code class="docutils literal notranslate"><span class="pre">True</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Query result, if query fails return None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.delete_thing">
+<span class="sig-name descname"><span class="pre">delete_thing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.delete_thing" title="Link to this definition"></a></dt>
+<dd><p>Delete thing individual in the database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>thing</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – thing name.</p></li>
+<li><p><strong>key</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – attribute name to identify the individual.</p></li>
+<li><p><strong>key_value</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a></span>) – attribute value to identify the individual.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a>[<code class="docutils literal notranslate"><span class="pre">True</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.dict_to_query">
+<span class="sig-name descname"><span class="pre">dict_to_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">things_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute_str</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'attributes'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delete_attribute_str</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'delete-attributes'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.dict_to_query" title="Link to this definition"></a></dt>
+<dd><p>Convert python dict to query.</p>
+<p>Convert python dict that describes how to insert a thing, or how to
+update a thing’s attributes, or how to delete a thing’s attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>things_dict</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference internal" href="ros_typedb.typedb_interface.ThingPrefixAttrDict.html#ros_typedb.typedb_interface.ThingPrefixAttrDict" title="ros_typedb.typedb_interface.ThingPrefixAttrDict"><code class="xref py py-class docutils literal notranslate"><span class="pre">ThingPrefixAttrDict</span></code></a>]]</span>) – Dictionary describing the thing operation.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Converted query.</p>
+</dd>
+<dt class="field-even">Example<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+</dl>
+<ul class="simple">
+<li><p>Adding thing</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">insert_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;p1&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;email&#39;</span><span class="p">:</span> <span class="s1">&#39;test@email.test&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;nickname&#39;</span><span class="p">:</span> <span class="s1">&#39;t&#39;</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;p2&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;email&#39;</span><span class="p">:</span> <span class="s1">&#39;test2@email.test&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;nickname&#39;</span><span class="p">:</span> <span class="s1">&#39;t2&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">1.33</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+    <span class="p">],</span>
+    <span class="s1">&#39;employment&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;e&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;salary&#39;</span><span class="p">:</span> <span class="mi">2333</span><span class="p">,</span>
+                <span class="s1">&#39;role-name&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;boss&#39;</span><span class="p">,</span> <span class="s1">&#39;super boss&#39;</span><span class="p">],</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;relationship&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;employee&#39;</span><span class="p">:</span> <span class="s1">&#39;p1&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;employer&#39;</span><span class="p">:</span> <span class="s1">&#39;p2&#39;</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+
+<span class="n">query</span> <span class="o">=</span> <span class="n">typedb_interface</span><span class="o">.</span><span class="n">dict_to_query</span><span class="p">(</span><span class="n">insert_dict</span><span class="p">)</span>
+<span class="n">insert_result</span> <span class="o">=</span> <span class="n">typedb_interface</span><span class="o">.</span><span class="n">insert_database</span><span class="p">(</span><span class="s2">&quot;insert &quot;</span> <span class="o">+</span> <span class="n">query</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The output of dict_to_query is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$p1  isa person,  has email &#39;test@email.test&#39;;
+$p2  isa person,  has email &#39;test2@email.test&#39;, has height 1.33;
+$e (employee:$p1,employer:$p2) isa employment,  has salary 2333,
+    has role-name &#39;boss&#39;, has role-name &#39;super boss&#39;;
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Insert attribute to thing:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">insert_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;p1&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;email&#39;</span><span class="p">:</span> <span class="s1">&#39;test_person@test.test&#39;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;insert_attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">1.80</span><span class="p">,</span>
+                <span class="s1">&#39;alive&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+    <span class="p">],</span>
+<span class="p">},</span>
+
+<span class="n">match_query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dict_to_query</span><span class="p">(</span><span class="n">insert_dict</span><span class="p">)</span>
+<span class="n">insert_query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dict_to_query</span><span class="p">(</span><span class="n">insert_dict</span><span class="p">,</span> <span class="s1">&#39;insert_attributes&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># match_query
+$p1  isa person,  has email &#39;test_person@test.test&#39;;
+
+# insert_query
+$p1  isa person,  has height 1.8, has alive true;
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Delete attribute from thing:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">delete_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;p1&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;email&#39;</span><span class="p">:</span> <span class="s1">&#39;test@test.test&#39;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;delete_attributes&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;height&#39;</span><span class="p">,</span> <span class="s1">&#39;age&#39;</span><span class="p">]</span>
+        <span class="p">},</span>
+    <span class="p">],</span>
+<span class="p">},</span>
+
+<span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dict_to_query</span><span class="p">(</span>
+    <span class="n">delete_dict</span><span class="p">,</span> <span class="n">delete_attribute_str</span><span class="o">=</span><span class="s1">&#39;delete_attributes&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># query
+$p1 isa person, has email &#39;test@test.test&#39;;
+$p1 has height $p1_height, has age $p1_age;
+delete $p1 has $p1_height, has $p1_age;
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Update attribute from thing:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">update_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;p1&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;email&#39;</span><span class="p">:</span> <span class="s1">&#39;test@test.test&#39;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;update_attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">1.50</span><span class="p">,</span>
+                <span class="s1">&#39;age&#39;</span><span class="p">:</span> <span class="mi">17</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+    <span class="p">],</span>
+<span class="p">},</span>
+
+<span class="n">typedb_interface</span><span class="o">.</span><span class="n">update_attributes_in_thing</span><span class="p">(</span><span class="n">update_dict</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.fetch_attribute_from_thing">
+<span class="sig-name descname"><span class="pre">fetch_attribute_from_thing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_attr_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attr</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.fetch_attribute_from_thing" title="Link to this definition"></a></dt>
+<dd><p>Get attribute value from a instance of a thing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>thing</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – thing name</p></li>
+<li><p><strong>key_attr_list</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a>]]</span>) – list with attribute tuple (name, value)</p></li>
+<li><p><strong>attr</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – attribute name to be fetched, e.g., ‘person-name’</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a>]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List with the attribute values of type attr.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.fetch_attribute_from_thing_raw">
+<span class="sig-name descname"><span class="pre">fetch_attribute_from_thing_raw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_attr_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attr</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.fetch_attribute_from_thing_raw" title="Link to this definition"></a></dt>
+<dd><p>Get raw attribute values from a instance of a thing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>thing</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – thing name</p></li>
+<li><p><strong>key_attr_list</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a>]]</span>) – list with attribute tuple (name, value)</p></li>
+<li><p><strong>attr</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – attribute name to be fetched, e.g., ‘person-name’</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference internal" href="ros_typedb.typedb_interface.MatchResultDict.html#ros_typedb.typedb_interface.MatchResultDict" title="ros_typedb.typedb_interface.MatchResultDict"><code class="xref py py-class docutils literal notranslate"><span class="pre">MatchResultDict</span></code></a>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of dictionary with the query result.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.fetch_database">
+<span class="sig-name descname"><span class="pre">fetch_database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.fetch_database" title="Link to this definition"></a></dt>
+<dd><p>Perform match query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Query to be performed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference internal" href="ros_typedb.typedb_interface.MatchResultDict.html#ros_typedb.typedb_interface.MatchResultDict" title="ros_typedb.typedb_interface.MatchResultDict"><code class="xref py py-class docutils literal notranslate"><span class="pre">MatchResultDict</span></code></a>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Query result, if query fails return None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.get_aggregate_database">
+<span class="sig-name descname"><span class="pre">get_aggregate_database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.get_aggregate_database" title="Link to this definition"></a></dt>
+<dd><p>Perform get aggregate query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Query to be performed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Query result.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.get_database">
+<span class="sig-name descname"><span class="pre">get_database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.get_database" title="Link to this definition"></a></dt>
+<dd><p>Perform get query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Query to be performed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Query result.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.insert_attribute_in_thing">
+<span class="sig-name descname"><span class="pre">insert_attribute_in_thing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attr_value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_attribute_in_thing" title="Link to this definition"></a></dt>
+<dd><p>Insert attribute value in a instance of a thing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>thing</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – thing name</p></li>
+<li><p><strong>key</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – attribute name to identify the instance</p></li>
+<li><p><strong>key_value</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a></span>) – attribute value to identify the instance</p></li>
+<li><p><strong>attr</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – attribute name to be inserted</p></li>
+<li><p><strong>attr_value</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a></span>) – attribute value to be inserted</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">ConceptMap</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Insert query result.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.insert_attributes_in_thing">
+<span class="sig-name descname"><span class="pre">insert_attributes_in_thing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">match_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute_str</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'insert_attributes'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_attributes_in_thing" title="Link to this definition"></a></dt>
+<dd><p>Insert attributes to thing individual.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>match_dict</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference internal" href="ros_typedb.typedb_interface.ThingPrefixAttrDict.html#ros_typedb.typedb_interface.ThingPrefixAttrDict" title="ros_typedb.typedb_interface.ThingPrefixAttrDict"><code class="xref py py-class docutils literal notranslate"><span class="pre">ThingPrefixAttrDict</span></code></a>]]</span>) – Dictionary describing the insert operation.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">ConceptMap</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Insert query result.</p>
+</dd>
+<dt class="field-even">Example<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+</dl>
+<p>The following code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">insert_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;p1&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;email&#39;</span><span class="p">:</span> <span class="s1">&#39;test_person@test.test&#39;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;insert_attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">1.80</span><span class="p">,</span>
+                <span class="s1">&#39;alive&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+    <span class="p">],</span>
+<span class="p">},</span>
+
+<span class="bp">self</span><span class="o">.</span><span class="n">insert_attributes_in_thing</span><span class="p">(</span><span class="n">insert_dict</span><span class="p">,</span> <span class="s1">&#39;insert_attributes&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Performs the following query:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>match $p1 isa person, has email &#39;test_person@test.test&#39;;
+insert $p1 isa person, has height 1.8, has alive true;
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.insert_data_event">
+<span class="sig-name descname"><span class="pre">insert_data_event</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_data_event" title="Link to this definition"></a></dt>
+<dd><p>Insert data event.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.insert_data_event_">
+<span class="sig-name descname"><span class="pre">insert_data_event_</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_data_event_" title="Link to this definition"></a></dt>
+<dd><p>Generate insert data event.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.insert_database">
+<span class="sig-name descname"><span class="pre">insert_database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_database" title="Link to this definition"></a></dt>
+<dd><p>Perform insert query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – Query to be performed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">ConceptMap</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Query result, if query fails return None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.insert_entity">
+<span class="sig-name descname"><span class="pre">insert_entity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_entity" title="Link to this definition"></a></dt>
+<dd><p>Insert entity individual in the database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>entity</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – entity name.</p></li>
+<li><p><strong>attribute_list</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a>]]]</span>) – list with attribute tuple (name, value).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">ConceptMap</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>query result.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.insert_relationship">
+<span class="sig-name descname"><span class="pre">insert_relationship</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relationship</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">related_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.insert_relationship" title="Link to this definition"></a></dt>
+<dd><p>Insert relationship individual in the database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>relationship</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – relationship name.</p></li>
+<li><p><strong>related_dict</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]]</span>) – dictionary with related things.</p></li>
+<li><p><strong>attribute_list</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a>]]]</span>) – list with the relationships attributes.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">ConceptMap</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>query result</p>
+</dd>
+<dt class="field-even">Example<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+</dl>
+<p>The following code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">related_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;employee&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;test@email.test&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;test2@email.test&#39;</span><span class="p">)],</span>
+    <span class="s1">&#39;employer&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;test3@email.test&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;test4@email.test&#39;</span><span class="p">)</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+
+<span class="n">attribute_list</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;salary&#39;</span><span class="p">,</span> <span class="mi">2333</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;role-name&#39;</span><span class="p">,</span> <span class="s1">&#39;boss&#39;</span><span class="p">)]</span>
+
+<span class="bp">self</span><span class="o">.</span><span class="n">insert_relationship</span><span class="p">(</span>
+    <span class="s1">&#39;employment&#39;</span><span class="p">,</span> <span class="n">related_dict</span><span class="p">,</span> <span class="n">attribute_list</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Performs the following query:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># query
+match $employee_0 isa person, has email &#39;test@email.test&#39;;
+      $employee_1 isa person, has email &#39;test2@email.test&#39;;
+      $employer_0 isa person, has email &#39;test3@email.test&#39;;
+      $employer_1 isa person, has email &#39;test4@email.test&#39;;
+insert  $employment (employee:$employee_0, employee:$employee_1,
+        employer:$employer_0,employer:$employer_1) isa employment,
+        has salary 2333 , has role-name &#39;boss&#39;;
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.load_data">
+<span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.load_data" title="Link to this definition"></a></dt>
+<dd><p>Load .tql data file to database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data_path</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – .tql file path.</p></li>
+<li><p><strong>force</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></span>) – if database should be overwritten.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.load_schema">
+<span class="sig-name descname"><span class="pre">load_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.load_schema" title="Link to this definition"></a></dt>
+<dd><p>Load .tql schema file to database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>schema_path</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – .tql file path.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.update_attribute_in_thing">
+<span class="sig-name descname"><span class="pre">update_attribute_in_thing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thing</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attr_value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.update_attribute_in_thing" title="Link to this definition"></a></dt>
+<dd><p>Update attribute value in a instance of a thing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>thing</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – thing name</p></li>
+<li><p><strong>key</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – attribute name to identify the instance</p></li>
+<li><p><strong>key_value</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a></span>) – attribute value to identify the instance</p></li>
+<li><p><strong>attr</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – attribute name to be updated</p></li>
+<li><p><strong>attr_value</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code></a></span>) – attribute value to be inserted</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">ConceptMap</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Insert query result.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.update_attributes_in_thing">
+<span class="sig-name descname"><span class="pre">update_attributes_in_thing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">match_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.update_attributes_in_thing" title="Link to this definition"></a></dt>
+<dd><p>Update attributes of a thing individual.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>match_dict</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference internal" href="ros_typedb.typedb_interface.ThingPrefixAttrDict.html#ros_typedb.typedb_interface.ThingPrefixAttrDict" title="ros_typedb.typedb_interface.ThingPrefixAttrDict"><code class="xref py py-class docutils literal notranslate"><span class="pre">ThingPrefixAttrDict</span></code></a>]]</span>) – Dictionary describing the update operation.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code></a>[<code class="xref py py-class docutils literal notranslate"><span class="pre">ConceptMap</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Insert query result.</p>
+</dd>
+<dt class="field-even">Example<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+</dl>
+<p>The following code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">update_dict</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;person&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;p1&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;email&#39;</span><span class="p">:</span> <span class="s1">&#39;test@test.test&#39;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;update_attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="mf">1.50</span><span class="p">,</span>
+                <span class="s1">&#39;age&#39;</span><span class="p">:</span> <span class="mi">17</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+    <span class="p">],</span>
+<span class="p">},</span>
+
+<span class="n">typedb_interface</span><span class="o">.</span><span class="n">update_attributes_in_thing</span><span class="p">(</span><span class="n">update_dict</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Performs the following two query:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># delete query
+match $p1 isa person, has email &#39;test@test.test&#39;;
+    $p1 has height $p1_height, has age $p1_age;
+delete $p1 has $p1_height, has $p1_age;
+
+# insert query
+match $p1 isa person, has email &#39;test@test.test&#39;;
+insert $p1 isa person, has height 1.50, has age 17;
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.typedb_interface.TypeDBInterface.write_database_file">
+<span class="sig-name descname"><span class="pre">write_database_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.typedb_interface.TypeDBInterface.write_database_file" title="Link to this definition"></a></dt>
+<dd><p>Write .tql schema or data file content to database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>session_type</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">SessionType</span></code></span>) – session type, e.g., schema or data.</p></li>
+<li><p><strong>query_type</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a>[<code class="docutils literal notranslate"><span class="pre">'define'</span></code>, <code class="docutils literal notranslate"><span class="pre">'insert'</span></code>]</span>) – query type, e.g., ‘define’ or ‘insert’.</p></li>
+<li><p><strong>file_path</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – .tql file path.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ros_typedb.typedb_interface.ThingPrefixAttrDict.html" class="btn btn-neutral float-left" title="ThingPrefixAttrDict" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ros_typedb.ros_typedb_interface.html" class="btn btn-neutral float-right" title="ros_typedb.ros_typedb_interface" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Gustavo Rezende.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
