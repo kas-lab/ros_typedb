@@ -144,13 +144,11 @@ class TypeDBInterface:
         self._infer = infer
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
-
         if isinstance(schema_path, str):
             schema_path = string_to_string_array(schema_path)
         if isinstance(schema_path, list):
             for path in schema_path:
                 self.load_schema(path)
-
         if force_data:
             self.delete_all_data()
         if isinstance(data_path, str):
@@ -255,20 +253,14 @@ class TypeDBInterface:
                         return True  # delete always return None
                     return query_answer
                 elif transaction_type == TransactionType.READ:
-                    if query_type == 'fetch':
-                        answer_list = []
-                        for answer in query_answer:
-                            answer_list.append(answer)
-                        return answer_list
-                    elif query_type == 'get':
-                        return list(query_answer)
-                    elif query_type == 'get_aggregate':
+                    if query_type == 'get_aggregate':
                         answer = query_answer.resolve()
                         if answer.is_long():
                             return answer.as_long()
                         if answer.is_float():
                             return answer.as_float()
                         return None
+                    return list(query_answer)
 
     def write_database_file(
             self,

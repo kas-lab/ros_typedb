@@ -78,6 +78,16 @@ def set_query_result_value(
     return _param_value
 
 
+def convert_attribute_dict_to_ros_msg(attr_name:str, attribute_dict: Attribute):
+    _attr = Attribute()
+    _attr.name = attr_name
+    _attr.label = attribute_dict.get('type').get('label')
+    if 'value' in attribute_dict:
+        _attr.value = set_query_result_value(
+            attribute_dict.get('value'),
+            attribute_dict.get('type').get('value_type'))
+    return _attr
+
 def fetch_query_result_to_ros_msg(
     query_result: list[dict[str, MatchResultDict]] | None
 ) -> ros_typedb_msgs.srv.Query.Response:
@@ -88,18 +98,31 @@ def fetch_query_result_to_ros_msg(
     :return: converted query response.
     """
     response = Query.Response()
+
+    if query_result is None:
+        return response
+
     for result in query_result:
         _result = QueryResult()
-        for key, value_dict in result.items():
-            _attr = Attribute()
-            _attr.name = key
-            _attr.label = value_dict.get('type').get('label')
-            if 'value' in value_dict:
-                _attr.value = set_query_result_value(
-                    value_dict.get('value'),
-                    value_dict.get('type').get('value_type'))
-            _result.attributes.append(_attr)
+        for key, result_dict in result.items():
+            # _result.variable_name = key
+
+            result_type_info = result_dict.get('type')
+            # _result.variable_type = result_type_info.get('label')
+            result_type = result_type_info.get('root')
+            if result_type == 'attribute':
+                _result.attributes.append(convert_attribute_dict_to_ros_msg(key, result_dict))
+            else:
+                _result.variable_name = key
+                _result.variable_type = result_type_info.get('label')
+                _result.attributes = [
+                    convert_attribute_dict_to_ros_msg(attr_name, attr_result_dict)
+                    for attr_name, attr_result_list in result_dict.items()
+                    if attr_name != "type"
+                    for attr_result_dict in attr_result_list
+                ]
         response.results.append(_result)
+    response.success = True
     return response
 
 
@@ -113,12 +136,17 @@ def get_query_result_to_ros_msg(
     :return: converted query response.
     """
     response = Query.Response()
+
+    if query_result is None:
+        return response
+
     for result in query_result:
         _result = QueryResult()
         _variables = result.variables()
         for variable in _variables:
-            if result.get(variable).is_attribute():
-                _typedb_attr = result.get(variable).as_attribute()
+            variable_value = result.get(variable)
+            if variable_value.is_attribute():
+                _typedb_attr = variable_value.as_attribute()
                 _attr = Attribute()
                 _attr.name = variable
                 _attr.label = _typedb_attr.get_type().get_label().name
@@ -127,6 +155,7 @@ def get_query_result_to_ros_msg(
                     str(_typedb_attr.get_type().get_value_type()))
                 _result.attributes.append(_attr)
         response.results.append(_result)
+    response.success = True
     return response
 
 
@@ -271,7 +300,7 @@ class ROSTypeDBInterface(Node):
             self.query_service_cb,
             callback_group=self.query_cb_group)
 
-        self.get_logger().info(self.get_name() + ' :on_configure() completed.')
+        self.get_logger().info(self.get_name() + ':on_configure() completed.')
         return TransitionCallbackReturn.SUCCESS
 
     def on_cleanup(self, state: State) -> TransitionCallbackReturn:
