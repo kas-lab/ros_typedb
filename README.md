@@ -10,13 +10,13 @@ This package provides a first generic integration between ROS and [typeDB](https
 
 ### From within the student's Singularity image
 
-Since the package and the dependencies are already pre-installed, you may go to the root folder of this pacakge in your image and run `git pull` followed by `git checkout coure_krr`, which will provide you with the latest examples for getting started with TypeDB in your ROS2 system.
+Since the package and the dependencies are already pre-installed, you may go to the root folder of this pacakge in your image and run `git pull` followed by `git checkout course_krr`, which will provide you with the latest examples for getting started with TypeDB in your ROS2 system.
 
 Then build the project:
 ```Bash
-cd ~/ros_typedb_ws/
-colcon build --symlink-install
-source install/setup.bash
+> cd ~/krr_ws/
+> colcon build --symlink-install
+> source install/setup.bash
 ```
 
 ### From scratch
