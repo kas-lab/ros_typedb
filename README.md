@@ -14,9 +14,9 @@ Since the package and the dependencies are already pre-installed, you may go to 
 
 Then build the project:
 ```Bash
-> cd ~/krr_ws/
-> colcon build --symlink-install
-> source install/setup.bash
+cd ~/krr_ws/
+colcon build --symlink-install
+source install/setup.bash
 ```
 
 ### From scratch
