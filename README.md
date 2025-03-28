@@ -62,6 +62,8 @@ source install/setup.bash
 
 ## Using the package
 
+**NOTE: It is assumed that the TypeDB server is already running**
+
 #### Package elements
 
 The package contains 2 functional nodes and 1 interface node:
