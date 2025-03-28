@@ -279,8 +279,6 @@ class ROSTypeDBInterface(Node):
         """
         self.get_logger().info(self.get_name() + ': on_configure() is called.')
 
-        self.get_logger().info(f"schema: {self.get_parameter('schema_path').value} and data: {self.get_parameter('data_path').value}")
-
         self.init_typedb_interface(
             address=self.get_parameter('address').value,
             database_name=self.get_parameter('database_name').value,
@@ -290,6 +288,11 @@ class ROSTypeDBInterface(Node):
             force_data=self.get_parameter('force_data').value,
             infer=self.get_parameter('infer').value
         )
+
+        if self.get_parameter('force_database').value:
+            self.get_logger().info(f"loaded the schema and the data into the database")
+        if self.get_parameter('force_data').value:
+            self.get_logger().info(f"kept the scheme while updated the data into the database")
 
         self.event_pub = self.create_lifecycle_publisher(
             String,
