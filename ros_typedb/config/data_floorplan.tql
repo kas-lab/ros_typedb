@@ -1,0 +1,386 @@
+# Copyright
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+insert
+
+##################################################
+################ Assumptions #####################
+##################################################
+# - existance
+$exist_true 1.0 isa exists;
+$not_exist_true 1.0 isa not_exists;
+$exist_false 1.0 isa exists;
+$not_exist_false 1.0 isa not_exists;
+
+###################################################
+########## General distance and heights ###########
+###################################################
+$050_height isa height, has meter 0.5;
+$075_height isa height, has meter 0.75;
+$100_height isa height, has meter 1.0;
+$150_height isa height, has meter 1.5;
+$200_height isa height, has meter 2.0;
+$250_height isa height, has meter 2.5;
+$300_height isa height, has meter 3.0;
+
+$050_distance isa approaching_distance, has meter 0.5;
+$075_distance isa approaching_distance, has meter 0.75;
+$100_distance isa approaching_distance, has meter 1.0;
+$150_distance isa approaching_distance, has meter 1.5;
+$200_distance isa approaching_distance, has meter 2.0;
+$250_distance isa approaching_distance, has meter 2.5;
+$300_distance isa approaching_distance, has meter 3.0;
+###################################################
+############## Generated geometry #################
+###################################################
+$global_origin isa global_origin;
+
+###################################################
+############## Demo 'building' ####################
+###################################################
+# create the actual building
+$demo_building isa building, has name "Demo building";
+# create the building as a spatial composition of rooms
+(structure: $demo_building, volume: $living, volume: $hall, volume: $kitchen, volume: $bedroom) isa spatially_composing;
+
+###################################################
+################## living #########################
+###################################################
+
+####### Definition of the topology of the room room
+# create the room itself
+$living isa room, has name "living";
+# create the origin of room (not necesary, but then all points of the room-polygon should be positioned wrt the global origin
+$origin_living isa local_origin;
+(from: $global_origin, to: $origin_living) isa positioning, has lin_x 0.0, has lin_y 0.0, has lin_z 0.0;
+# create all walls and doors unique for this space (or room)
+$living_south_wall isa wall, has name "wall_living_south";
+$living_east_wall isa wall, has name "wall_living_east";
+# create all walls and doors shared with other spaces (or rooms), and that not have been defined earlier in this code
+$living_bedroom_wall_1 isa wall, has name "wall_1_bedroom_living";
+$living_bedroom_door isa door, has name "door_bedroom_to_living";
+$living_bedroom_wall_2 isa wall, has name "wall_2_bedroom_living";
+$living_hall_wall_1 isa wall, has name "wall_1_hall_living";
+$living_hall_door isa door, has name "door_hall_to_living";
+$living_hall_wall_2 isa wall, has name "wall_2_hall_living";
+$living_kitchen_wall isa wall, has name "wall_kitchen_living";
+# create the composition of room, i.e., physically_composing-relation
+(composition: $living, partition: $living_bedroom_wall_1, partition: $living_bedroom_door, partition: $living_bedroom_wall_2, partition: $living_hall_wall_1, partition: $living_hall_door, partition: $living_hall_wall_2, partition: $living_kitchen_wall, partition: $living_south_wall, partition: $living_east_wall) isa physically_composing;
+# create a possible route in case a door is connecting 2 rooms, i.e., route-relation
+#(origin: $living, destination: $hall, passage: $living_hall_door) isa route;
+#(origin: $living, destination: $bedroom, passage: $living_bedroom_door) isa route;
+
+########################## Polygon of room -> Lines
+# Define the polygon
+$polygon_living isa polygon, has name "polygon_of_living";
+# create the model that the polygon in math represents a room in the real world, i.e., enclosing-relation
+(enclosed: $living, border: $polygon_living) isa enclosing;
+# create all the vectors present in the polygon
+$vec_living_1 isa vector;
+$vec_living_2 isa vector;
+$vec_living_3 isa vector;
+$vec_living_4 isa vector;
+$vec_living_5 isa vector;
+$vec_living_6 isa vector;
+$vec_living_7 isa vector;
+$vec_living_8 isa vector;
+$vec_living_9 isa vector;
+# create the model that each vector in math represents a structural part of the room in the real world, i.e., taking_form-relation 
+(concept: $vec_living_1, form: $living_kitchen_wall) isa taking_form;
+(concept: $vec_living_2, form: $living_hall_wall_2) isa taking_form;
+(concept: $vec_living_3, form: $living_hall_door) isa taking_form;
+(concept: $vec_living_4, form: $living_hall_wall_1) isa taking_form;
+(concept: $vec_living_5, form: $living_bedroom_wall_1) isa taking_form;
+(concept: $vec_living_6, form: $living_bedroom_door) isa taking_form;
+(concept: $vec_living_7, form: $living_bedroom_wall_2) isa taking_form;
+(concept: $vec_living_8, form: $living_east_wall) isa taking_form;
+(concept: $vec_living_9, form: $living_south_wall) isa taking_form;
+# define the polygon as a set of vectors, i.e., set-relation 
+(hull: $polygon_living, element: $vec_living_1, element: $vec_living_2, element: $vec_living_3, element: $vec_living_4, element: $vec_living_5, element: $vec_living_6, element: $vec_living_7, element: $vec_living_8, element: $vec_living_9) isa set;
+# create the points of the polygon and model their actual position wrt local or global origin
+$point_living_1 isa point;
+(from: $origin_living, to: $point_living_1) isa positioning, has lin_x 0.0, has lin_y 0.0, has lin_z 0.0;
+$point_living_2 isa point;
+(from: $origin_living, to: $point_living_2) isa positioning, has lin_x 0.0, has lin_y 4.0, has lin_z 0.0;
+$point_living_3 isa point;
+(from: $origin_living, to: $point_living_3) isa positioning, has lin_x 0.0, has lin_y 5.1, has lin_z 0.0;
+$point_living_4 isa point;
+(from: $origin_living, to: $point_living_4) isa positioning, has lin_x 0.0, has lin_y 5.9, has lin_z 0.0;
+$point_living_5 isa point;
+(from: $origin_living, to: $point_living_5) isa positioning, has lin_x 0.0, has lin_y 7.0, has lin_z 0.0;
+$point_living_6 isa point;
+(from: $origin_living, to: $point_living_6) isa positioning, has lin_x 1.1, has lin_y 7.0, has lin_z 0.0;
+$point_living_7 isa point;
+(from: $origin_living, to: $point_living_7) isa positioning, has lin_x 1.9, has lin_y 7.0, has lin_z 0.0;
+$point_living_8 isa point;
+(from: $origin_living, to: $point_living_8) isa positioning, has lin_x 3.0, has lin_y 7.0, has lin_z 0.0;
+$point_living_9 isa point;
+(from: $origin_living, to: $point_living_9) isa positioning, has lin_x 3.0, has lin_y 0.0, has lin_z 0.0;
+# define each vector as a link between two points, i.e., directed_link-relation
+(start: $point_living_1, end: $point_living_2, line_segment: $vec_living_1) isa directed_link;
+(start: $point_living_2, end: $point_living_3, line_segment: $vec_living_2) isa directed_link;
+(start: $point_living_3, end: $point_living_4, line_segment: $vec_living_3) isa directed_link;
+(start: $point_living_4, end: $point_living_5, line_segment: $vec_living_4) isa directed_link;
+(start: $point_living_5, end: $point_living_6, line_segment: $vec_living_5) isa directed_link;
+(start: $point_living_6, end: $point_living_7, line_segment: $vec_living_6) isa directed_link;
+(start: $point_living_7, end: $point_living_8, line_segment: $vec_living_7) isa directed_link;
+(start: $point_living_8, end: $point_living_9, line_segment: $vec_living_8) isa directed_link;
+(start: $point_living_9, end: $point_living_1, line_segment: $vec_living_9) isa directed_link;
+
+###################################################
+################## kitchen ########################
+###################################################
+
+####### Definition of the topology of the room room
+# create the room itself
+$kitchen isa room, has name "kitchen";
+# create the origin of room (not necesary, but then all points of the room-polygon should be positioned wrt the global origin
+$origin_kitchen isa local_origin;
+(from: $global_origin, to: $origin_kitchen) isa positioning, has lin_x -3.0, has lin_y 0.0, has lin_z 0.0;
+# create all walls and doors unique for this space (or room)
+$kitchen_south_wall isa wall, has name "wall_kitchen_south";
+$kitchen_west_wall isa wall, has name "wall_kitchen_east";
+# create all walls and doors shared with other spaces (or rooms), and that not have been defined earlier in this code
+$kitchen_hall_wall_1 isa wall, has name "wall_1_kitchen_hall";
+$kitchen_hall_door isa door, has name "door_hall_to_kitchen";
+$kitchen_hall_wall_2 isa wall, has name "wall_2_kitchen_hall";
+# create the composition of room, i.e., physically_composing-relation
+(composition: $kitchen, partition: $kitchen_south_wall, partition: $kitchen_west_wall, partition: $kitchen_hall_wall_1, partition: $kitchen_hall_wall_2, partition: $kitchen_hall_door, partition: $living_kitchen_wall) isa physically_composing;
+# create a possible route in case a door is connecting 2 rooms, i.e., route-relation
+#(origin: $kitchen, destination: $hall, passage: $kitchen_hall_door) isa route;
+
+########################## Polygon of room -> Lines
+# Define the polygon
+$polygon_kitchen isa polygon, has name "polygon_of_kitchen";
+# create the model that the polygon in math represents a room in the real world, i.e., enclosing-relation
+(enclosed: $kitchen, border: $polygon_kitchen) isa enclosing;
+# create all the vectors present in the polygon
+$vec_kitchen_1 isa vector;
+$vec_kitchen_2 isa vector;
+$vec_kitchen_3 isa vector;
+$vec_kitchen_4 isa vector;
+$vec_kitchen_5 isa vector;
+$vec_kitchen_6 isa vector;
+# create the model that each vector in math represents a structural part of the room in the real world, i.e., taking_form-relation 
+(concept: $vec_kitchen_1, form: $kitchen_west_wall) isa taking_form;
+(concept: $vec_kitchen_2, form: $kitchen_hall_wall_1) isa taking_form;
+(concept: $vec_kitchen_3, form: $kitchen_hall_door) isa taking_form;
+(concept: $vec_kitchen_4, form: $kitchen_hall_wall_2) isa taking_form;
+(concept: $vec_kitchen_5, form: $living_kitchen_wall) isa taking_form;
+(concept: $vec_kitchen_6, form: $kitchen_south_wall) isa taking_form;
+# define the polygon as a set of vectors, i.e., set-relation 
+(hull: $polygon_kitchen, element: $vec_kitchen_1, element: $vec_kitchen_2, element: $vec_kitchen_3, element: $vec_kitchen_4, element: $vec_kitchen_5, element: $vec_kitchen_6) isa set;
+# create the points of the polygon and model their actual position wrt local or global origin
+$point_kitchen_1 isa point;
+(from: $origin_kitchen, to: $point_kitchen_1) isa positioning, has lin_x 0.0, has lin_y 0.0, has lin_z 0.0;
+$point_kitchen_2 isa point;
+(from: $origin_kitchen, to: $point_kitchen_2) isa positioning, has lin_x 0.0, has lin_y 4.0, has lin_z 0.0;
+$point_kitchen_3 isa point;
+(from: $origin_kitchen, to: $point_kitchen_3) isa positioning, has lin_x 1.1, has lin_y 4.0, has lin_z 0.0;
+$point_kitchen_4 isa point;
+(from: $origin_kitchen, to: $point_kitchen_4) isa positioning, has lin_x 1.9, has lin_y 4.0, has lin_z 0.0;
+$point_kitchen_5 isa point;
+(from: $origin_kitchen, to: $point_kitchen_5) isa positioning, has lin_x 3.0, has lin_y 4.0, has lin_z 0.0;
+$point_kitchen_6 isa point;
+(from: $origin_kitchen, to: $point_kitchen_6) isa positioning, has lin_x 3.0, has lin_y 0.0, has lin_z 0.0;
+# define each vector as a link between two points, i.e., directed_link-relation
+(start: $point_kitchen_1, end: $point_kitchen_2, line_segment: $vec_kitchen_1) isa directed_link;
+(start: $point_kitchen_2, end: $point_kitchen_3, line_segment: $vec_kitchen_2) isa directed_link;
+(start: $point_kitchen_3, end: $point_kitchen_4, line_segment: $vec_kitchen_3) isa directed_link;
+(start: $point_kitchen_4, end: $point_kitchen_5, line_segment: $vec_kitchen_4) isa directed_link;
+(start: $point_kitchen_5, end: $point_kitchen_6, line_segment: $vec_kitchen_5) isa directed_link;
+(start: $point_kitchen_6, end: $point_kitchen_1, line_segment: $vec_kitchen_6) isa directed_link;
+
+
+###################################################
+################## bedroom ########################
+###################################################
+
+####### Definition of the topology of the room room
+# create the room itself
+$bedroom isa room, has name "bedroom";
+# create the origin of room (not necesary, but then all points of the room-polygon should be positioned wrt the global origin
+$origin_bedroom isa local_origin;
+(from: $global_origin, to: $origin_bedroom) isa positioning, has lin_x -3.0, has lin_y 7.0, has lin_z 0.0;
+# create all walls and doors unique for this space (or room)
+$bedroom_west_wall isa wall, has name "wall_bedroom_south";
+$bedroom_north_wall isa wall, has name "wall_bedroom_north";
+$bedroom_east_wall isa wall, has name "wall_bedroom_east";
+# create all walls and doors shared with other spaces (or rooms), and that not have been defined earlier in this code
+$bedroom_hall_wall_1 isa wall, has name "wall_1_bedroom_hall";
+$bedroom_hall_door isa door, has name "door_hall_to_bedroom";
+$bedroom_hall_wall_2 isa wall, has name "wall_2_hall_bedroom";
+# create the composition of room, i.e., physically_composing-relation
+(composition: $bedroom, partition: $living_bedroom_wall_1, partition: $living_bedroom_door, partition: $living_bedroom_wall_2, partition: $bedroom_hall_wall_1, partition: $bedroom_hall_door, partition: $bedroom_hall_wall_2, partition: $bedroom_west_wall, partition: $bedroom_north_wall, partition: $bedroom_east_wall) isa physically_composing;
+# create a possible route in case a door is connecting 2 rooms, i.e., route-relation
+#(origin: $bedroom, destination: $hall, passage: $bedroom_hall_door) isa route;
+#(origin: $bedroom, destination: $living, passage: $living_bedroom_door) isa route;
+
+########################## Polygon of room -> Lines
+# Define the polygon
+$polygon_bedroom isa polygon, has name "polygon_of_bedroom";
+# create the model that the polygon in math represents a room in the real world, i.e., enclosing-relation
+(enclosed: $bedroom, border: $polygon_bedroom) isa enclosing;
+# create all the vectors present in the polygon
+$vec_bedroom_1 isa vector;
+$vec_bedroom_2 isa vector;
+$vec_bedroom_3 isa vector;
+$vec_bedroom_4 isa vector;
+$vec_bedroom_5 isa vector;
+$vec_bedroom_6 isa vector;
+$vec_bedroom_7 isa vector;
+$vec_bedroom_8 isa vector;
+$vec_bedroom_9 isa vector;
+# create the model that each vector in math represents a structural part of the room in the real world, i.e., taking_form-relation 
+(concept: $vec_bedroom_1, form: $bedroom_west_wall) isa taking_form;
+(concept: $vec_bedroom_2, form: $bedroom_north_wall) isa taking_form;
+(concept: $vec_bedroom_3, form: $bedroom_east_wall) isa taking_form;
+(concept: $vec_bedroom_4, form: $living_bedroom_wall_2) isa taking_form;
+(concept: $vec_bedroom_5, form: $living_bedroom_door) isa taking_form;
+(concept: $vec_bedroom_6, form: $living_bedroom_wall_1) isa taking_form;
+(concept: $vec_bedroom_7, form: $bedroom_hall_wall_2) isa taking_form;
+(concept: $vec_bedroom_8, form: $bedroom_hall_door) isa taking_form;
+(concept: $vec_bedroom_9, form: $bedroom_hall_wall_1) isa taking_form;
+# define the polygon as a set of vectors, i.e., set-relation 
+(hull: $polygon_bedroom, element: $vec_bedroom_1, element: $vec_bedroom_2, element: $vec_bedroom_3, element: $vec_bedroom_4, element: $vec_bedroom_5, element: $vec_bedroom_6, element: $vec_bedroom_7, element: $vec_bedroom_8, element: $vec_bedroom_9) isa set;
+# create the points of the polygon and model their actual position wrt local or global origin
+$point_bedroom_1 isa point;
+(from: $origin_bedroom, to: $point_bedroom_1) isa positioning, has lin_x 0.0, has lin_y 0.0, has lin_z 0.0;
+$point_bedroom_2 isa point;
+(from: $origin_bedroom, to: $point_bedroom_2) isa positioning, has lin_x 0.0, has lin_y 3.0, has lin_z 0.0;
+$point_bedroom_3 isa point;
+(from: $origin_bedroom, to: $point_bedroom_3) isa positioning, has lin_x 6.0, has lin_y 3.0, has lin_z 0.0;
+$point_bedroom_4 isa point;
+(from: $origin_bedroom, to: $point_bedroom_4) isa positioning, has lin_x 6.0, has lin_y 0.0, has lin_z 0.0;
+$point_bedroom_5 isa point;
+(from: $origin_bedroom, to: $point_bedroom_5) isa positioning, has lin_x 4.9, has lin_y 0.0, has lin_z 0.0;
+$point_bedroom_6 isa point;
+(from: $origin_bedroom, to: $point_bedroom_6) isa positioning, has lin_x 4.1, has lin_y 0.0, has lin_z 0.0;
+$point_bedroom_7 isa point;
+(from: $origin_bedroom, to: $point_bedroom_7) isa positioning, has lin_x 3.0, has lin_y 0.0, has lin_z 0.0;
+$point_bedroom_8 isa point;
+(from: $origin_bedroom, to: $point_bedroom_8) isa positioning, has lin_x 1.9, has lin_y 0.0, has lin_z 0.0;
+$point_bedroom_9 isa point;
+(from: $origin_bedroom, to: $point_bedroom_9) isa positioning, has lin_x 1.1, has lin_y 0.0, has lin_z 0.0;
+# define each vector as a link between two points, i.e., directed_link-relation
+(start: $point_bedroom_1, end: $point_bedroom_2, line_segment: $vec_bedroom_1) isa directed_link;
+(start: $point_bedroom_2, end: $point_bedroom_3, line_segment: $vec_bedroom_2) isa directed_link;
+(start: $point_bedroom_3, end: $point_bedroom_4, line_segment: $vec_bedroom_3) isa directed_link;
+(start: $point_bedroom_4, end: $point_bedroom_5, line_segment: $vec_bedroom_4) isa directed_link;
+(start: $point_bedroom_5, end: $point_bedroom_6, line_segment: $vec_bedroom_5) isa directed_link;
+(start: $point_bedroom_6, end: $point_bedroom_7, line_segment: $vec_bedroom_6) isa directed_link;
+(start: $point_bedroom_7, end: $point_bedroom_8, line_segment: $vec_bedroom_7) isa directed_link;
+(start: $point_bedroom_8, end: $point_bedroom_9, line_segment: $vec_bedroom_8) isa directed_link;
+(start: $point_bedroom_9, end: $point_bedroom_1, line_segment: $vec_bedroom_9) isa directed_link;
+
+
+###################################################
+################## hallway ########################
+###################################################
+
+####### Definition of the topology of the room room
+# create the room itself
+$hall isa room, has name "hallway";
+# create the origin of room (not necesary, but then all points of the room-polygon should be positioned wrt the global origin
+$origin_hall isa local_origin;
+(from: $global_origin, to: $origin_hall) isa positioning, has lin_x -3.0, has lin_y 4.0, has lin_z 0.0;
+# create all walls and doors unique for this space (or room)
+$hall_west_wall_1 isa wall, has name "wall_hall_west_1";
+$frontdoor isa wall, has name "front_door";
+$hall_west_wall_2 isa wall, has name "wall_hall_west_2";
+# create all walls and doors shared with other spaces (or rooms), and that not have been defined earlier in this code
+
+# create the composition of room, i.e., physically_composing-relation
+(composition: $hall, partition: $living_hall_wall_1, partition: $living_hall_door, partition: $living_hall_wall_2, partition: $bedroom_hall_wall_1, partition: $bedroom_hall_door, partition: $bedroom_hall_wall_2, partition: $kitchen_hall_wall_1, partition: $kitchen_hall_door, partition: $kitchen_hall_wall_2, partition: $hall_west_wall_1, partition: $hall_west_wall_2, partition: $frontdoor) isa physically_composing;
+# create a possible route in case a door is connecting 2 rooms, i.e., route-relation
+#(origin: $hall, destination: $living, passage: $living_hall_door) isa route;
+#(origin: $hall, destination: $bedroom, passage: $bedroom_hall_door) isa route;
+#(origin: $hall, destination: $kitchen, passage: $kitchen_hall_door) isa route;
+
+########################## Polygon of room -> Lines
+# Define the polygon
+$polygon_hall isa polygon, has name "polygon_of_hall";
+# create the model that the polygon in math represents a room in the real world, i.e., enclosing-relation
+(enclosed: $hall, border: $polygon_hall) isa enclosing;
+# create all the vectors present in the polygon
+$vec_hall_1 isa vector;
+$vec_hall_2 isa vector;
+$vec_hall_3 isa vector;
+$vec_hall_4 isa vector;
+$vec_hall_5 isa vector;
+$vec_hall_6 isa vector;
+$vec_hall_7 isa vector;
+$vec_hall_8 isa vector;
+$vec_hall_9 isa vector;
+$vec_hall_10 isa vector;
+$vec_hall_11 isa vector;
+$vec_hall_12 isa vector;
+# create the model that each vector in math represents a structural part of the room in the real world, i.e., taking_form-relation 
+(concept: $vec_hall_1, form: $hall_west_wall_1) isa taking_form;
+(concept: $vec_hall_2, form: $frontdoor) isa taking_form;
+(concept: $vec_hall_3, form: $hall_west_wall_2) isa taking_form;
+(concept: $vec_hall_4, form: $bedroom_hall_wall_1) isa taking_form;
+(concept: $vec_hall_5, form: $bedroom_hall_door) isa taking_form;
+(concept: $vec_hall_6, form: $bedroom_hall_wall_2) isa taking_form;
+(concept: $vec_hall_7, form: $living_hall_wall_1) isa taking_form;
+(concept: $vec_hall_8, form: $living_hall_door) isa taking_form;
+(concept: $vec_hall_9, form: $living_hall_wall_2) isa taking_form;
+(concept: $vec_hall_10, form: $kitchen_hall_wall_2) isa taking_form;
+(concept: $vec_hall_11, form: $kitchen_hall_door) isa taking_form;
+(concept: $vec_hall_12, form: $kitchen_hall_wall_1) isa taking_form;
+# define the polygon as a set of vectors, i.e., set-relation 
+(hull: $polygon_hall, element: $vec_hall_1, element: $vec_hall_2, element: $vec_hall_3, element: $vec_hall_4, element: $vec_hall_5, element: $vec_hall_6, element: $vec_hall_7, element: $vec_hall_8, element: $vec_hall_9, element: $vec_hall_10, element: $vec_hall_11, element: $vec_hall_12) isa set;
+# create the points of the polygon and model their actual position wrt local or global origin
+$point_hall_1 isa point;
+(from: $origin_hall, to: $point_hall_1) isa positioning, has lin_x 0.0, has lin_y 0.0, has lin_z 0.0;
+$point_hall_2 isa point;
+(from: $origin_hall, to: $point_hall_2) isa positioning, has lin_x 0.0, has lin_y 4.0, has lin_z 0.0;
+$point_hall_3 isa point;
+(from: $origin_hall, to: $point_hall_3) isa positioning, has lin_x 0.0, has lin_y 5.1, has lin_z 0.0;
+$point_hall_4 isa point;
+(from: $origin_hall, to: $point_hall_4) isa positioning, has lin_x 0.0, has lin_y 5.9, has lin_z 0.0;
+$point_hall_5 isa point;
+(from: $origin_hall, to: $point_hall_5) isa positioning, has lin_x 0.0, has lin_y 7.0, has lin_z 0.0;
+$point_hall_6 isa point;
+(from: $origin_hall, to: $point_hall_6) isa positioning, has lin_x 1.1, has lin_y 7.0, has lin_z 0.0;
+$point_hall_7 isa point;
+(from: $origin_hall, to: $point_hall_7) isa positioning, has lin_x 1.9, has lin_y 7.0, has lin_z 0.0;
+$point_hall_8 isa point;
+(from: $origin_hall, to: $point_hall_8) isa positioning, has lin_x 3.0, has lin_y 7.0, has lin_z 0.0;
+$point_hall_9 isa point;
+(from: $origin_hall, to: $point_hall_9) isa positioning, has lin_x 3.0, has lin_y 0.0, has lin_z 0.0;
+$point_hall_10 isa point;
+(from: $origin_hall, to: $point_hall_10) isa positioning, has lin_x 3.0, has lin_y 0.0, has lin_z 0.0;
+$point_hall_11 isa point;
+(from: $origin_hall, to: $point_hall_11) isa positioning, has lin_x 3.0, has lin_y 0.0, has lin_z 0.0;
+$point_hall_12 isa point;
+(from: $origin_hall, to: $point_hall_12) isa positioning, has lin_x 3.0, has lin_y 0.0, has lin_z 0.0;
+# define each vector as a link between two points, i.e., directed_link-relation
+(start: $point_hall_1, end: $point_hall_2, line_segment: $vec_hall_1) isa directed_link;
+(start: $point_hall_2, end: $point_hall_3, line_segment: $vec_hall_2) isa directed_link;
+(start: $point_hall_3, end: $point_hall_4, line_segment: $vec_hall_3) isa directed_link;
+(start: $point_hall_4, end: $point_hall_5, line_segment: $vec_hall_4) isa directed_link;
+(start: $point_hall_5, end: $point_hall_6, line_segment: $vec_hall_5) isa directed_link;
+(start: $point_hall_6, end: $point_hall_7, line_segment: $vec_hall_6) isa directed_link;
+(start: $point_hall_7, end: $point_hall_8, line_segment: $vec_hall_7) isa directed_link;
+(start: $point_hall_8, end: $point_hall_9, line_segment: $vec_hall_8) isa directed_link;
+(start: $point_hall_9, end: $point_hall_10, line_segment: $vec_hall_9) isa directed_link;
+(start: $point_hall_10, end: $point_hall_11, line_segment: $vec_hall_10) isa directed_link;
+(start: $point_hall_11, end: $point_hall_12, line_segment: $vec_hall_11) isa directed_link;
+(start: $point_hall_12, end: $point_hall_1, line_segment: $vec_hall_12) isa directed_link;
+
+
+###############################################
+################### DONE ######################
+###############################################

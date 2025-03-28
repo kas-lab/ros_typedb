@@ -241,6 +241,7 @@ class ROSTypeDBInterface(Node):
         :param force_data: if the database data should be overriden.
         :param infer: if inference engine should be used.
         """
+
         self.typedb_interface = self.typedb_interface_class(
             address,
             database_name,
@@ -277,6 +278,8 @@ class ROSTypeDBInterface(Node):
         :return: transition result
         """
         self.get_logger().info(self.get_name() + ': on_configure() is called.')
+
+        self.get_logger().info(f"schema: {self.get_parameter('schema_path').value} and data: {self.get_parameter('data_path').value}")
 
         self.init_typedb_interface(
             address=self.get_parameter('address').value,

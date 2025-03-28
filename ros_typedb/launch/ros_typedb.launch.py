@@ -20,7 +20,8 @@ from launch.actions import DeclareLaunchArgument
 from launch.actions import EmitEvent
 from launch.actions import RegisterEventHandler
 from launch.events import matches_action
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 from launch_ros.actions import LifecycleNode
 from launch_ros.events.lifecycle import ChangeState
@@ -41,13 +42,13 @@ def generate_launch_description():
 
     schema_path_arg = DeclareLaunchArgument(
         'schema_path',
-        default_value="['']",
+        default_value=f"[{pkg_ros_typedb}/config/schema_floorplan.tql]", #"['config/schema_floorplan.tql']",
         description='path for KB schema'
     )
 
     data_path_arg = DeclareLaunchArgument(
         'data_path',
-        default_value="['']",
+        default_value=f"[{pkg_ros_typedb}/config/data_floorplan_topology.tql]", #"['config/data_floorplan.tql']",
         description='path for KB data'
     )
 
@@ -65,13 +66,13 @@ def generate_launch_description():
 
     force_data_arg = DeclareLaunchArgument(
         'force_data',
-        default_value='False',
+        default_value='True',
         description='force data'
     )
 
     force_database_arg = DeclareLaunchArgument(
         'force_database',
-        default_value='False',
+        default_value='True',
         description='force database'
     )
 

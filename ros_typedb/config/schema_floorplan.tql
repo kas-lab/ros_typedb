@@ -1,0 +1,228 @@
+# Copyright
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+define
+
+id sub attribute, value long;
+
+name sub attribute, value string;
+
+existance sub attribute, abstract, value double;
+    exists sub existance;
+    not_exists sub existance;
+
+time_date sub attribute, value datetime;
+
+quantifiable_attribute sub attribute, abstract, value double;
+    continuous sub quantifiable_attribute, abstract;
+        unit sub continuous, abstract;
+            meter sub unit;
+            second sub unit;
+            meter_per_second sub unit;
+        carthesian sub continuous, abstract;
+            lin_x sub carthesian;
+            lin_y sub carthesian;
+            lin_z sub carthesian;
+        euler sub continuous, abstract;
+            rot_x sub euler;
+            rot_y sub euler;
+            rot_z sub euler;
+
+categorical_attribute sub attribute, abstract, value string; 
+    color_name sub categorical_attribute, regex "^(red|orange|yellow|green|blue|purple|pink)$";
+    
+    accessibility sub categorical_attribute, regex "^(open|close)$";
+
+open sub attribute, value boolean;
+
+
+#############################################
+################# entities ##################
+#############################################
+
+# physical concepts
+physical_entity sub entity,
+    owns exists, owns not_exists, owns name, owns id,
+    plays featuring:subject;
+
+    ## beings
+    being sub physical_entity,
+        plays locating:subject,
+        plays taking_form:form;
+        living_being sub being;
+            animal sub living_being;
+            human sub living_being;
+            plant sub living_being;
+        artificial_being sub being;
+            robot sub artificial_being;
+
+    ## spaces
+    space sub physical_entity,
+        plays locating:location;
+        closed_space sub space,
+            plays enclosing:enclosed,
+            plays surrounding:surrounded,
+            plays physically_composing:composition;
+            room sub closed_space, 
+            plays spatially_composing:volume,
+            plays route:origin,
+            plays route:destination;
+        open_space sub space;
+
+    ## artifact
+    artifact sub physical_entity,
+        plays locating:subject;
+        ### stationary artifacts, i.e., not moveable
+        stationary_artifact sub artifact;
+            #### constructions
+            construction sub stationary_artifact,
+                plays spatially_composing:structure;
+                building sub construction;     
+            #### structural parts
+            structural_part sub stationary_artifact, 
+                plays physically_composing:partition,
+                plays taking_form:form;
+                window sub structural_part;
+                slab sub structural_part; 
+                wall sub structural_part;
+                    fence sub wall;
+                    brick_wall sub wall;
+                portal sub structural_part,
+                    owns accessibility, owns open,
+                    plays route:passage;
+                    door sub portal;
+                    gate sub portal;
+                    stairs sub portal;                        
+        ### constituent artifact, i.e., moveable
+        constituent_artifact sub artifact;        
+            furniture sub constituent_artifact;
+            toys sub constituent_artifact;
+
+# abstract concepts
+abstract_entity sub entity,
+    owns name, owns id;
+
+    ## mathematical
+    mathematical sub abstract_entity;
+        ### shapes
+        shape sub mathematical, 
+            plays taking_form:concept, 
+            plays enclosing:border, 
+            plays surrounding:surrounded,
+            plays set:hull;
+            polyhedron sub shape;
+                cylinder sub polyhedron;
+                ball sub polyhedron;
+                box sub polyhedron;
+            polygon sub shape;
+                circle sub polygon;
+                rectangle sub polygon;
+                square sub polygon;
+        ### lines
+        line sub mathematical,
+            plays set:element,
+            plays link:line_segment,
+            plays taking_form:concept;
+            vector sub line;
+        ### point
+        point sub mathematical,
+            plays link:vertex,
+            plays directed_link:start,
+            plays directed_link:end,
+            plays positioning:to;
+
+            local_origin sub point,
+                plays positioning:from;
+                pivot sub local_origin,
+                    plays taking_form:concept;
+            global_origin sub point,
+                plays positioning:from;
+
+    ## mathematical concetps
+    measure sub abstract_entity, abstract, 
+        plays featuring:feature;
+        physical_quantity sub measure, abstract;
+            distance sub physical_quantity, owns meter;
+                approaching_distance sub distance;
+            height sub physical_quantity, owns meter;
+            width sub physical_quantity, owns meter;
+            length sub physical_quantity, owns meter;       
+        abstract_quantity sub measure;
+
+    time sub abstract_entity, owns time_date;
+
+###############################################
+################### relations #################
+###############################################
+mathematics sub relation,
+    abstract, owns id;
+    ## mathematical definitions
+    math_definition sub mathematics, abstract;
+        ### math definition of a connector being the intersection of two straight lines
+        link sub math_definition,
+            relates vertex,
+            relates line_segment;
+            directed_link sub link,
+                relates start as vertex,
+                relates end as vertex;
+        ### definition of a set
+        set sub math_definition,
+            relates hull,
+            relates element;
+    ## mathematical models
+        math_model sub mathematics, abstract;
+        ### model for mapping of line and structural_parts
+        taking_form sub math_model,
+            relates form,
+            relates concept;
+            #### model for mapping of space and polygon
+            enclosing sub taking_form,
+                relates enclosed as form,
+                relates border as concept;
+            surrounding sub taking_form,
+                relates surrounded as concept,
+                relates area as form;
+        ### model for a position between points
+        positioning sub math_model,
+            owns lin_x, owns lin_y, owns lin_z, owns rot_x, owns rot_y, owns rot_z,
+            relates from,
+            relates to;
+
+# features to define the features of an entity
+featuring sub relation,
+    owns id,
+    relates subject, relates feature;
+
+# relations that deal with things one can point towards
+physics sub relation,
+    abstract, owns id;
+    ## defining the locaiton of artifacts and intelligent beings
+    locating sub physics,
+        relates subject,
+        relates location;
+    ## defining physycal routes between closed_spaces
+    route sub physics,
+        relates passage,
+        relates origin,
+        relates destination;
+    ## mapping of building and closed_space
+    composing sub physics,
+        relates collection,
+        relates elemental_unit;
+        physically_composing sub composing,
+            relates composition as collection,
+            relates partition as elemental_unit;
+        spatially_composing sub composing,
+            relates structure as collection,
+            relates volume as elemental_unit;

@@ -2,14 +2,24 @@
 [![tests](https://github.com/Rezenders/ros_typedb/actions/workflows/test.yml/badge.svg)](https://github.com/Rezenders/ros_typedb/actions/workflows/test.yml)
 [![documentation](https://github.com/Rezenders/ros_typedb/actions/workflows/doc.yml/badge.svg)](https://github.com/Rezenders/ros_typedb/actions/workflows/doc.yml)
 
-This package provides a basic generic integration between ROS and [typeDB](https://typedb.com/).
-The package was designed in a way to enable users to easily extend it to fulfill their needs, the package design is explained in the [Package Design](#package-design) section.
-
-This package was tested in Ubuntu 22.04 with ROS Humble and typedb v2.27.0.
+This package provides a first generic integration between ROS and [typeDB](https://typedb.com/), specifically for students of the course Knowledge Representation and Reasoning, and was tested in Ubuntu 22.04 with ROS Humble and typedb v2.28.0.
 
 **This repository is in an initial stage and under constant development**
 
 ## Install
+
+### From within the student's Singularity image
+
+Since the package and the dependencies are already pre-installed, you may go to the root folder of this pacakge in your image and run `git pull` followed by `git checkout coure_krr`, which will provide you with the latest examples for getting started with TypeDB in your ROS2 system.
+
+Then build the project:
+```Bash
+cd ~/ros_typedb_ws/
+colcon build --symlink-install
+source install/setup.bash
+```
+
+### From scratch
 
 To use this package, you need to install ROS 2 Humble, typedb, and typedb python driver.
 
@@ -19,12 +29,12 @@ Follow the [official instructions](https://docs.ros.org/en/humble/Installation/U
 
 #### Install TypeDB
 
-Install typedb: follow the[official instructions](https://typedb.com/docs/typedb/2.x/installation.html).
+Install typedb: follow the [official instructions](https://typedb.com/docs/typedb/2.x/installation.html).
 
 Install [typedb python driver](https://typedb.com/docs/clients/2.x/python/python-install.html):
 
 ```bash
-pip install typedb-client
+pip install typedb-driver
 ```
 
 #### Install ros_typedb package
@@ -50,6 +60,43 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
+## Using the package
+
+#### Package elements
+
+The package contains 2 functional nodes and 1 interface node:
+
+- `ros_typedb` being a basic ROS2 wrapper of the TypeDB client. It is used for loading the schema and the data into the TypeDB server and then support communication with the database via the ROS2 service on the topic `/ros_typedb/query`. This functionality is implemented as a so-called lifecycle node, which means that when it is launched it can be activated and deactived using the following commands in a terminal: `ros2 lifecycle set /ros_typedb activate`, `ros2 lifecycle set /ros_typedb deactivate`, and possibly `ros2 lifecycle set /ros_typedb configure` and `ros2 lifecycle set /ros_typedb shutdown`. However, when using the launching script (mentioned below) the node is immediately configures and activated, so you can assume it runs as a typical ROS2 node when launched.
+- `ros_typedb_msgs` being a set of specific ROS2 messages so that you may request queries to the TypeDB database via ROS2 services.
+- `ros_db_client` being a simple ROS2 client for calling the query service of the `ros_typdb` node.
+
+#### Running a first example
+The `ros_typedb` comes with the schema and the data that was used in the course, although it is limited to the data related to the topology. To create or update the keyspace and use it in your ROS2 network please consider the following steps.
+
+Launch `ros_typedb`:
+```bash
+ros2 launch ros_typedb ros_typedb.launch.py
+```
+This will load the schema and data files that were specified in the launch-file into the TypeDB database. The files themselves can be found in the config folder of the `ros_typedb` package, while the ones that are launched are `schema_floorplan.tql` and `data_floorplan_topology.tql`.
+
+You may then run the illustrative example of the `ros_db_client` using
+```bash
+ros2 run ros_db_client ros_db_client
+```
+This will call the query service of the `ros_typedb` node for getting all rooms in the TypeDB database. The results are printed in the terminal after which the node is immediately shutdown. The implementation of `ros_db_client` follows the Minimal Service Client of the the ROS2 examples, which is found here [ROS2 Minimal Example Service and Client Node](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Service-And-Client.html)
+
+#### Continue developing
+
+To embed TypeDB into the course practicum you may update the schema and data files that are located in `repo_root\ros_typdb\config`. To ensure that your latest, updated files are used you should re-build the workspace and source it.
+
+You may then extend the example node for querying the database by making ROS2 service calls. The request contains two fields:
+
+- `query_type` defining the type of query you want to call, which may either be "fetch", "get", "insert", "delete", or "get_aggregate"
+- `query` defining the actual query you want to call, which can be any query that is viable for TypeDB. For example "match $x isa room, get $x" (and selecting `get_type = "get"`)
+
+Please study `ros_db_client` before extending it. When extending the node with your own implementation, please test your queries first in TYpeDB Studio, while running the `ros_typedb` node, so that you are sure that the query is correct and about the results that you get back from the query.
+
+
 ## Package Design
 
 The integration between ROS and TypeDB is implemented with 2 classes, [TypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/typedb_interface.py) and [ROSTypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/ros_typedb_interface.py).
@@ -67,16 +114,6 @@ Overview:
 <p align="center">
   <img src="https://github.com/Rezenders/ros_typedb/assets/20564040/53793f23-0cb2-42c8-8c3b-fbfa5764ab5b" width="500">
 </p>
-
-## Using the package
-
-To run the ros_typedb_interface:
-```bash
-ros2 run ros_typedb ros_typedb_interface -p schema_path:=<schema_path> -p data_path:=<data_path>
-```
-
-**Note:** Make sure to replace <schema_path> and <data_path> with the real path for your schema and data file
-**Note 2:** Remember that ros_typedb_interface is a [LifeCycle](https://design.ros2.org/articles/node_lifecycle.html) node, so you need to change its state to active before using it. Check the [lifecycle tutorial](https://github.com/ros2/demos/tree/rolling/lifecycle).
 
 ## Extend the package
 

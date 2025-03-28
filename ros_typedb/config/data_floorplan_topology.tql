@@ -1,0 +1,116 @@
+# Copyright
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+insert
+
+###################################################
+############## Demo 'building' ####################
+###################################################
+# create the actual building
+$demo_building isa building, has name "Demo building";
+# create the building as a spatial composition of rooms
+(structure: $demo_building, volume: $living, volume: $hall, volume: $kitchen, volume: $bedroom) isa spatially_composing;
+
+
+###################################################
+################## living #########################
+###################################################
+
+####### Definition of the topology of the room room
+# create the room itself
+$living isa room, has name "living";
+# create all walls and doors unique for this space (or room)
+$living_south_wall isa wall, has name "wall_living_south";
+$living_east_wall isa wall, has name "wall_living_east";
+# create all walls and doors shared with other spaces (or rooms), and that not have been defined earlier in this code
+$living_bedroom_wall_1 isa wall, has name "wall_1_bedroom_living";
+$living_bedroom_door isa door, has name "door_bedroom_to_living";
+$living_bedroom_wall_2 isa wall, has name "wall_2_bedroom_living";
+$living_hall_wall_1 isa wall, has name "wall_1_hall_living";
+$living_hall_door isa door, has name "door_hall_to_living";
+$living_hall_wall_2 isa wall, has name "wall_2_hall_living";
+$living_kitchen_wall isa wall, has name "wall_kitchen_living";
+# create the composition of room, i.e., physically_composing-relation
+(composition: $living, partition: $living_bedroom_wall_1, partition: $living_bedroom_door, partition: $living_bedroom_wall_2, partition: $living_hall_wall_1, partition: $living_hall_door, partition: $living_hall_wall_2, partition: $living_kitchen_wall, partition: $living_south_wall, partition: $living_east_wall) isa physically_composing;
+# create a possible route in case a door is connecting 2 rooms, i.e., route-relation
+(origin: $living, destination: $hall, passage: $living_hall_door) isa route;
+(origin: $living, destination: $bedroom, passage: $living_bedroom_door) isa route;
+
+###################################################
+################## kitchen ########################
+###################################################
+
+####### Definition of the topology of the room room
+# create the room itself
+$kitchen isa room, has name "kitchen";
+# create all walls and doors unique for this space (or room)
+$kitchen_south_wall isa wall, has name "wall_kitchen_south";
+$kitchen_west_wall isa wall, has name "wall_kitchen_east";
+# create all walls and doors shared with other spaces (or rooms), and that not have been defined earlier in this code
+$kitchen_hall_wall_1 isa wall, has name "wall_1_kitchen_hall";
+$kitchen_hall_door isa door, has name "door_hall_to_kitchen";
+$kitchen_hall_wall_2 isa wall, has name "wall_2_kitchen_hall";
+# create the composition of room, i.e., physically_composing-relation
+(composition: $kitchen, partition: $kitchen_south_wall, partition: $kitchen_west_wall, partition: $kitchen_hall_wall_1, partition: $kitchen_hall_wall_2, partition: $kitchen_hall_door, partition: $living_kitchen_wall) isa physically_composing;
+# create a possible route in case a door is connecting 2 rooms, i.e., route-relation
+(origin: $kitchen, destination: $hall, passage: $kitchen_hall_door) isa route;
+
+
+
+###################################################
+################## bedroom ########################
+###################################################
+
+####### Definition of the topology of the room room
+# create the room itself
+$bedroom isa room, has name "bedroom";
+# create all walls and doors unique for this space (or room)
+$bedroom_west_wall isa wall, has name "wall_bedroom_west";
+$bedroom_north_wall isa wall, has name "wall_bedroom_north";
+$bedroom_east_wall isa wall, has name "wall_bedroom_east";
+# create all walls and doors shared with other spaces (or rooms), and that not have been defined earlier in this code
+$bedroom_hall_wall_1 isa wall, has name "wall_1_bedroom_hall";
+$bedroom_hall_door isa door, has name "door_hall_to_bedroom";
+$bedroom_hall_wall_2 isa wall, has name "wall_2_hall_bedroom";
+# create the composition of room, i.e., physically_composing-relation
+(composition: $bedroom, partition: $living_bedroom_wall_1, partition: $living_bedroom_door, partition: $living_bedroom_wall_2, partition: $bedroom_hall_wall_1, partition: $bedroom_hall_door, partition: $bedroom_hall_wall_2, partition: $bedroom_west_wall, partition: $bedroom_north_wall, partition: $bedroom_east_wall) isa physically_composing;
+# create a possible route in case a door is connecting 2 rooms, i.e., route-relation
+(origin: $bedroom, destination: $hall, passage: $bedroom_hall_door) isa route;
+(origin: $bedroom, destination: $living, passage: $living_bedroom_door) isa route;
+
+
+###################################################
+################## hallway ########################
+###################################################
+
+####### Definition of the topology of the room room
+# create the room itself
+$hall isa room, has name "hallway";
+# create all walls and doors unique for this space (or room)
+$hall_west_wall_1 isa wall, has name "wall_hall_west_1";
+$frontdoor isa wall, has name "front_door";
+$hall_west_wall_2 isa wall, has name "wall_hall_west_2";
+# create all walls and doors shared with other spaces (or rooms), and that not have been defined earlier in this code
+
+# create the composition of room, i.e., physically_composing-relation
+(composition: $hall, partition: $living_hall_wall_1, partition: $living_hall_door, partition: $living_hall_wall_2, partition: $bedroom_hall_wall_1, partition: $bedroom_hall_door, partition: $bedroom_hall_wall_2, partition: $kitchen_hall_wall_1, partition: $kitchen_hall_door, partition: $kitchen_hall_wall_2, partition: $hall_west_wall_1, partition: $hall_west_wall_2, partition: $frontdoor) isa physically_composing;
+# create a possible route in case a door is connecting 2 rooms, i.e., route-relation
+(origin: $hall, destination: $living, passage: $living_hall_door) isa route;
+(origin: $hall, destination: $bedroom, passage: $bedroom_hall_door) isa route;
+(origin: $hall, destination: $kitchen, passage: $kitchen_hall_door) isa route;
+
+
+###############################################
+################### DONE ######################
+###############################################
