@@ -36,7 +36,7 @@ from std_msgs.msg import String
 @pytest.fixture
 def insert_query():
     query_req = Query.Request()
-    query_req.query_type = 'insert'
+    query_req.query_type = query_req.INSERT
     query_req.query = """
         insert
             $person isa person,
@@ -146,7 +146,7 @@ def test_ros_typedb_delete_query(insert_query):
         node.call_service(node.query_srv, insert_query)
 
         query_req = Query.Request()
-        query_req.query_type = 'delete'
+        query_req.query_type = query_req.DELETE
         query_req.query = """
             match $entity isa person, has email "test@test.com";
             delete $entity isa person;
@@ -154,7 +154,7 @@ def test_ros_typedb_delete_query(insert_query):
         query_res = node.call_service(node.query_srv, query_req)
 
         match_query_req = Query.Request()
-        match_query_req.query_type = 'get_aggregate'
+        match_query_req.query_type = match_query_req.GET_AGGREGATE
         match_query_req.query = """
             match $entity isa person, has email "test@test.com";
             get $entity;
@@ -182,7 +182,7 @@ def test_ros_typedb_delete_event(insert_query):
         node.call_service(node.query_srv, insert_query)
 
         query_req = Query.Request()
-        query_req.query_type = 'delete'
+        query_req.query_type = query_req.DELETE
         query_req.query = """
             match $entity isa person, has email "test@test.com";
             delete $entity isa person;
@@ -205,7 +205,7 @@ def test_ros_typedb_wrong_query(insert_query):
         node.activate_ros_typedb()
 
         insert_query_req = insert_query
-        insert_query_req.query_type = 'wrong'
+        insert_query_req.query_type = -1
         query_res = node.call_service(node.query_srv, insert_query_req)
         assert query_res.success is False
     finally:
@@ -223,7 +223,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         node.call_service(node.query_srv, insert_query)
 
         query_req = Query.Request()
-        query_req.query_type = 'fetch'
+        query_req.query_type = query_req.FETCH
         query_req.query = """
             match $entity isa person,
                 has email "test@test.com",
@@ -276,7 +276,7 @@ def test_ros_typedb_get_query(insert_query):
         node.call_service(node.query_srv, insert_query)
 
         query_req = Query.Request()
-        query_req.query_type = 'get'
+        query_req.query_type = query_req.GET
         query_req.query = """
             match
                 $p isa person, has full-name $name, has email $email;
@@ -312,7 +312,7 @@ def test_ros_typedb_get_aggregate_query(insert_query):
         node.call_service(node.query_srv, insert_query)
 
         query_req = Query.Request()
-        query_req.query_type = 'get_aggregate'
+        query_req.query_type = query_req.GET_AGGREGATE
         query_req.query = """
             match
                 $person isa person,

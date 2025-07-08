@@ -1,4 +1,12 @@
-string query_type # insert, delete, fetch, get, or get_aggregate
+# Query type enum
+uint8 INSERT=0
+uint8 DELETE=1
+uint8 FETCH=2
+uint8 GET=3
+uint8 GET_AGGREGATE=4
+uint8 DEFINE=5
+
+uint8 query_type
 string query
 ---
 bool success
