@@ -2,4 +2,4 @@ string query_type # insert, delete, fetch, get, or get_aggregate
 string query
 ---
 bool success
-ros_typedb_msgs/QueryResult[] results
+ros_typedb_msgs/ResultTree[] results

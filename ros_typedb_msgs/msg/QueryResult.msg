@@ -1,5 +1,13 @@
-# string variable_name # variable name from typeql query `$name`
-# string variable_type # variable type
+uint8 THING = 1
+uint8 ATTRIBUTE = 2
+uint8 SUB_QUERY = 3
 
-ros_typedb_msgs/ResultTree[] nodes
-ros_typedb_msgs/ResultTree[] sub_query_nodes
+uint8 type
+
+uint8 result_index
+IndexList[] children_index
+
+string sub_query_name
+
+Thing thing
+Attribute attribute
