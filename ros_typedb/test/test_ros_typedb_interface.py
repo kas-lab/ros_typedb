@@ -29,6 +29,10 @@ import sys
 from lifecycle_msgs.srv import ChangeState
 from lifecycle_msgs.srv import GetState
 from rclpy.node import Node
+from ros_typedb_msgs.msg import Attribute
+from ros_typedb_msgs.msg import QueryResult
+from ros_typedb_msgs.msg import ResultTree
+from ros_typedb_msgs.msg import Thing
 from ros_typedb_msgs.srv import Query
 from std_msgs.msg import String
 
@@ -222,45 +226,215 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
 
         node.call_service(node.query_srv, insert_query)
 
+        # query_req = Query.Request()
+        # query_req.query_type = 'fetch'
+        # query_req.query = """
+        #     match $entity isa person,
+        #         has email "test@test.com",
+        #         has nickname $nick,
+        #         has age $age,
+        #         has height $height,
+        #         has alive $alive,
+        #         has birth-date $date;
+        #     fetch $nick; $age; $height; $alive; $date;
+        # """
+        # query_res = node.call_service(node.query_srv, query_req)
+
+        # correct_nick = False
+        # correct_age = False
+        # correct_height = False
+        # correct_alive = False
+        # correct_date = False
+        # for result in query_res.results:
+        #     for r in result.attributes:
+        #         if r.name == 'nick' and r.label == 'nickname' and \
+        #            r.value.string_value == 'test':
+        #             correct_nick = True
+        #         if r.name == 'age' and r.label == 'age' and \
+        #            r.value.integer_value == 33:
+        #             correct_age = True
+        #         if r.name == 'height' and r.label == 'height' and \
+        #            r.value.double_value == 1.0:
+        #             correct_height = True
+        #         if r.name == 'alive' and r.label == 'alive' and \
+        #            r.value.bool_value is True:
+        #             correct_alive = True
+        #         if r.name == 'date' and r.label == 'birth-date' and \
+        #            r.value.string_value == '1990-06-01T00:00:00.000':
+        #             correct_date = True
+
+        # assert query_res.success is True and correct_nick and correct_age and \
+        #     correct_height and correct_alive and correct_date
+        
         query_req = Query.Request()
         query_req.query_type = 'fetch'
         query_req.query = """
-            match $entity isa person,
-                has email "test@test.com",
-                has nickname $nick,
-                has age $age,
-                has height $height,
-                has alive $alive,
-                has birth-date $date;
-            fetch $nick; $age; $height; $alive; $date;
+            match
+                $company_var isa company, has name "TU Delft";
+            fetch
+                $company_var: name, address;
+                employee_names: {
+                    match
+                        $employment_var (employer: $company_var, employee: $employee_var) isa employment;
+                    fetch
+                        $employee_var: full-name, email;
+                        $employment_var: salary;
+                };
         """
+        expected_response = Query.Response()
+
+        expected_query_result = QueryResult()
+        
+        company_var_tree = ResultTree()
+        
+        company_var_node = Thing()
+        company_var_node.thing_type = Thing.ENTITY
+        company_var_node.thing_id = 0
+        company_var_node.variable_name = 'company_var'
+        company_var_node.type_name = 'company'
+
+        address_attr = Attribute()
+        address_attr.label = 'address'
+        address_attr.value.type = 3
+        address_attr.value.string_value = 'street 1'
+        company_var_node.attributes.append(address_attr)
+
+        address_attr2 = Attribute()
+        address_attr2.label = 'address'
+        address_attr2.value.type = 3
+        address_attr2.value.string_value = 'street 2'
+        company_var_node.attributes.append(address_attr2)
+
+        name_attr = Attribute()
+        name_attr.label = 'name'
+        name_attr.value.type = 3
+        name_attr.value.string_value = 'TU Delft'
+        company_var_node.attributes.append(name_attr)
+
+        company_var_tree.things.append(company_var_node)
+        expected_query_result.nodes.append(company_var_tree)
+
+        employee_names_tree1 = ResultTree()
+        employee_names_tree1.sub_query_name = 'employee_names'
+
+        employee_var_node = Thing()
+        employee_var_node.thing_type = Thing.ENTITY
+        employee_var_node.thing_id = 1
+        employee_var_node.variable_name = 'employee_var'
+        employee_var_node.type_name = 'person'
+
+        email_attr = Attribute()
+        email_attr.label = 'email'
+        email_attr.value.type = 3
+        email_attr.value.string_value = 'phd@tudelft.nl'
+        employee_var_node.attributes.append(email_attr)
+
+        full_name_attr = Attribute()
+        full_name_attr.label = 'full-name'
+        full_name_attr.value.type = 3
+        full_name_attr.value.string_value = 'PhD candidate 1'
+        employee_var_node.attributes.append(full_name_attr)
+        
+        employee_names_tree1.things.append(employee_var_node)
+        
+        employment_var_node = Thing()
+        employment_var_node.thing_type = Thing.RELATION
+        employment_var_node.thing_id = 2
+        employment_var_node.variable_name = 'employment_var'
+        employment_var_node.type_name = 'employment'
+
+        salary_attr = Attribute()
+        salary_attr.label = 'salary'
+        salary_attr.value.type = 1
+        salary_attr.value.integer_value = 30000
+        employment_var_node.attributes.append(salary_attr)
+
+        employee_names_tree1.things.append(employment_var_node)
+        expected_query_result.sub_query_nodes.append(employee_names_tree1)
+
+        employee_names_tree2 = ResultTree()
+        employee_names_tree2.sub_query_name = 'employee_names'
+
+        employee_var_node = Thing()
+        employee_var_node.thing_type = Thing.ENTITY
+        employee_var_node.thing_id = 2
+        employee_var_node.variable_name = 'employee_var'
+        employee_var_node.type_name = 'person'
+
+        email_attr = Attribute()
+        email_attr.label = 'email'
+        email_attr.value.type = 3
+        email_attr.value.string_value = 'boss@tudelft.nl'
+        employee_var_node.attributes.append(email_attr)
+
+        full_name_attr = Attribute()
+        full_name_attr.label = 'full-name'
+        full_name_attr.value.type = 3
+        full_name_attr.value.string_value = 'Big Boss'
+        employee_var_node.attributes.append(full_name_attr)
+        
+        employee_names_tree2.things.append(employee_var_node)
+        
+        employment_var_node = Thing()
+        employment_var_node.thing_type = Thing.RELATION
+        employment_var_node.thing_id = 3
+        employment_var_node.variable_name = 'employment_var'
+        employment_var_node.type_name = 'employment'
+
+        salary_attr = Attribute()
+        salary_attr.label = 'salary'
+        salary_attr.value.type = 1
+        salary_attr.value.integer_value = 999999
+        employment_var_node.attributes.append(salary_attr)
+
+        employee_names_tree2.things.append(employment_var_node)
+        expected_query_result.sub_query_nodes.append(employee_names_tree2)
+
+        employee_names_tree3 = ResultTree()
+        employee_names_tree3.sub_query_name = 'employee_names'
+
+        employee_var_node = Thing()
+        employee_var_node.thing_type = Thing.ENTITY
+        employee_var_node.thing_id = 4
+        employee_var_node.variable_name = 'employee_var'
+        employee_var_node.type_name = 'person'
+
+        email_attr = Attribute()
+        email_attr.label = 'email'
+        email_attr.value.type = 3
+        email_attr.value.string_value = 'guest@tudelft.nl'
+        employee_var_node.attributes.append(email_attr)
+
+        full_name_attr = Attribute()
+        full_name_attr.label = 'full-name'
+        full_name_attr.value.type = 3
+        full_name_attr.value.string_value = 'Random guest'
+        employee_var_node.attributes.append(full_name_attr)
+        
+        employee_names_tree3.things.append(employee_var_node)
+        
+        employment_var_node = Thing()
+        employment_var_node.thing_type = Thing.RELATION
+        employment_var_node.thing_id = 5
+        employment_var_node.variable_name = 'employment_var'
+        employment_var_node.type_name = 'employment'
+
+        salary_attr = Attribute()
+        salary_attr.label = 'salary'
+        salary_attr.value.type = 1
+        salary_attr.value.integer_value = 0
+        employment_var_node.attributes.append(salary_attr)
+
+        employee_names_tree3.things.append(employment_var_node)
+        expected_query_result.sub_query_nodes.append(employee_names_tree3)
+
+        expected_response.results.append(expected_query_result)
+        expected_response.success = True
+
         query_res = node.call_service(node.query_srv, query_req)
-
-        correct_nick = False
-        correct_age = False
-        correct_height = False
-        correct_alive = False
-        correct_date = False
-        for result in query_res.results:
-            for r in result.attributes:
-                if r.name == 'nick' and r.label == 'nickname' and \
-                   r.value.string_value == 'test':
-                    correct_nick = True
-                if r.name == 'age' and r.label == 'age' and \
-                   r.value.integer_value == 33:
-                    correct_age = True
-                if r.name == 'height' and r.label == 'height' and \
-                   r.value.double_value == 1.0:
-                    correct_height = True
-                if r.name == 'alive' and r.label == 'alive' and \
-                   r.value.bool_value is True:
-                    correct_alive = True
-                if r.name == 'date' and r.label == 'birth-date' and \
-                   r.value.string_value == '1990-06-01T00:00:00.000':
-                    correct_date = True
-
-        assert query_res.success is True and correct_nick and correct_age and \
-            correct_height and correct_alive and correct_date
+        assert query_res == expected_response
+        # assert query_res.success
+        # assert len(query_res.results) == 1
     finally:
         rclpy.shutdown()
 

@@ -1,0 +1,10 @@
+uint8 ENTITY = 1
+uint8 RELATION = 2
+
+uint8 thing_type
+string variable_name
+string type_name
+
+uint8 thing_id
+
+ros_typedb_msgs/Attribute[] attributes
