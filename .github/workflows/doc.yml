@@ -12,7 +12,8 @@ permissions:
 jobs:
   docs:
     runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    container:
+      image: rostooling/setup-ros-docker:ubuntu-jammy-latest
     steps:
       - uses: actions/checkout@v3.3.0
       - uses: ros-tooling/setup-ros@0.7.1
