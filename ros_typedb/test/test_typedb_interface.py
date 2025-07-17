@@ -409,3 +409,32 @@ def test_get_query(typedb_interface):
     result = typedb_interface.get_database(query)
     name = result[0].get("name").as_attribute().get_value()
     assert len(result) == 3 and name == "Ahmed Frazier"
+
+def test_fetch_query(typedb_interface):
+    query = """
+    match
+        $company isa company, has name "TU Delft";
+    fetch
+        employee_names: {
+            match
+                $e (employer: $company, employee: $employee) isa employment;
+            fetch
+                $employee: full-name, email;
+                $e: salary;
+        };
+    """
+    result = typedb_interface.fetch_database(query)
+    assert len(result) == 1
+    assert len(result[0]['employee_names']) == 3
+    
+    assert result[0]['employee_names'][0]['e']['salary'][0]['value'] == 999999
+    assert result[0]['employee_names'][0]['employee']['email'][0]['value'] == 'boss@tudelft.nl'
+    assert result[0]['employee_names'][0]['employee']['full-name'][0]['value'] == 'Big Boss'
+
+    assert result[0]['employee_names'][1]['e']['salary'][0]['value'] == 30000
+    assert result[0]['employee_names'][1]['employee']['email'][0]['value'] == 'phd@tudelft.nl'
+    assert result[0]['employee_names'][1]['employee']['full-name'][0]['value'] == 'PhD candidate 1'
+    
+    assert result[0]['employee_names'][2]['e']['salary'][0]['value'] == 0
+    assert result[0]['employee_names'][2]['employee']['email'][0]['value'] == 'guest@tudelft.nl'
+    assert result[0]['employee_names'][2]['employee']['full-name'][0]['value'] == 'Random guest'
