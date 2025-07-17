@@ -188,7 +188,9 @@ def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
 def recursively_sort_dict(obj):
         """
         Recursively sort dict keys (and nested dicts) in a dict or list.
-        Returns a new object (does not mutate original).
+        
+        :param obj: dictionary
+        :return: returns a new sorted dictionary (does not mutate original).
         """
         if isinstance(obj, dict):
             return {k: recursively_sort_dict(obj[k]) for k in sorted(obj)}
@@ -200,7 +202,6 @@ def recursively_sort_dict(obj):
 def fetch_query_result_to_ros_msg(
     query_result: list[dict[str, MatchResultDict]] | None
 ) -> ros_typedb_msgs.srv.Query.Response:
-
     """
     Convert typedb fetch query result to :class:`ros_typedb_msgs.srv.Query`.
 
@@ -235,20 +236,25 @@ def get_query_result_to_ros_msg(
         return response
 
     for result in query_result:
-        _result = QueryResult()
-        _variables = result.variables()
-        for variable in _variables:
+        result_tree = ResultTree()
+        variables = result.variables()
+        for variable in variables:
             variable_value = result.get(variable)
             if variable_value.is_attribute():
-                _typedb_attr = variable_value.as_attribute()
-                _attr = Attribute()
-                _attr.name = variable
-                _attr.label = _typedb_attr.get_type().get_label().name
-                _attr.value = set_query_result_value(
-                    _typedb_attr.get_value(),
-                    str(_typedb_attr.get_type().get_value_type()))
-                _result.attributes.append(_attr)
-        response.results.append(_result)
+                typedb_attr = variable_value.as_attribute()
+                
+                query_result_ros = QueryResult()
+                query_result_ros.type = QueryResult.ATTRIBUTE
+                
+                attr = Attribute()
+                attr.variable_name = variable
+                attr.label = typedb_attr.get_type().get_label().name
+                attr.value = set_query_result_value(
+                    typedb_attr.get_value(),
+                    str(typedb_attr.get_type().get_value_type()))
+                query_result_ros.attribute = attr
+            result_tree.results.append(query_result_ros)
+        response.results.append(result_tree)
     response.success = True
     return response
 
@@ -263,14 +269,17 @@ def get_aggregate_query_result_to_ros_msg(
     :return: converted query response.
     """
     response = Query.Response()
-    _attr = Attribute()
-    _attr.value = set_query_result_value(
+    attr = Attribute()
+    attr.value = set_query_result_value(
         query_result,
         type(query_result).__name__)
 
-    _result = QueryResult()
-    _result.attributes.append(_attr)
-    response.results.append(_result)
+    query_result_ros_msg = QueryResult()
+    query_result_ros_msg.type = QueryResult.ATTRIBUTE
+    query_result_ros_msg.attribute = attr
+    result_tree = ResultTree()
+    result_tree.results.append(query_result_ros_msg)
+    response.results.append(result_tree)
     return response
 
 

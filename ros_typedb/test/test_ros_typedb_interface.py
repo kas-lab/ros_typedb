@@ -173,9 +173,10 @@ def test_ros_typedb_delete_query(insert_query):
         """
         match_query_res = node.call_service(node.query_srv, match_query_req)
 
-        assert query_res.success and match_query_res.success and \
-            match_query_res.results[0].attributes[0].value.type == 2 and \
-            match_query_res.results[0].attributes[0].value.integer_value == 0
+        assert query_res.success 
+        assert match_query_res.success 
+        assert match_query_res.results[0].results[0].attribute.value.type == ParameterType.PARAMETER_INTEGER
+        assert match_query_res.results[0].results[0].attribute.value.integer_value == 0
     finally:
         rclpy.shutdown()
 
@@ -376,7 +377,7 @@ def test_fetch_result_to_ros_result_tree():
 
     result_tree, tree_index = fetch_result_to_ros_result_tree(json_test)
     assert len(result_tree.results) == 5
-    assert len(tree_index) == 5
+    assert tree_index == 5
     assert len(expected_tree.results) == len(result_tree.results)
     
     assert result_tree.results[0] == query_result_age
@@ -962,18 +963,44 @@ def test_ros_typedb_get_query(insert_query):
         """
         query_res = node.call_service(node.query_srv, query_req)
 
+        assert query_res.success is True
+        assert len(query_res.results) == 3 
+        assert len(query_res.results[0].results) == 2
+        assert len(query_res.results[1].results) == 2
+        assert len(query_res.results[2].results) == 2
+
         correct_name = False
         correct_email = False
-        for r in query_res.results[0].attributes:
-            if r.name == 'name' and r.label == 'full-name' \
-               and r.value.string_value == 'Ahmed Frazier':
+        for r in query_res.results[0].results:
+            if r.attribute.variable_name == 'name' and r.attribute.label == 'full-name' \
+               and r.attribute.value.string_value == 'Ahmed Frazier':
                 correct_name = True
-            if r.name == 'email' and r.label == 'email' and \
-               r.value.string_value == 'ahmed.frazier@gmail.com':
+            if r.attribute.variable_name == 'email' and r.attribute.label == 'email' and \
+               r.attribute.value.string_value == 'ahmed.frazier@gmail.com':
                 correct_email = True
+        assert correct_name and correct_email
 
-        assert query_res.success is True and \
-            len(query_res.results) == 3 and correct_name and correct_email
+        correct_name = False
+        correct_email = False
+        for r in query_res.results[1].results:
+            if r.attribute.variable_name == 'name' and r.attribute.label == 'full-name' \
+               and r.attribute.value.string_value == 'Big Boss':
+                correct_name = True
+            if r.attribute.variable_name == 'email' and r.attribute.label == 'email' and \
+               r.attribute.value.string_value == 'boss@tudelft.nl':
+                correct_email = True
+        assert correct_name and correct_email
+
+        correct_name = False
+        correct_email = False
+        for r in query_res.results[2].results:
+            if r.attribute.variable_name == 'name' and r.attribute.label == 'full-name' \
+               and r.attribute.value.string_value == 'Dominic Lyons':
+                correct_name = True
+            if r.attribute.variable_name == 'email' and r.attribute.label == 'email' and \
+               r.attribute.value.string_value == 'dominic.lyons@gmail.com':
+                correct_email = True
+        assert correct_name and correct_email
     finally:
         rclpy.shutdown()
 
@@ -999,8 +1026,9 @@ def test_ros_typedb_get_aggregate_query(insert_query):
         """
         query_res = node.call_service(node.query_srv, query_req)
 
-        assert query_res.success is True and \
-            query_res.results[0].attributes[0].value.integer_value == 1500
+        assert query_res.success is True
+        assert query_res.results[0].results[0].type == QueryResult.ATTRIBUTE
+        assert query_res.results[0].results[0].attribute.value.integer_value == 1500
     finally:
         rclpy.shutdown()
 
