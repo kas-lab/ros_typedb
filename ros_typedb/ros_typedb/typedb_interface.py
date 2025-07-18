@@ -54,6 +54,12 @@ def convert_query_type_to_py_type(
         return str(value)
     elif value_type == 'double':
         return float(value)
+    elif value_type == 'long_array':
+        return list(map(int, value))
+    elif value_type == 'double_array':
+        return list(map(float, value))
+    elif value_type == 'string_array':
+        return list(map(str, value))
     return value
 
 

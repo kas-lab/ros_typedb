@@ -55,9 +55,9 @@ _PARAM_TYPE_MAP = {
     'str': (ParameterType.PARAMETER_STRING, 'string_value', 'string'),
     'datetime': (ParameterType.PARAMETER_STRING, 'string_value', 'string'),
     'boolean_array': (ParameterType.PARAMETER_BOOL_ARRAY, 'bool_array_value'),
-    'long_array': (ParameterType.PARAMETER_INTEGER_ARRAY, 'integer_array_value'),
-    'double_array': (ParameterType.PARAMETER_DOUBLE_ARRAY, 'double_array_value'),
-    'string_array': (ParameterType.PARAMETER_STRING_ARRAY, 'string_array_value'),
+    'long_array': (ParameterType.PARAMETER_INTEGER_ARRAY, 'integer_array_value', 'long_array'),
+    'double_array': (ParameterType.PARAMETER_DOUBLE_ARRAY, 'double_array_value', 'double_array'),
+    'string_array': (ParameterType.PARAMETER_STRING_ARRAY, 'string_array_value', 'string_array'),
 }
 
 _TYPEDB_ROOT_TYPE_TO_QUERY_RESULT_TYPE = {
