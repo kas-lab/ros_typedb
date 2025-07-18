@@ -23,5 +23,5 @@ jobs:
           required-ros-distributions: humble
       - uses: ros-tooling/action-ros-ci@0.4.3
         with:
-          package-name: ros_typedb
+          package-name: ros_typedb_msgs ros_typedb
           target-ros2-distro: humble
