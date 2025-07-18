@@ -185,20 +185,6 @@ def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
     
     return result_tree, index
 
-def recursively_sort_dict(obj):
-        """
-        Recursively sort dict keys (and nested dicts) in a dict or list.
-        
-        :param obj: dictionary
-        :return: returns a new sorted dictionary (does not mutate original).
-        """
-        if isinstance(obj, dict):
-            return {k: recursively_sort_dict(obj[k]) for k in sorted(obj)}
-        elif isinstance(obj, list):
-            return [recursively_sort_dict(item) for item in obj]
-        else:
-            return obj
-
 def fetch_query_result_to_ros_msg(
     query_result: list[dict[str, MatchResultDict]] | None
 ) -> ros_typedb_msgs.srv.Query.Response:
@@ -214,7 +200,6 @@ def fetch_query_result_to_ros_msg(
         return response
 
     for result in query_result:
-        result = recursively_sort_dict(result)
         result_tree, _ = fetch_result_to_ros_result_tree(result)
         response.results.append(result_tree)
     response.success = True

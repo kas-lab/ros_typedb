@@ -93,6 +93,19 @@ def string_to_string_array(string: str) -> list[str]:
     """
     return [s.strip(' \'') for s in string.strip('[]').split(',')]
 
+def recursively_sort_dict(obj):
+    """
+    Recursively sort dict keys (and nested dicts) in a dict or list.
+    
+    :param obj: dictionary
+    :return: returns a new sorted dictionary (does not mutate original).
+    """
+    if isinstance(obj, dict):
+        return {k: recursively_sort_dict(obj[k]) for k in sorted(obj)}
+    elif isinstance(obj, list):
+        return [recursively_sort_dict(item) for item in obj]
+    else:
+        return obj
 
 class MatchResultDict(TypedDict):
     """TypedDict for match result."""
@@ -403,6 +416,7 @@ class TypeDBInterface:
                 'fetch',
                 query,
                 options)
+            result = recursively_sort_dict(result)
         except Exception as err:
             print('Error with match query! Exception retrieved: ', err)
             return []
