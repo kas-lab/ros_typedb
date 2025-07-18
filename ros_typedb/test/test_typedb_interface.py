@@ -426,15 +426,32 @@ def test_fetch_query(typedb_interface):
     result = typedb_interface.fetch_database(query)
     assert len(result) == 1
     assert len(result[0]['employee_names']) == 3
-    
-    assert result[0]['employee_names'][0]['e']['salary'][0]['value'] == 30000
-    assert result[0]['employee_names'][0]['employee']['email'][0]['value'] == 'phd@tudelft.nl'
-    assert result[0]['employee_names'][0]['employee']['full-name'][0]['value'] == 'PhD candidate 1'
-    
-    assert result[0]['employee_names'][1]['e']['salary'][0]['value'] == 999999
-    assert result[0]['employee_names'][1]['employee']['email'][0]['value'] == 'boss@tudelft.nl'
-    assert result[0]['employee_names'][1]['employee']['full-name'][0]['value'] == 'Big Boss'
 
-    assert result[0]['employee_names'][2]['e']['salary'][0]['value'] == 0
-    assert result[0]['employee_names'][2]['employee']['email'][0]['value'] == 'guest@tudelft.nl'
-    assert result[0]['employee_names'][2]['employee']['full-name'][0]['value'] == 'Random guest'
+    expected = [
+        {
+            'salary': 30000,
+            'email': 'phd@tudelft.nl',
+            'full-name': 'PhD candidate 1'
+        },
+        {
+            'salary': 999999,
+            'email': 'boss@tudelft.nl',
+            'full-name': 'Big Boss'
+        },
+        {
+            'salary': 0,
+            'email': 'guest@tudelft.nl',
+            'full-name': 'Random guest'
+        }
+    ]
+
+    actual = []
+    for emp in result[0]['employee_names']:
+        actual.append({
+            'salary': emp['e']['salary'][0]['value'],
+            'email': emp['employee']['email'][0]['value'],
+            'full-name': emp['employee']['full-name'][0]['value']
+        })
+
+    # Compare as sets so order does not matter
+    assert set(tuple(sorted(d.items())) for d in actual) == set(tuple(sorted(d.items())) for d in expected)
