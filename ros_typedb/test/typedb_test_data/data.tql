@@ -20,3 +20,16 @@ $per-13 isa person, has full-name "Emelia Cummings", has gender "female", has em
 $per-14 isa person, has full-name "Ahmed Frazier", has gender "male", has email "ahmed.frazier@gmail.com", has phone-number "+1-202-555-2155";
 $per-15 isa person, has full-name "Tanya Arnold", has gender "female", has email "tanya.arnold@gmail.com", has phone-number "+44-1632-960962";
 $per-16 isa person, has full-name "Raphael Santos", has gender "male", has email "raphael.santos@gmail.com", has phone-number "+1-202-555-0107";
+
+$boss isa person, has full-name "Big Boss", has email "boss@tudelft.nl";
+$phd isa person, has full-name "PhD candidate 1", has email "phd@tudelft.nl";
+$guest isa person, has full-name "Random guest", has email "guest@tudelft.nl";
+
+## Company
+$tu_delft isa company, has name "TU Delft", has address "street 1", has address "street 2";
+
+## Employment 
+
+$e1 (employer: $tu_delft, employee: $boss) isa employment, has role-name "boss of the boss", has salary 999999;
+$e2 (employer: $tu_delft, employee: $phd) isa employment, has role-name "PhD candidate", has salary 30000;
+$e3 (employer: $tu_delft, employee: $guest) isa employment, has role-name "Guest", has salary 0;

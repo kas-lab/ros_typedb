@@ -19,12 +19,27 @@ Follow the [official instructions](https://docs.ros.org/en/humble/Installation/U
 
 #### Install TypeDB
 
+**Note:** This package has been tested with TypeDB version `2.28.3` and the typedb python driver version `2.28.0`.
+
 Install typedb: follow the[official instructions](https://typedb.com/docs/typedb/2.x/installation.html).
 
 Install [typedb python driver](https://typedb.com/docs/clients/2.x/python/python-install.html):
 
 ```bash
 pip install typedb-client
+```
+
+How we installed in the time of writing this README (might be outdated, check official instructions):
+```Bash
+sudo apt install software-properties-common apt-transport-https gpg
+gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-key 17507562824cfdcc
+gpg --export 17507562824cfdcc | sudo tee /etc/apt/trusted.gpg.d/vaticle.gpg > /dev/null
+echo "deb https://repo.typedb.com/public/public-release/deb/ubuntu trusty main" | sudo tee /etc/apt/sources.list.d/vaticle.list > /dev/null
+
+sudo apt update
+sudo apt install -y openjdk-11-jre
+sudo apt install -y typedb=2.28.3
+pip3 install typedb-driver==2.28.0
 ```
 
 #### Install ros_typedb package
