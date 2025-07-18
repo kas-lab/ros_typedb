@@ -50,6 +50,45 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
+## Run with Docker
+
+Build:
+```Bash
+docker build -t ros_typedb .
+```
+
+If you want to use typedb studio, run the following command to allow the container to access the host display:
+```Bash
+xhost +
+```
+
+Start dev container with display and the `ros_typedb` directory mounted:
+```Bash
+docker run -it --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -v /dev/dri:/dev/dri -v /tmp/.X11-unix:/tmp/.X11-unix -v /etc/localtime:/etc/localtime:ro -v $HOME/typedb_ws/src/ros_typedb:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb
+```
+
+Start dev container **without** display and the `ros_typedb` directory mounted:
+```Bash
+docker run -it --rm --name ros_typedb -v /etc/localtime:/etc/localtime:ro -v $HOME/typedb_ws/src/ros_typedb:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb
+```
+
+**Note:** replace the path `$HOME/typedb_ws/src/ros_typedb` with the path of the `ros_typedb` repo in your host machine.
+
+Start new terminal in the container:
+```Bash
+docker exec -it ros_typedb bash
+```
+
+Start container in the background with typedb server running:
+```Bash
+docker run -d --name ros_typedb ros_typedb typedb server
+```
+
+Start container in the background with typedb server running:
+```Bash
+docker run -d --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -v /dev/dri:/dev/dri -v /tmp/.X11-unix:/tmp/.X11-unix -v /etc/localtime:/etc/localtime:ro -v $HOME/rebet_ws/src/ros_typedb:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb typedb server
+```
+
 ## Package Design
 
 The integration between ROS and TypeDB is implemented with 2 classes, [TypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/typedb_interface.py) and [ROSTypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/ros_typedb_interface.py).
@@ -133,6 +172,12 @@ def main():
 ## Example of packages using ros_type
 - [ROSA](https://github.com/kas-lab/rosa/tree/main/rosa_kb)
 - [navigation_graph_map](https://github.com/kas-lab/navigation_graph_map/tree/main/navigation_kb)
+
+## Run tests
+
+```Bash
+colcon test --event-handlers console_cohesion+ --packages-up-to ros_typedb
+```
 
 ## Acknowledgments
 
