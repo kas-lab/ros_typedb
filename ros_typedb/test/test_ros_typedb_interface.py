@@ -781,14 +781,14 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         email_attr.label = 'email'
         email_attr.variable_name = 'email'
         email_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-        email_attr.value.string_array_value = ['boss@tudelft.nl']
+        email_attr.value.string_array_value = ['phd@tudelft.nl']
         employee_var_thing1.attributes.append(email_attr)
 
         full_name_attr = Attribute()
         full_name_attr.label = 'full-name'
         full_name_attr.variable_name = 'full-name'
         full_name_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-        full_name_attr.value.string_array_value = ['Big Boss']
+        full_name_attr.value.string_array_value = ['PhD candidate 1']
         employee_var_thing1.attributes.append(full_name_attr)
 
         employee_var_thing1_result = QueryResult()
@@ -805,7 +805,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         salary_attr.label = 'salary'
         salary_attr.variable_name = 'salary'
         salary_attr.value.type = ParameterType.PARAMETER_INTEGER_ARRAY
-        salary_attr.value.integer_array_value = [999999]
+        salary_attr.value.integer_array_value = [30000]
         employment_var_thing1.attributes.append(salary_attr)
 
         employment_var_thing1_result = QueryResult()
@@ -828,14 +828,14 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         email_attr.label = 'email'
         email_attr.variable_name = 'email'
         email_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-        email_attr.value.string_array_value = ['phd@tudelft.nl']
+        email_attr.value.string_array_value = ['boss@tudelft.nl']
         employee_var_thing2.attributes.append(email_attr)
 
         full_name_attr = Attribute()
         full_name_attr.label = 'full-name'
         full_name_attr.variable_name = 'full-name'
         full_name_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-        full_name_attr.value.string_array_value = ['PhD candidate 1']
+        full_name_attr.value.string_array_value = ['Big Boss']
         employee_var_thing2.attributes.append(full_name_attr)
 
         employee_var_thing2_result = QueryResult()
@@ -852,7 +852,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         salary_attr.label = 'salary'
         salary_attr.variable_name = 'salary'
         salary_attr.value.type = ParameterType.PARAMETER_INTEGER_ARRAY
-        salary_attr.value.integer_array_value = [30000]
+        salary_attr.value.integer_array_value = [999999]
         employment_var_thing2.attributes.append(salary_attr)
 
         employment_var_thing2_result = QueryResult()
