@@ -5,9 +5,9 @@ uint8 SUB_QUERY = 3
 uint8 type
 
 uint8 result_index
-IndexList[] children_index
+ros_typedb_msgs/IndexList[] children_index
 
 string sub_query_name
 
-Thing thing
-Attribute attribute
+ros_typedb_msgs/Thing thing
+ros_typedb_msgs/Attribute attribute
