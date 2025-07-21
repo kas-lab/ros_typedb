@@ -1,7 +1,7 @@
 uint8 ENTITY = 1
 uint8 RELATION = 2
 
-uint8 thing_type
+uint8 type
 string variable_name
 string type_name
 

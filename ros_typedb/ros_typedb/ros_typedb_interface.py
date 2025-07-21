@@ -156,7 +156,7 @@ def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
                 query_result.attribute = attr
             else:
                 thing = Thing()
-                thing.thing_type = _TYPEDB_ROOT_TYPE_TO_THING_TYPE[result_type]
+                thing.type = _TYPEDB_ROOT_TYPE_TO_THING_TYPE[result_type]
                 thing.variable_name = key
                 thing.type_name = result_label
                 thing.attributes = [

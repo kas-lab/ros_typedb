@@ -436,7 +436,7 @@ def test_fetch_result_to_ros_result_tree():
     expected_tree = ResultTree()
         
     company_var_thing = Thing()
-    company_var_thing.thing_type = Thing.ENTITY
+    company_var_thing.type = Thing.ENTITY
     company_var_thing.variable_name = 'company_var'
     company_var_thing.type_name = 'company'
 
@@ -465,7 +465,7 @@ def test_fetch_result_to_ros_result_tree():
     employee_names_subquery.sub_query_name = 'employee_names'
     
     employee_var_thing1 = Thing()
-    employee_var_thing1.thing_type = Thing.ENTITY
+    employee_var_thing1.type = Thing.ENTITY
     employee_var_thing1.variable_name = 'employee_var'
     employee_var_thing1.type_name = 'person'
 
@@ -489,7 +489,7 @@ def test_fetch_result_to_ros_result_tree():
     employee_var_thing1_result.thing = employee_var_thing1
     
     employment_var_thing1 = Thing()
-    employment_var_thing1.thing_type = Thing.RELATION
+    employment_var_thing1.type = Thing.RELATION
     employment_var_thing1.variable_name = 'employment_var'
     employment_var_thing1.type_name = 'employment'
 
@@ -512,7 +512,7 @@ def test_fetch_result_to_ros_result_tree():
     
     ## Subtree 2
     employee_var_thing2 = Thing()
-    employee_var_thing2.thing_type = Thing.ENTITY
+    employee_var_thing2.type = Thing.ENTITY
     employee_var_thing2.variable_name = 'employee_var'
     employee_var_thing2.type_name = 'person'
 
@@ -536,7 +536,7 @@ def test_fetch_result_to_ros_result_tree():
     employee_var_thing2_result.thing = employee_var_thing2
 
     employment_var_thing2 = Thing()
-    employment_var_thing2.thing_type = Thing.RELATION
+    employment_var_thing2.type = Thing.RELATION
     employment_var_thing2.variable_name = 'employment_var'
     employment_var_thing2.type_name = 'employment'
 
@@ -559,7 +559,7 @@ def test_fetch_result_to_ros_result_tree():
 
     ## Subtree 3
     employee_var_thing3 = Thing()
-    employee_var_thing3.thing_type = Thing.ENTITY
+    employee_var_thing3.type = Thing.ENTITY
     employee_var_thing3.variable_name = 'employee_var'
     employee_var_thing3.type_name = 'person'
 
@@ -583,7 +583,7 @@ def test_fetch_result_to_ros_result_tree():
     employee_var_thing3_result.thing = employee_var_thing3
     
     employment_var_thing3 = Thing()
-    employment_var_thing3.thing_type = Thing.RELATION
+    employment_var_thing3.type = Thing.RELATION
     employment_var_thing3.variable_name = 'employment_var'
     employment_var_thing3.type_name = 'employment'
 
@@ -744,7 +744,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         expected_tree = ResultTree()
 
         company_var_thing = Thing()
-        company_var_thing.thing_type = Thing.ENTITY
+        company_var_thing.type = Thing.ENTITY
         company_var_thing.variable_name = 'company_var'
         company_var_thing.type_name = 'company'
 
@@ -773,7 +773,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         employee_names_subquery.sub_query_name = 'employee_names'
         
         employee_var_thing1 = Thing()
-        employee_var_thing1.thing_type = Thing.ENTITY
+        employee_var_thing1.type = Thing.ENTITY
         employee_var_thing1.variable_name = 'employee_var'
         employee_var_thing1.type_name = 'person'
 
@@ -797,7 +797,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         employee_var_thing1_result.thing = employee_var_thing1
         
         employment_var_thing1 = Thing()
-        employment_var_thing1.thing_type = Thing.RELATION
+        employment_var_thing1.type = Thing.RELATION
         employment_var_thing1.variable_name = 'employment_var'
         employment_var_thing1.type_name = 'employment'
 
@@ -820,7 +820,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         
         ## Subtree 2
         employee_var_thing2 = Thing()
-        employee_var_thing2.thing_type = Thing.ENTITY
+        employee_var_thing2.type = Thing.ENTITY
         employee_var_thing2.variable_name = 'employee_var'
         employee_var_thing2.type_name = 'person'
 
@@ -844,7 +844,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         employee_var_thing2_result.thing = employee_var_thing2
 
         employment_var_thing2 = Thing()
-        employment_var_thing2.thing_type = Thing.RELATION
+        employment_var_thing2.type = Thing.RELATION
         employment_var_thing2.variable_name = 'employment_var'
         employment_var_thing2.type_name = 'employment'
 
@@ -867,7 +867,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
 
         ## Subtree 3
         employee_var_thing3 = Thing()
-        employee_var_thing3.thing_type = Thing.ENTITY
+        employee_var_thing3.type = Thing.ENTITY
         employee_var_thing3.variable_name = 'employee_var'
         employee_var_thing3.type_name = 'person'
 
@@ -891,7 +891,7 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         employee_var_thing3_result.thing = employee_var_thing3
         
         employment_var_thing3 = Thing()
-        employment_var_thing3.thing_type = Thing.RELATION
+        employment_var_thing3.type = Thing.RELATION
         employment_var_thing3.variable_name = 'employment_var'
         employment_var_thing3.type_name = 'employment'
 
