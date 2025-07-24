@@ -39,6 +39,9 @@ role-name sub attribute,
 robot-type sub attribute,
     value string;
 
+address sub attribute,
+    value string;
+
 person sub entity,
   owns full-name,
   owns nickname,
@@ -59,6 +62,11 @@ robot sub entity,
   owns alive,
   owns birth-date,
   owns robot-type;
+
+company sub entity,
+  owns name @key,
+  owns address,
+  plays employment:employer;
 
 employment sub relation,
   owns role-name,

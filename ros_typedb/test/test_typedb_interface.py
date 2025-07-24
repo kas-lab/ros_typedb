@@ -409,3 +409,49 @@ def test_get_query(typedb_interface):
     result = typedb_interface.get_database(query)
     name = result[0].get("name").as_attribute().get_value()
     assert len(result) == 3 and name == "Ahmed Frazier"
+
+def test_fetch_query(typedb_interface):
+    query = """
+    match
+        $company isa company, has name "TU Delft";
+    fetch
+        employee_names: {
+            match
+                $e (employer: $company, employee: $employee) isa employment;
+            fetch
+                $employee: full-name, email;
+                $e: salary;
+        };
+    """
+    result = typedb_interface.fetch_database(query)
+    assert len(result) == 1
+    assert len(result[0]['employee_names']) == 3
+
+    expected = [
+        {
+            'salary': 30000,
+            'email': 'phd@tudelft.nl',
+            'full-name': 'PhD candidate 1'
+        },
+        {
+            'salary': 999999,
+            'email': 'boss@tudelft.nl',
+            'full-name': 'Big Boss'
+        },
+        {
+            'salary': 0,
+            'email': 'guest@tudelft.nl',
+            'full-name': 'Random guest'
+        }
+    ]
+
+    actual = []
+    for emp in result[0]['employee_names']:
+        actual.append({
+            'salary': emp['e']['salary'][0]['value'],
+            'email': emp['employee']['email'][0]['value'],
+            'full-name': emp['employee']['full-name'][0]['value']
+        })
+
+    # Compare as sets so order does not matter
+    assert set(tuple(sorted(d.items())) for d in actual) == set(tuple(sorted(d.items())) for d in expected)

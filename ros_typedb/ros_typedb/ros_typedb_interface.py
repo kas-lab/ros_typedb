@@ -17,6 +17,7 @@ import rcl_interfaces
 import ros_typedb_msgs
 
 from rcl_interfaces.msg import ParameterValue
+from rcl_interfaces.msg import ParameterType
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.lifecycle import Node
@@ -26,20 +27,53 @@ from rclpy.lifecycle import TransitionCallbackReturn
 from ros_typedb.typedb_interface import MatchResultDict
 from ros_typedb.typedb_interface import TypeDBInterface
 from ros_typedb.typedb_interface import convert_query_type_to_py_type
+
 from ros_typedb_msgs.msg import Attribute
+from ros_typedb_msgs.msg import IndexList
 from ros_typedb_msgs.msg import QueryResult
+from ros_typedb_msgs.msg import ResultTree
+from ros_typedb_msgs.msg import Thing
 from ros_typedb_msgs.srv import Query
 
 from std_msgs.msg import String
 
+from typing import Any
+from typing import Dict
 from typing import Literal
+from typing import List
 from typing import Optional
+from typing import Union
 
+_PARAM_TYPE_MAP = {
+    'boolean': (ParameterType.PARAMETER_BOOL, 'bool_value'),
+    'bool': (ParameterType.PARAMETER_BOOL, 'bool_value'),
+    'long': (ParameterType.PARAMETER_INTEGER, 'integer_value', 'long'),
+    'int': (ParameterType.PARAMETER_INTEGER, 'integer_value', 'long'),
+    'double': (ParameterType.PARAMETER_DOUBLE, 'double_value', 'double'),
+    'float': (ParameterType.PARAMETER_DOUBLE, 'double_value', 'double'),
+    'string': (ParameterType.PARAMETER_STRING, 'string_value', 'string'),
+    'str': (ParameterType.PARAMETER_STRING, 'string_value', 'string'),
+    'datetime': (ParameterType.PARAMETER_STRING, 'string_value', 'string'),
+    'boolean_array': (ParameterType.PARAMETER_BOOL_ARRAY, 'bool_array_value'),
+    'long_array': (ParameterType.PARAMETER_INTEGER_ARRAY, 'integer_array_value', 'long_array'),
+    'double_array': (ParameterType.PARAMETER_DOUBLE_ARRAY, 'double_array_value', 'double_array'),
+    'string_array': (ParameterType.PARAMETER_STRING_ARRAY, 'string_array_value', 'string_array'),
+}
+
+_TYPEDB_ROOT_TYPE_TO_QUERY_RESULT_TYPE = {
+    'entity' : QueryResult.THING,
+    'relation' : QueryResult.THING,
+    'attribute' : QueryResult.ATTRIBUTE
+}
+_TYPEDB_ROOT_TYPE_TO_THING_TYPE = {
+    'entity' : Thing.ENTITY,
+    'relation' : Thing.RELATION,
+}
 
 def set_query_result_value(
-    value: bool | int | float | str | list[bool] | list[int] | list[float]
-    | list[str],
-        value_type: str) -> rcl_interfaces.msg.ParameterValue:
+    value: Union[bool, int, float, str, List[bool], List[int], List[float], List[str]],
+    value_type: str
+    ) -> rcl_interfaces.msg.ParameterValue:
     """
     Convert value to :class:`rcl_interfaces.msg.ParameterValue`.
 
@@ -47,46 +81,109 @@ def set_query_result_value(
     :param value_type: value type, e.g., `boolean`, `float` etc.
     :return: converted value
     """
-    _param_value = ParameterValue()
-    _type_dict = {
-        'boolean': (1, 'bool_value'),
-        'bool': (1, 'bool_value'),
-        'long': (2, 'integer_value', 'long'),
-        'int': (2, 'integer_value', 'long'),
-        'double': (3, 'double_value', 'double'),
-        'float': (3, 'double_value', 'double'),
-        'string': (4, 'string_value', 'string'),
-        'str': (4, 'string_value', 'string'),
-        'datetime': (4, 'string_value', 'string'),
-        'boolean_array': (6, 'bool_array_value'),
-        'long_array': (7, 'integer_array_value'),
-        'double_array': (8, 'double_array_value'),
-        'string_array': (9, 'string_array_value'),
-    }
-    if value_type in _type_dict:
-        _param_value.type = _type_dict[value_type][0]
-        try:
-            value = convert_query_type_to_py_type(
-                value=value, value_type=_type_dict[value_type][2])
-        except IndexError:
-            pass
-        setattr(
-            _param_value,
-            _type_dict[value_type][1],
-            value
+    param_value = ParameterValue()
+
+    param_info = _PARAM_TYPE_MAP.get(value_type)
+    if not param_info:
+        raise ValueError(f"Unsupported value_type: {value_type}")
+
+    param_value.type = param_info[0]
+
+    if len(param_info) > 2:
+        value = convert_query_type_to_py_type(value=value, value_type=param_info[2])
+
+    setattr(param_value, param_info[1], value)
+
+    return param_value
+
+
+def convert_attribute_dict_to_ros_msg(
+    attr_name:str, 
+    attribute_value: List[Dict[str, Any]] | Dict[str, Any]
+    ) -> Attribute:
+    
+    attr = Attribute()
+    attr.variable_name = attr_name
+
+    if isinstance(attribute_value, list):
+        if not attribute_value:
+            return attr  # Early exit for empty list
+
+        first_type = attribute_value[0]['type']
+        value_type = first_type['value_type']
+        attr_label = first_type['label']
+
+        value_list = []
+
+        for value in attribute_value:
+            current_type = value['type']
+            if current_type['value_type'] != value_type or current_type['label'] != attr_label:
+                raise ValueError("Inconsistent types or labels in attribute list")
+
+            value_list.append(value['value'])
+
+        attr.value = set_query_result_value(value_list, value_type + '_array')
+        attr.label = attr_label
+        return attr
+
+    attr.label = attribute_value['type']['label']
+    if 'value' in attribute_value:
+        attr.value = set_query_result_value(
+            attribute_value['value'],
+            attribute_value['type']['value_type']
         )
-    return _param_value
 
+    return attr
 
-def convert_attribute_dict_to_ros_msg(attr_name:str, attribute_dict: Attribute):
-    _attr = Attribute()
-    _attr.name = attr_name
-    _attr.label = attribute_dict.get('type').get('label')
-    if 'value' in attribute_dict:
-        _attr.value = set_query_result_value(
-            attribute_dict.get('value'),
-            attribute_dict.get('type').get('value_type'))
-    return _attr
+def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
+    result_tree = ResultTree()
+    index = start_index
+    
+    for key, values in json_obj.items():
+        query_result = QueryResult()
+        query_result.result_index = index
+        index += 1
+
+        if isinstance(values, dict) and 'type' in values:
+            result_type_info = values['type']
+            result_type = result_type_info['root']
+            result_label = result_type_info['label']
+                
+            query_result.type = _TYPEDB_ROOT_TYPE_TO_QUERY_RESULT_TYPE[result_type]
+
+            if result_type == 'attribute':
+                attr = convert_attribute_dict_to_ros_msg(key, values)
+                query_result.attribute = attr
+            else:
+                thing = Thing()
+                thing.type = _TYPEDB_ROOT_TYPE_TO_THING_TYPE[result_type]
+                thing.variable_name = key
+                thing.type_name = result_label
+                thing.attributes = [
+                    convert_attribute_dict_to_ros_msg(attr_name, attr_result_list)
+                    for attr_name, attr_result_list in values.items()
+                    if attr_name != "type"
+                ]
+                query_result.thing = thing
+
+            result_tree.results.append(query_result)
+        elif isinstance(values, list):
+            query_result.type = QueryResult.SUB_QUERY
+            query_result.sub_query_name = key
+            
+            children_results = list()
+            for value_dict in values:
+                child_result_tree, child_last_index = fetch_result_to_ros_result_tree(value_dict, index)
+                sub_tree_index_list = IndexList()
+                sub_tree_index_list.index = list(range(index, child_last_index))
+                index = child_last_index
+                query_result.children_index.append(sub_tree_index_list)
+                children_results.extend(child_result_tree.results)
+            
+            result_tree.results.append(query_result)
+            result_tree.results.extend(children_results)
+    
+    return result_tree, index
 
 def fetch_query_result_to_ros_msg(
     query_result: list[dict[str, MatchResultDict]] | None
@@ -103,25 +200,8 @@ def fetch_query_result_to_ros_msg(
         return response
 
     for result in query_result:
-        _result = QueryResult()
-        for key, result_dict in result.items():
-            # _result.variable_name = key
-
-            result_type_info = result_dict.get('type')
-            # _result.variable_type = result_type_info.get('label')
-            result_type = result_type_info.get('root')
-            if result_type == 'attribute':
-                _result.attributes.append(convert_attribute_dict_to_ros_msg(key, result_dict))
-            else:
-                _result.variable_name = key
-                _result.variable_type = result_type_info.get('label')
-                _result.attributes = [
-                    convert_attribute_dict_to_ros_msg(attr_name, attr_result_dict)
-                    for attr_name, attr_result_list in result_dict.items()
-                    if attr_name != "type"
-                    for attr_result_dict in attr_result_list
-                ]
-        response.results.append(_result)
+        result_tree, _ = fetch_result_to_ros_result_tree(result)
+        response.results.append(result_tree)
     response.success = True
     return response
 
@@ -141,20 +221,25 @@ def get_query_result_to_ros_msg(
         return response
 
     for result in query_result:
-        _result = QueryResult()
-        _variables = result.variables()
-        for variable in _variables:
+        result_tree = ResultTree()
+        variables = result.variables()
+        for variable in variables:
             variable_value = result.get(variable)
             if variable_value.is_attribute():
-                _typedb_attr = variable_value.as_attribute()
-                _attr = Attribute()
-                _attr.name = variable
-                _attr.label = _typedb_attr.get_type().get_label().name
-                _attr.value = set_query_result_value(
-                    _typedb_attr.get_value(),
-                    str(_typedb_attr.get_type().get_value_type()))
-                _result.attributes.append(_attr)
-        response.results.append(_result)
+                typedb_attr = variable_value.as_attribute()
+                
+                query_result_ros = QueryResult()
+                query_result_ros.type = QueryResult.ATTRIBUTE
+                
+                attr = Attribute()
+                attr.variable_name = variable
+                attr.label = typedb_attr.get_type().get_label().name
+                attr.value = set_query_result_value(
+                    typedb_attr.get_value(),
+                    str(typedb_attr.get_type().get_value_type()))
+                query_result_ros.attribute = attr
+            result_tree.results.append(query_result_ros)
+        response.results.append(result_tree)
     response.success = True
     return response
 
@@ -169,14 +254,17 @@ def get_aggregate_query_result_to_ros_msg(
     :return: converted query response.
     """
     response = Query.Response()
-    _attr = Attribute()
-    _attr.value = set_query_result_value(
+    attr = Attribute()
+    attr.value = set_query_result_value(
         query_result,
         type(query_result).__name__)
 
-    _result = QueryResult()
-    _result.attributes.append(_attr)
-    response.results.append(_result)
+    query_result_ros_msg = QueryResult()
+    query_result_ros_msg.type = QueryResult.ATTRIBUTE
+    query_result_ros_msg.attribute = attr
+    result_tree = ResultTree()
+    result_tree.results.append(query_result_ros_msg)
+    response.results.append(result_tree)
     return response
 
 
