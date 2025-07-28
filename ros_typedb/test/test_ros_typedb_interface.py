@@ -217,7 +217,7 @@ def test_ros_typedb_wrong_query(insert_query):
         node.activate_ros_typedb()
 
         insert_query_req = insert_query
-        insert_query_req.query_type = -1
+        insert_query_req.query_type = 100
         query_res = node.call_service(node.query_srv, insert_query_req)
         assert query_res.success is False
     finally:
