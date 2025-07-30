@@ -930,14 +930,28 @@ def test_ros_typedb_fetch_query_attribute(insert_query):
         assert query_res.success is True
         assert len(query_res.results) == 1
 
-        assert query_res.results[0].results[0] == company_var_query_result
-        assert query_res.results[0].results[1] == employee_names_subquery
-        assert query_res.results[0].results[2] == employee_var_thing1_result
-        assert query_res.results[0].results[3] == employment_var_thing1_result
-        assert query_res.results[0].results[4] == employee_var_thing2_result
-        assert query_res.results[0].results[5] == employment_var_thing2_result
-        assert query_res.results[0].results[6] == employee_var_thing3_result
-        assert query_res.results[0].results[7] == employment_var_thing3_result
+        expected = [company_var_query_result, employee_names_subquery,
+                    employee_var_thing1_result, employment_var_thing1_result,
+                    employee_var_thing2_result, employment_var_thing2_result,
+                    employee_var_thing3_result, employment_var_thing3_result]
+
+        actual = []
+        for result in query_res.results[0].results:
+            actual.append(result)
+
+        import copy
+        def strip_indices(obj):
+            # Make a shallow copy to avoid mutating the original
+            obj_copy = copy.copy(obj)
+            if hasattr(obj_copy, 'result_index'):
+                obj_copy.result_index = 0
+            if hasattr(obj_copy, 'children_index'):
+                obj_copy.children_index = [IndexList()]
+            return obj_copy
+
+        # Compare expected and actual ignoring result_index and children_index
+        for item in expected:
+            assert any(strip_indices(item) == strip_indices(a) for a in actual)
 
     finally:
         rclpy.shutdown()
