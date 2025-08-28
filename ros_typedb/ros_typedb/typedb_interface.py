@@ -14,6 +14,7 @@
 """typedb_interface - python interface to interact with typedb."""
 
 import functools
+import logging
 
 from datetime import datetime
 
@@ -141,6 +142,7 @@ class TypeDBInterface:
         :param force_data: if the database data should be overriden.
         :param infer: if inference engine should be used.
         """
+        self.logger = logging.getLogger()
         self._infer = infer
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
