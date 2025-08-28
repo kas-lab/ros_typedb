@@ -14,6 +14,7 @@
 """typedb_interface - python interface to interact with typedb."""
 
 import functools
+import logging
 
 from datetime import datetime
 
@@ -96,7 +97,7 @@ def string_to_string_array(string: str) -> list[str]:
 def recursively_sort_dict(obj):
     """
     Recursively sort dict keys (and nested dicts) in a dict or list.
-    
+
     :param obj: dictionary
     :return: returns a new sorted dictionary (does not mutate original).
     """
@@ -160,6 +161,7 @@ class TypeDBInterface:
         :param force_data: if the database data should be overriden.
         :param infer: if inference engine should be used.
         """
+        self.logger = logging.getLogger()
         self._infer = infer
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
