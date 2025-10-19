@@ -27,8 +27,24 @@ def typedb_interface():
         data_path=['test/typedb_test_data/data.tql'],
         force_data=True,
     )
-    return typedb_interface
+    yield typedb_interface
+    typedb_interface.delete_database()
 
+
+def test_create_and_delete_database():
+    typedb_interface = TypeDBInterface(
+        'localhost:1729',
+        'test_database',
+        force_database=True,
+        schema_path=['test/typedb_test_data/schema.tql'],
+        data_path=['test/typedb_test_data/data.tql'],
+        force_data=True,
+    )
+
+    assert typedb_interface.driver.databases.contains('test_database')
+
+    typedb_interface.delete_database()
+    assert not typedb_interface.driver.databases.contains('test_database')
 
 def test_insert_entity(typedb_interface):
     typedb_interface.insert_entity(

@@ -192,12 +192,14 @@ class TypeDBInterface:
         """
         self.driver = TypeDB.core_driver(address=address)
 
-    def delete_database(self, database_name: str) -> None:
+    def delete_database(self, database_name: str = None) -> None:
         """
         Delete database.
 
         :param database_name: database name.
         """
+        if database_name is None:
+            database_name = self.database_name
         if self.driver.databases.contains(database_name):
             self.driver.databases.get(database_name).delete()
 
