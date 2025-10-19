@@ -1,5 +1,6 @@
-import os
 from glob import glob
+import os
+
 from setuptools import setup
 
 package_name = 'ros_typedb'
@@ -21,7 +22,7 @@ setup(
     maintainer_email='g.rezendesilva@tudelft.nl',
     description='ROS interface for TypeDB',
     license='Apache License 2.0',
-    extras_require = {
+    extras_require={
         'test': [
             'pytest',
         ],

@@ -13,20 +13,28 @@
 # limitations under the License.
 """ros_typedb_interface - python interface to interact with typedb via ROS."""
 
-import rcl_interfaces
-import ros_typedb_msgs
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Literal
+from typing import Optional
+from typing import Union
 
-from rcl_interfaces.msg import ParameterValue
+import rcl_interfaces
+
 from rcl_interfaces.msg import ParameterType
+from rcl_interfaces.msg import ParameterValue
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.lifecycle import Node
 from rclpy.lifecycle import State
 from rclpy.lifecycle import TransitionCallbackReturn
 
+from ros_typedb.typedb_interface import convert_query_type_to_py_type
 from ros_typedb.typedb_interface import MatchResultDict
 from ros_typedb.typedb_interface import TypeDBInterface
-from ros_typedb.typedb_interface import convert_query_type_to_py_type
+
+import ros_typedb_msgs
 
 from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import IndexList
@@ -40,12 +48,6 @@ from std_msgs.msg import String
 import std_srvs
 from std_srvs.srv import Empty
 
-from typing import Any
-from typing import Dict
-from typing import Literal
-from typing import List
-from typing import Optional
-from typing import Union
 
 _PARAM_TYPE_MAP = {
     'boolean': (ParameterType.PARAMETER_BOOL, 'bool_value'),
@@ -64,19 +66,20 @@ _PARAM_TYPE_MAP = {
 }
 
 _TYPEDB_ROOT_TYPE_TO_QUERY_RESULT_TYPE = {
-    'entity' : QueryResult.THING,
-    'relation' : QueryResult.THING,
-    'attribute' : QueryResult.ATTRIBUTE
+    'entity': QueryResult.THING,
+    'relation': QueryResult.THING,
+    'attribute': QueryResult.ATTRIBUTE
 }
 _TYPEDB_ROOT_TYPE_TO_THING_TYPE = {
-    'entity' : Thing.ENTITY,
-    'relation' : Thing.RELATION,
+    'entity': Thing.ENTITY,
+    'relation': Thing.RELATION,
 }
+
 
 def set_query_result_value(
     value: Union[bool, int, float, str, List[bool], List[int], List[float], List[str]],
     value_type: str
-    ) -> rcl_interfaces.msg.ParameterValue:
+) -> rcl_interfaces.msg.ParameterValue:
     """
     Convert value to :class:`rcl_interfaces.msg.ParameterValue`.
 
@@ -88,12 +91,13 @@ def set_query_result_value(
 
     param_info = _PARAM_TYPE_MAP.get(value_type)
     if not param_info:
-        raise ValueError(f"Unsupported value_type: {value_type}")
+        raise ValueError(f'Unsupported value_type: {value_type}')
 
     param_value.type = param_info[0]
 
     if len(param_info) > 2:
-        value = convert_query_type_to_py_type(value=value, value_type=param_info[2])
+        value = convert_query_type_to_py_type(
+            value=value, value_type=param_info[2])
 
     setattr(param_value, param_info[1], value)
 
@@ -101,9 +105,9 @@ def set_query_result_value(
 
 
 def convert_attribute_dict_to_ros_msg(
-    attr_name:str,
+    attr_name: str,
     attribute_value: List[Dict[str, Any]] | Dict[str, Any]
-    ) -> Attribute:
+) -> Attribute:
 
     attr = Attribute()
     attr.variable_name = attr_name
@@ -121,7 +125,8 @@ def convert_attribute_dict_to_ros_msg(
         for value in attribute_value:
             current_type = value['type']
             if current_type['value_type'] != value_type or current_type['label'] != attr_label:
-                raise ValueError("Inconsistent types or labels in attribute list")
+                raise ValueError(
+                    'Inconsistent types or labels in attribute list')
 
             value_list.append(value['value'])
 
@@ -138,7 +143,8 @@ def convert_attribute_dict_to_ros_msg(
 
     return attr
 
-def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
+
+def fetch_result_to_ros_result_tree(json_obj, start_index=0):
     result_tree = ResultTree()
     index = start_index
 
@@ -165,7 +171,7 @@ def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
                 thing.attributes = [
                     convert_attribute_dict_to_ros_msg(attr_name, attr_result_list)
                     for attr_name, attr_result_list in values.items()
-                    if attr_name != "type"
+                    if attr_name != 'type'
                 ]
                 query_result.thing = thing
 
@@ -176,9 +182,11 @@ def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
 
             children_results = list()
             for value_dict in values:
-                child_result_tree, child_last_index = fetch_result_to_ros_result_tree(value_dict, index)
+                child_result_tree, child_last_index = fetch_result_to_ros_result_tree(
+                    value_dict, index)
                 sub_tree_index_list = IndexList()
-                sub_tree_index_list.index = list(range(index, child_last_index))
+                sub_tree_index_list.index = list(
+                    range(index, child_last_index))
                 index = child_last_index
                 query_result.children_index.append(sub_tree_index_list)
                 children_results.extend(child_result_tree.results)
@@ -187,6 +195,7 @@ def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
             result_tree.results.extend(children_results)
 
     return result_tree, index
+
 
 def fetch_query_result_to_ros_msg(
     query_result: list[dict[str, MatchResultDict]] | None
@@ -210,8 +219,8 @@ def fetch_query_result_to_ros_msg(
 
 
 def get_query_result_to_ros_msg(
-        query_result: int | float | None
-     ) -> ros_typedb_msgs.srv.Query.Response:
+    query_result: int | float | None
+) -> ros_typedb_msgs.srv.Query.Response:
     """
     Convert get query result to :class:`ros_typedb_msgs.srv.Query`.
 
@@ -248,8 +257,8 @@ def get_query_result_to_ros_msg(
 
 
 def get_aggregate_query_result_to_ros_msg(
-        query_result: int | float | None
-     ) -> ros_typedb_msgs.srv.Query.Response:
+    query_result: int | float | None
+) -> ros_typedb_msgs.srv.Query.Response:
     """
     Convert get aggregate query result to :class:`ros_typedb_msgs.srv.Query`.
 

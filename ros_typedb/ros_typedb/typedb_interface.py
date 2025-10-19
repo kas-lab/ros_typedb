@@ -13,22 +13,22 @@
 # limitations under the License.
 """typedb_interface - python interface to interact with typedb."""
 
+from datetime import datetime
 import functools
 import logging
 
-from datetime import datetime
-
-from typedb.driver import ConceptMap
-from typedb.driver import SessionType
-from typedb.driver import TransactionType
-from typedb.driver import TypeDB
-from typedb.driver import TypeDBSession
-from typedb.driver import TypeDBOptions
 from typing import Iterator
 from typing import Literal
 from typing import Optional
 from typing import Tuple
 from typing import TypedDict
+
+from typedb.driver import ConceptMap
+from typedb.driver import SessionType
+from typedb.driver import TransactionType
+from typedb.driver import TypeDB
+from typedb.driver import TypeDBOptions
+from typedb.driver import TypeDBSession
 
 
 def convert_query_type_to_py_type(
@@ -92,7 +92,8 @@ def string_to_string_array(string: str) -> list[str]:
     :param string: string to be converted
     :return: converted string
     """
-    return [s.strip(' \'') for s in string.strip('[]').split(',')]
+    return [s.strip(" '") for s in string.strip('[]').split(',')]
+
 
 def recursively_sort_dict(obj):
     """
@@ -107,6 +108,7 @@ def recursively_sort_dict(obj):
         return [recursively_sort_dict(item) for item in obj]
     else:
         return obj
+
 
 class MatchResultDict(TypedDict):
     """TypedDict for match result."""
@@ -683,7 +685,7 @@ class TypeDBInterface:
                         for v in variables:
                             aux = '{0}:${1}'.format(role, v)
                             if related_things != '':
-                                aux = "," + aux
+                                aux = ',' + aux
                             related_things += aux
                     _query += '({})'.format(related_things)
 
@@ -758,15 +760,15 @@ class TypeDBInterface:
             ['employee_0', 'employee_1']
 
         """
-        match_query = ""
+        match_query = ''
         prefix_list = []
         t_counter = 0
         for thing in things_list:
-            match_query += " ${0}_{1} isa {2},".format(
+            match_query += ' ${0}_{1} isa {2},'.format(
                 prefix, t_counter, thing[0])
-            match_query += " has {0} {1};".format(
+            match_query += ' has {0} {1};'.format(
                 thing[1], convert_py_type_to_query_type(thing[2]))
-            prefix_list.append("{0}_{1}".format(prefix, t_counter))
+            prefix_list.append('{0}_{1}'.format(prefix, t_counter))
             t_counter += 1
         return match_query, prefix_list
 
@@ -813,22 +815,22 @@ class TypeDBInterface:
                 has salary 2333 , has role-name 'boss';
 
         """
-        related_things = ""
+        related_things = ''
         for role, variables in related_dict.items():
             for v in variables:
-                aux = "{0}:${1}".format(role, v)
-                if related_things != "":
-                    aux = "," + aux
+                aux = '{0}:${1}'.format(role, v)
+                if related_things != '':
+                    aux = ',' + aux
                 related_things += aux
-        query = " ${0} ({1}) isa {2}".format(
+        query = ' ${0} ({1}) isa {2}'.format(
             prefix, related_things, relationship)
         for attribute in attribute_list:
             if attribute[0] is not None:
-                query += ", has {} {} ".format(
+                query += ', has {} {} '.format(
                     attribute[0],
                     convert_py_type_to_query_type(attribute[1])
                 )
-        query += ";"
+        query += ';'
         return query
 
     def delete_thing(
@@ -871,7 +873,7 @@ class TypeDBInterface:
             if attribute[0] is not None:
                 value = convert_py_type_to_query_type(attribute[1])
                 query += f""", has {attribute[0]} {value} """
-        query += ";"
+        query += ';'
         return self.insert_database(query)
 
     def insert_relationship(
@@ -925,8 +927,8 @@ class TypeDBInterface:
                     has salary 2333 , has role-name 'boss';
 
         """
-        match_query = "match "
-        insert_query = "insert "
+        match_query = 'match '
+        insert_query = 'insert '
         _related_dict = dict()
         for key, things in related_dict.items():
             _match_query, _prefix_list = self.create_match_query(things, key)
