@@ -11,20 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-
-from ament_index_python.packages import get_package_share_directory
-
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.actions import EmitEvent
 from launch.actions import RegisterEventHandler
 from launch.events import matches_action
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
 from launch_ros.actions import LifecycleNode
-from launch_ros.events.lifecycle import ChangeState
 from launch_ros.event_handlers import OnStateTransition
+from launch_ros.events.lifecycle import ChangeState
 import lifecycle_msgs
 
 
@@ -36,8 +31,6 @@ def generate_launch_description():
     force_data = LaunchConfiguration('force_data')
     force_database = LaunchConfiguration('force_database')
     infer = LaunchConfiguration('infer')
-
-    pkg_ros_typedb = get_package_share_directory('ros_typedb')
 
     schema_path_arg = DeclareLaunchArgument(
         'schema_path',
@@ -108,7 +101,7 @@ def generate_launch_description():
     ros_typedb_node_activate_event = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node=ros_typedb_node,
-            goal_state="inactive",
+            goal_state='inactive',
             entities=[
                 EmitEvent(event=ChangeState(
                     lifecycle_node_matcher=matches_action(ros_typedb_node),

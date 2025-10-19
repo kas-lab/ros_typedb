@@ -12,31 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
+import sys
+from threading import Event
+from threading import Thread
+
 import launch
 import launch_pytest
 import launch_ros
 
-from pathlib import Path
+from lifecycle_msgs.srv import ChangeState
+from lifecycle_msgs.srv import GetState
 
 import pytest
+
+from rcl_interfaces.msg import ParameterType
 import rclpy
-
-import sys
-
-import threading
-from threading import Event
-from threading import Thread
+from rclpy.node import Node
 
 from ros_typedb.ros_typedb_interface import convert_attribute_dict_to_ros_msg
 from ros_typedb.ros_typedb_interface import fetch_result_to_ros_result_tree
-
-from lifecycle_msgs.srv import ChangeState
-from lifecycle_msgs.srv import GetState
-from rclpy.node import Node
-
-from rcl_interfaces.msg import ParameterType
-
-from rclpy.executors import SingleThreadedExecutor
 
 from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import IndexList
@@ -48,6 +43,7 @@ from ros_typedb_msgs.srv import Query
 from std_msgs.msg import String
 from std_srvs.srv import Empty
 
+
 @pytest.fixture
 def insert_query():
     query_req = Query.Request()
@@ -55,18 +51,18 @@ def insert_query():
     query_req.query = """
         insert
             $person isa person,
-                has email "test@test.com",
-                has nickname "test",
+                has email 'test@test.com',
+                has nickname 'test',
                 has age 33,
                 has height 1.00,
                 has alive true,
                 has birth-date 1990-06-01;
             $person2 isa person,
-                has email "test2@test.com",
-                has nickname "employer";
+                has email 'test2@test.com',
+                has nickname 'employer';
             $person3 isa person,
-                has email "test3@test.com",
-                has nickname "employer2";
+                has email 'test3@test.com',
+                has nickname 'employer2';
             (employee:$person, employer:$person2) isa employment,
                 has salary 1000;
             (employee:$person, employer:$person3) isa employment,
@@ -97,7 +93,8 @@ def generate_test_description():
         ros_typedb_node,
     ])
 
-@pytest.fixture(scope="session", autouse=True)
+
+@pytest.fixture(scope='session', autouse=True)
 def rclpy_runtime():
     if not rclpy.ok():
         rclpy.init()
@@ -107,6 +104,7 @@ def rclpy_runtime():
         if rclpy.ok():
             rclpy.shutdown()
 
+
 @pytest.fixture
 def test_node():
     node = MakeTestNode()
@@ -115,6 +113,7 @@ def test_node():
     finally:
         node.delete_dabase()
         node.destroy_node()
+
 
 @pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_lc_states(test_node):
@@ -160,7 +159,7 @@ def test_ros_typedb_delete_query(test_node, insert_query):
     query_req = Query.Request()
     query_req.query_type = query_req.DELETE
     query_req.query = """
-        match $entity isa person, has email "test@test.com";
+        match $entity isa person, has email 'test@test.com';
         delete $entity isa person;
     """
     query_res = test_node.call_service(test_node.query_cli, query_req)
@@ -168,15 +167,17 @@ def test_ros_typedb_delete_query(test_node, insert_query):
     match_query_req = Query.Request()
     match_query_req.query_type = match_query_req.GET_AGGREGATE
     match_query_req.query = """
-        match $entity isa person, has email "test@test.com";
+        match $entity isa person, has email 'test@test.com';
         get $entity;
         count;
     """
-    match_query_res = test_node.call_service(test_node.query_cli, match_query_req)
+    match_query_res = test_node.call_service(
+        test_node.query_cli, match_query_req)
 
     assert query_res.success
     assert match_query_res.success
-    assert match_query_res.results[0].results[0].attribute.value.type == ParameterType.PARAMETER_INTEGER
+    assert match_query_res.results[0].results[0].attribute.value.type == \
+        ParameterType.PARAMETER_INTEGER
     assert match_query_res.results[0].results[0].attribute.value.integer_value == 0
 
 
@@ -191,7 +192,7 @@ def test_ros_typedb_delete_event(test_node, insert_query):
     query_req = Query.Request()
     query_req.query_type = query_req.DELETE
     query_req.query = """
-        match $entity isa person, has email "test@test.com";
+        match $entity isa person, has email 'test@test.com';
         delete $entity isa person;
     """
     query_res = test_node.call_service(test_node.query_cli, query_req)
@@ -210,6 +211,7 @@ def test_ros_typedb_wrong_query(test_node, insert_query):
     query_res = test_node.call_service(test_node.query_cli, insert_query_req)
     assert query_res.success is False
 
+
 def test_convert_attribute_dict_to_ros_msg():
     expected_address_attr = Attribute()
     expected_address_attr.variable_name = 'company_var'
@@ -224,28 +226,63 @@ def test_convert_attribute_dict_to_ros_msg():
     expected_name_attr.value.string_array_value = ['TU Delft']
 
     test_dict = {
-        "company_var": {
-            "address": [
-                { "value": "street 1", "type": { "label": "address", "root": "attribute", "value_type": "string" } },
-                { "value": "street 2", "type": { "label": "address", "root": "attribute", "value_type": "string" } }
+        'company_var': {
+            'address': [
+                {'value': 'street 1',
+                 'type': {'label': 'address',
+                          'root': 'attribute',
+                          'value_type': 'string'}},
+                {'value': 'street 2',
+                 'type': {'label': 'address',
+                          'root': 'attribute',
+                          'value_type': 'string'}}
             ],
-            "name": [ { "value": "TU Delft", "type": { "label": "name", "root": "attribute", "value_type": "string" } } ],
-            "type": { "label": "company", "root": "entity" }
+            'name': [{'value': 'TU Delft',
+                     'type': {'label': 'name',
+                              'root': 'attribute',
+                              'value_type': 'string'}}],
+            'type': {'label': 'company', 'root': 'entity'}
         }
     }
-    address_attr = convert_attribute_dict_to_ros_msg('company_var', test_dict['company_var']['address'])
+    address_attr = convert_attribute_dict_to_ros_msg(
+        'company_var', test_dict['company_var']['address'])
     assert expected_address_attr == address_attr
 
-    name_attr = convert_attribute_dict_to_ros_msg('company_var', test_dict['company_var']['name'])
+    name_attr = convert_attribute_dict_to_ros_msg(
+        'company_var', test_dict['company_var']['name'])
     assert expected_name_attr == name_attr
 
     test_dict = {
-        "age": { "value": 33, "type": { "label": "age", "root": "attribute", "value_type": "long" } },
-        "alive": { "value": True, "type": { "label": "alive", "root": "attribute", "value_type": "boolean" } },
-        "date": { "value": "1990-06-01T00:00:00.000", "type": { "label": "birth-date", "root": "attribute", "value_type": "datetime" } },
-        "height": { "value": 1, "type": { "label": "height", "root": "attribute", "value_type": "double" } },
-        "nick": { "value": "test", "type": { "label": "nickname", "root": "attribute", "value_type": "string" } }
-    }
+        'age': {
+            'value': 33,
+            'type': {
+                'label': 'age',
+                'root': 'attribute',
+                'value_type': 'long'}},
+        'alive': {
+            'value': True,
+            'type': {
+                'label': 'alive',
+                'root': 'attribute',
+                'value_type': 'boolean'}},
+        'date': {
+            'value': '1990-06-01T00:00:00.000',
+            'type': {
+                'label': 'birth-date',
+                'root': 'attribute',
+                'value_type': 'datetime'}},
+        'height': {
+            'value': 1,
+            'type': {
+                'label': 'height',
+                'root': 'attribute',
+                'value_type': 'double'}},
+        'nick': {
+            'value': 'test',
+            'type': {
+                'label': 'nickname',
+                'root': 'attribute',
+                'value_type': 'string'}}}
     expected_age_attr = Attribute()
     expected_age_attr.variable_name = 'age'
     expected_age_attr.label = 'age'
@@ -279,7 +316,8 @@ def test_convert_attribute_dict_to_ros_msg():
     expected_height_attr.value.type = ParameterType.PARAMETER_DOUBLE
     expected_height_attr.value.double_value = 1.0
 
-    height_attr = convert_attribute_dict_to_ros_msg('height', test_dict['height'])
+    height_attr = convert_attribute_dict_to_ros_msg(
+        'height', test_dict['height'])
     assert expected_height_attr == height_attr
 
     expected_nick_attr = Attribute()
@@ -291,14 +329,39 @@ def test_convert_attribute_dict_to_ros_msg():
     nick_attr = convert_attribute_dict_to_ros_msg('nick', test_dict['nick'])
     assert expected_nick_attr == nick_attr
 
+
 def test_fetch_result_to_ros_result_tree():
     json_test = {
-        "age": { "value": 33, "type": { "label": "age", "root": "attribute", "value_type": "long" } },
-        "alive": { "value": True, "type": { "label": "alive", "root": "attribute", "value_type": "boolean" } },
-        "date": { "value": "1990-06-01T00:00:00.000", "type": { "label": "birth-date", "root": "attribute", "value_type": "datetime" } },
-        "height": { "value": 1, "type": { "label": "height", "root": "attribute", "value_type": "double" } },
-        "nick": { "value": "test", "type": { "label": "nickname", "root": "attribute", "value_type": "string" } }
-    }
+        'age': {
+            'value': 33,
+            'type': {
+                'label': 'age',
+                'root': 'attribute',
+                'value_type': 'long'}},
+        'alive': {
+            'value': True,
+            'type': {
+                'label': 'alive',
+                'root': 'attribute',
+                'value_type': 'boolean'}},
+        'date': {
+            'value': '1990-06-01T00:00:00.000',
+            'type': {
+                'label': 'birth-date',
+                'root': 'attribute',
+                'value_type': 'datetime'}},
+        'height': {
+            'value': 1,
+            'type': {
+                'label': 'height',
+                'root': 'attribute',
+                'value_type': 'double'}},
+        'nick': {
+            'value': 'test',
+            'type': {
+                'label': 'nickname',
+                'root': 'attribute',
+                'value_type': 'string'}}}
 
     expected_age_attr = Attribute()
     expected_age_attr.variable_name = 'age'
@@ -376,46 +439,82 @@ def test_fetch_result_to_ros_result_tree():
     assert expected_tree == result_tree
 
     json_test = {
-        "company_var": {
-            "address": [
-                { "value": "street 1", "type": { "label": "address", "root": "attribute", "value_type": "string" } },
-                { "value": "street 2", "type": { "label": "address", "root": "attribute", "value_type": "string" } }
+        'company_var': {
+            'address': [
+                {'value': 'street 1', 'type': {
+                    'label': 'address',
+                    'root': 'attribute',
+                    'value_type': 'string'}},
+                {'value': 'street 2', 'type': {
+                    'label': 'address',
+                    'root': 'attribute',
+                    'value_type': 'string'}}
             ],
-            "name": [ { "value": "TU Delft", "type": { "label": "name", "root": "attribute", "value_type": "string" } } ],
-            "type": { "label": "company", "root": "entity" }
+            'name': [{'value': 'TU Delft', 'type': {
+                'label': 'name',
+                'root': 'attribute',
+                'value_type': 'string'}}],
+            'type': {'label': 'company', 'root': 'entity'}
         },
-        "employee_names": [
+        'employee_names': [
             {
-                "employee_var": {
-                    "email": [ { "value": "phd@tudelft.nl", "type": { "label": "email", "root": "attribute", "value_type": "string" } } ],
-                    "full-name": [ { "value": "PhD candidate 1", "type": { "label": "full-name", "root": "attribute", "value_type": "string" } } ],
-                    "type": { "label": "person", "root": "entity" }
+                'employee_var': {
+                    'email': [{'value': 'phd@tudelft.nl', 'type': {
+                        'label': 'email',
+                        'root': 'attribute',
+                        'value_type': 'string'}}],
+                    'full-name': [{'value': 'PhD candidate 1', 'type': {
+                        'label': 'full-name',
+                        'root': 'attribute',
+                        'value_type': 'string'}}],
+                    'type': {'label': 'person', 'root': 'entity'}
                 },
-                "employment_var": {
-                    "salary": [ { "value": 30000, "type": { "label": "salary", "root": "attribute", "value_type": "long" } } ],
-                    "type": { "label": "employment", "root": "relation" }
+                'employment_var': {
+                    'salary': [{'value': 30000, 'type': {
+                        'label': 'salary',
+                        'root': 'attribute',
+                        'value_type': 'long'}}],
+                    'type': {'label': 'employment', 'root': 'relation'}
                 }
             },
             {
-                "employee_var": {
-                    "email": [ { "value": "boss@tudelft.nl", "type": { "label": "email", "root": "attribute", "value_type": "string" } } ],
-                    "full-name": [ { "value": "Big Boss", "type": { "label": "full-name", "root": "attribute", "value_type": "string" } } ],
-                    "type": { "label": "person", "root": "entity" }
+                'employee_var': {
+                    'email': [{'value': 'boss@tudelft.nl', 'type': {
+                        'label': 'email',
+                        'root': 'attribute',
+                        'value_type': 'string'}}],
+                    'full-name': [{'value': 'Big Boss', 'type': {
+                        'label': 'full-name',
+                        'root': 'attribute',
+                        'value_type': 'string'}}],
+                    'type': {'label': 'person', 'root': 'entity'}
                 },
-                "employment_var": {
-                    "salary": [ { "value": 999999, "type": { "label": "salary", "root": "attribute", "value_type": "long" } } ],
-                    "type": { "label": "employment", "root": "relation" }
+                'employment_var': {
+                    'salary': [{'value': 999999, 'type': {
+                        'label': 'salary',
+                        'root': 'attribute',
+                        'value_type': 'long'}}],
+                    'type': {'label': 'employment', 'root': 'relation'}
                 }
             },
             {
-                "employee_var": {
-                    "email": [ { "value": "guest@tudelft.nl", "type": { "label": "email", "root": "attribute", "value_type": "string" } } ],
-                    "full-name": [ { "value": "Random guest", "type": { "label": "full-name", "root": "attribute", "value_type": "string" } } ],
-                    "type": { "label": "person", "root": "entity" }
+                'employee_var': {
+                    'email': [{'value': 'guest@tudelft.nl', 'type': {
+                        'label': 'email',
+                        'root': 'attribute',
+                        'value_type': 'string'}}],
+                    'full-name': [{'value': 'Random guest', 'type': {
+                        'label': 'full-name',
+                        'root': 'attribute',
+                        'value_type': 'string'}}],
+                    'type': {'label': 'person', 'root': 'entity'}
                 },
-                "employment_var": {
-                    "salary": [ { "value": 0, "type": { "label": "salary", "root": "attribute", "value_type": "long" } } ],
-                    "type": { "label": "employment", "root": "relation" }
+                'employment_var': {
+                    'salary': [{'value': 0, 'type': {
+                        'label': 'salary',
+                        'root': 'attribute',
+                        'value_type': 'long'}}],
+                    'type': {'label': 'employment', 'root': 'relation'}
                 }
             }
         ]
@@ -497,7 +596,7 @@ def test_fetch_result_to_ros_result_tree():
     list_index.index.append(3)
     employee_names_subquery.children_index.append(list_index)
 
-    ## Subtree 2
+    # Subtree 2
     employee_var_thing2 = Thing()
     employee_var_thing2.type = Thing.ENTITY
     employee_var_thing2.variable_name = 'employee_var'
@@ -544,7 +643,7 @@ def test_fetch_result_to_ros_result_tree():
     list_index.index.append(5)
     employee_names_subquery.children_index.append(list_index)
 
-    ## Subtree 3
+    # Subtree 3
     employee_var_thing3 = Thing()
     employee_var_thing3.type = Thing.ENTITY
     employee_var_thing3.variable_name = 'employee_var'
@@ -617,6 +716,7 @@ def test_fetch_result_to_ros_result_tree():
     assert result_tree.results[7] == employment_var_thing3_result
     assert expected_tree == result_tree
 
+
 @pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
     test_node.activate_ros_typedb()
@@ -627,7 +727,7 @@ def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
     query_req.query_type = query_req.FETCH
     query_req.query = """
         match $entity isa person,
-            has email "test@test.com",
+            has email 'test@test.com',
             has nickname $nick,
             has age $age,
             has height $height,
@@ -712,12 +812,13 @@ def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
     query_req.query_type = query_req.FETCH
     query_req.query = """
         match
-            $company_var isa company, has name "TU Delft";
+            $company_var isa company, has name 'TU Delft';
         fetch
             $company_var: name, address;
             employee_names: {
                 match
-                    $employment_var (employer: $company_var, employee: $employee_var) isa employment;
+                    $employment_var (employer: $company_var, employee: $employee_var)
+                    isa employment;
                 fetch
                     $employee_var: full-name, email;
                     $employment_var: salary;
@@ -801,7 +902,7 @@ def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
     list_index.index.append(3)
     employee_names_subquery.children_index.append(list_index)
 
-    ## Subtree 2
+    # Subtree 2
     employee_var_thing2 = Thing()
     employee_var_thing2.type = Thing.ENTITY
     employee_var_thing2.variable_name = 'employee_var'
@@ -848,7 +949,7 @@ def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
     list_index.index.append(5)
     employee_names_subquery.children_index.append(list_index)
 
-    ## Subtree 3
+    # Subtree 3
     employee_var_thing3 = Thing()
     employee_var_thing3.type = Thing.ENTITY
     employee_var_thing3.variable_name = 'employee_var'
@@ -923,6 +1024,7 @@ def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
         actual.append(result)
 
     import copy
+
     def strip_indices(obj):
         # Make a shallow copy to avoid mutating the original
         obj_copy = copy.copy(obj)
@@ -1004,7 +1106,7 @@ def test_ros_typedb_get_aggregate_query(test_node, insert_query):
     query_req.query = """
         match
             $person isa person,
-                has email "test@test.com";
+                has email 'test@test.com';
             (employee:$person) isa employment, has salary $s;
         get $s; sum $s;
     """
