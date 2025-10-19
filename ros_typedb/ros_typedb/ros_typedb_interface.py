@@ -37,6 +37,9 @@ from ros_typedb_msgs.srv import Query
 
 from std_msgs.msg import String
 
+import std_srvs
+from std_srvs.srv import Empty
+
 from typing import Any
 from typing import Dict
 from typing import Literal
@@ -98,10 +101,10 @@ def set_query_result_value(
 
 
 def convert_attribute_dict_to_ros_msg(
-    attr_name:str, 
+    attr_name:str,
     attribute_value: List[Dict[str, Any]] | Dict[str, Any]
     ) -> Attribute:
-    
+
     attr = Attribute()
     attr.variable_name = attr_name
 
@@ -138,7 +141,7 @@ def convert_attribute_dict_to_ros_msg(
 def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
     result_tree = ResultTree()
     index = start_index
-    
+
     for key, values in json_obj.items():
         query_result = QueryResult()
         query_result.result_index = index
@@ -148,7 +151,7 @@ def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
             result_type_info = values['type']
             result_type = result_type_info['root']
             result_label = result_type_info['label']
-                
+
             query_result.type = _TYPEDB_ROOT_TYPE_TO_QUERY_RESULT_TYPE[result_type]
 
             if result_type == 'attribute':
@@ -170,7 +173,7 @@ def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
         elif isinstance(values, list):
             query_result.type = QueryResult.SUB_QUERY
             query_result.sub_query_name = key
-            
+
             children_results = list()
             for value_dict in values:
                 child_result_tree, child_last_index = fetch_result_to_ros_result_tree(value_dict, index)
@@ -179,10 +182,10 @@ def fetch_result_to_ros_result_tree(json_obj, start_index = 0):
                 index = child_last_index
                 query_result.children_index.append(sub_tree_index_list)
                 children_results.extend(child_result_tree.results)
-            
+
             result_tree.results.append(query_result)
             result_tree.results.extend(children_results)
-    
+
     return result_tree, index
 
 def fetch_query_result_to_ros_msg(
@@ -227,10 +230,10 @@ def get_query_result_to_ros_msg(
             variable_value = result.get(variable)
             if variable_value.is_attribute():
                 typedb_attr = variable_value.as_attribute()
-                
+
                 query_result_ros = QueryResult()
                 query_result_ros.type = QueryResult.ATTRIBUTE
-                
+
                 attr = Attribute()
                 attr.variable_name = variable
                 attr.label = typedb_attr.get_type().get_label().name
@@ -388,6 +391,12 @@ class ROSTypeDBInterface(Node):
             self.query_service_cb,
             callback_group=self.query_cb_group)
 
+        self.delete_db_service = self.create_service(
+            Empty,
+            self.get_name() + '/delete_database',
+            self.delete_db_cb,
+            callback_group=self.query_cb_group)
+
         self.get_logger().info(self.get_name() + ':on_configure() completed.')
         return TransitionCallbackReturn.SUCCESS
 
@@ -439,4 +448,17 @@ class ROSTypeDBInterface(Node):
             response.success = False
         else:
             response.success = True
+        return response
+
+    def delete_db_cb(
+        self,
+        req: std_srvs.srv.Empty.Request,
+        response: std_srvs.srv.Empty.Response
+    ) -> std_srvs.srv.Empty.Response:
+        """
+        Handle callback for ~/delete_database service.
+
+        Delete the dabase.
+        """
+        self.typedb_interface.delete_database()
         return response
