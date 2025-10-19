@@ -180,7 +180,7 @@ def fetch_result_to_ros_result_tree(json_obj, start_index=0):
             query_result.type = QueryResult.SUB_QUERY
             query_result.sub_query_name = key
 
-            children_results = list()
+            children_results = []
             for value_dict in values:
                 child_result_tree, child_last_index = fetch_result_to_ros_result_tree(
                     value_dict, index)

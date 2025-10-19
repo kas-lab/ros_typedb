@@ -113,7 +113,7 @@ def recursively_sort_dict(obj):
 class MatchResultDict(TypedDict):
     """TypedDict for match result."""
 
-    type: str  #: attribute name, e.g., name, age, height etc
+    type_: str  #: attribute name, e.g., name, age, height etc
     value_type: str  #: value type, e.g., boolean, long etc
     value: str  #: value
 
@@ -929,7 +929,7 @@ class TypeDBInterface:
         """
         match_query = 'match '
         insert_query = 'insert '
-        _related_dict = dict()
+        _related_dict = {}
         for key, things in related_dict.items():
             _match_query, _prefix_list = self.create_match_query(things, key)
             match_query += _match_query

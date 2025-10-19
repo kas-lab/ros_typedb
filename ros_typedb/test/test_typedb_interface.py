@@ -54,8 +54,8 @@ def test_insert_entity(typedb_interface):
         'person', [('email', 'test@email.test'), ('nickname', 't')])
     query = """
         match $entity isa person,
-        has email 'test@email.test',
-        has nickname 't';
+        has email "test@email.test",
+        has nickname "t";
         get $entity;
         count;
     """
@@ -67,7 +67,7 @@ def test_delete_thing(typedb_interface):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
     typedb_interface.delete_thing('person', 'email', 'test@email.test')
     query = """
-        match $entity isa person, has email 'test@email.test';
+        match $entity isa person, has email "test@email.test";
         get $entity;
     """
     result = typedb_interface.fetch_database(query)
@@ -179,8 +179,8 @@ def test_insert_relationship(typedb_interface):
     query = """
         match $r (employee:$ee, employer:$er)isa employment,
         has salary 2333,
-        has role-name 'boss',
-        has role-name 'super boss';
+        has role-name "boss",
+        has role-name "super boss";
         get $r;
         count;
     """
@@ -346,7 +346,7 @@ def test_insert_attributes(typedb_interface, match_dict, r_dict):
     )
 ])
 def test_delete_attributes(
-        typedb_interface, insert_dict, match_dict):
+   typedb_interface, insert_dict, match_dict):
 
     query = typedb_interface.dict_to_query(insert_dict)
     typedb_interface.insert_database('insert ' + query)
@@ -433,7 +433,7 @@ def test_get_query(typedb_interface):
 def test_fetch_query(typedb_interface):
     query = """
     match
-        $company isa company, has name 'TU Delft';
+        $company isa company, has name "TU Delft";
     fetch
         employee_names: {
             match
@@ -474,5 +474,5 @@ def test_fetch_query(typedb_interface):
         })
 
     # Compare as sets so order does not matter
-    assert set(tuple(sorted(d.items())) for d in actual) == set(
-        tuple(sorted(d.items())) for d in expected)
+    assert {tuple(sorted(d.items())) for d in actual} == \
+        {tuple(sorted(d.items())) for d in expected}
