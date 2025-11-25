@@ -246,7 +246,7 @@ class TypeDBInterface:
             session_type: SessionType,
             transaction_type: TransactionType,
             query_type: Literal[
-                'define', 'insert', 'delete', 'fetch', 'get', 'get_aggregate'],
+                'define', 'insert', 'delete', 'fetch', 'get', 'get_aggregate', 'update'],
             query: str,
             options: Optional[TypeDBOptions] = TypeDBOptions()
         ) -> Literal[True] | Iterator[ConceptMap] | \
@@ -386,6 +386,21 @@ class TypeDBInterface:
                 SessionType.DATA, TransactionType.WRITE, 'insert', query)
         except Exception as err:
             print('Error with insert query! Exception retrieved: ', err)
+        return result
+
+    def update_database(self, query: str) -> Iterator[ConceptMap] | None:
+        """
+        Perform update query.
+
+        :param query: Query to be performed.
+        :return: Query result, if query fails return None.
+        """
+        result = None
+        try:
+            result = self.database_query(
+                SessionType.DATA, TransactionType.WRITE, 'update', query)
+        except Exception as err:
+            print('Error with update query! Exception retrieved: ', err)
         return result
 
     # @delete_data_event_

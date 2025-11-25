@@ -1117,6 +1117,29 @@ def test_ros_typedb_get_aggregate_query(test_node, insert_query):
     assert query_res.results[0].results[0].attribute.value.integer_value == 1500
 
 
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_update_query(test_node, insert_query):
+    test_node.activate_ros_typedb()
+
+    test_node.call_service(test_node.query_cli, insert_query)
+
+    query_req = Query.Request()
+    query_req.query_type = query_req.UPDATE
+    query_req.query = """
+        match
+            $person isa person, has email $email;
+            $email = 'test@test.com';
+        delete
+            $person has $email;
+        insert
+            $person has email 'updatedemail@test.com';
+    """
+    query_res = test_node.call_service(test_node.query_cli, query_req)
+
+    assert query_res.success is True
+    # Potential TODO: add get to make sure the email was updated
+
+
 class MakeTestNode(Node):
 
     def __init__(self, name='test_node'):
