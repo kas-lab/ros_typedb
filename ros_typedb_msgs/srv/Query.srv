@@ -5,6 +5,7 @@ uint8 FETCH=2
 uint8 GET=3
 uint8 GET_AGGREGATE=4
 uint8 DEFINE=5
+uint8 UPDATE=6
 
 uint8 query_type
 string query
