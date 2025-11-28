@@ -13,10 +13,10 @@
 # limitations under the License.
 """typedb_interface - python interface to interact with typedb."""
 
-from datetime import datetime
 import functools
 import logging
-
+from datetime import datetime
+from types import MethodType
 from typing import Iterator
 from typing import Literal
 from typing import Optional
@@ -185,6 +185,27 @@ class TypeDBInterface:
             self.driver.close()
         except AttributeError:
             pass
+
+    def register_method(self, name, func):
+        """
+        Register a new method to the class.
+
+        .. code-block::
+            def get_name_email(self, name):
+                query = f'''
+                    match
+                        $p isa person, has full-name '{name}';
+                    fetch
+                        $p: email;
+                '''
+                return typedb_interface.fetch_database(query)[0]['p']['email'][0]['value']
+            typedb_interface.register_method('get_name_email', get_name_email)
+
+
+        :param name: name of the method.
+        :param func: function to register.
+        """
+        setattr(self, name, MethodType(func, self))
 
     def connect_driver(self, address: str) -> None:
         """

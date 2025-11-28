@@ -476,3 +476,16 @@ def test_fetch_query(typedb_interface):
     # Compare as sets so order does not matter
     assert {tuple(sorted(d.items())) for d in actual} == \
         {tuple(sorted(d.items())) for d in expected}
+
+
+def test_register_method(typedb_interface):
+    def get_name_email(self, name):
+        query = f"""
+            match
+                $p isa person, has full-name '{name}';
+            fetch
+                $p: email;
+        """
+        return typedb_interface.fetch_database(query)[0]['p']['email'][0]['value']
+    typedb_interface.register_method('get_name_email', get_name_email)
+    assert typedb_interface.get_name_email('Big Boss') == 'boss@tudelft.nl'
