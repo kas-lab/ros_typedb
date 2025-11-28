@@ -13,9 +13,9 @@
 # limitations under the License.
 """typedb_interface - python interface to interact with typedb."""
 
+from datetime import datetime
 import functools
 import logging
-from datetime import datetime
 from types import MethodType
 from typing import Iterator
 from typing import Literal
