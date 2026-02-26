@@ -147,7 +147,8 @@ class TypeDBInterface:
             data_path: Optional[list[str] | str] = None,
             force_database: Optional[bool] = False,
             force_data: Optional[bool] = False,
-            infer: Optional[bool] = False) -> None:
+            infer: Optional[bool] = False,
+            sort_fetch_results: Optional[bool] = False) -> None:
         """
         Connect to a typeDB server and interacts with it.
 
@@ -162,9 +163,11 @@ class TypeDBInterface:
         :param force_database: if database should override an existing database
         :param force_data: if the database data should be overriden.
         :param infer: if inference engine should be used.
+        :param sort_fetch_results: if fetch query results should be recursively sorted.
         """
         self.logger = logging.getLogger()
         self._infer = infer
+        self._sort_fetch_results = bool(sort_fetch_results)
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
         if isinstance(schema_path, str):
@@ -441,11 +444,15 @@ class TypeDBInterface:
         return result
 
     def fetch_database(
-            self, query: str) -> list[dict[str, MatchResultDict]]:
+            self,
+            query: str,
+            sort_result: Optional[bool] = None) -> list[dict[str, MatchResultDict]]:
         """
         Perform match query.
 
         :param query: Query to be performed.
+        :param sort_result: if query result should be recursively sorted.
+            If None, uses the interface default policy.
         :return: Query result, if query fails return None.
         """
         result = None
@@ -458,11 +465,33 @@ class TypeDBInterface:
                 'fetch',
                 query,
                 options)
-            result = recursively_sort_dict(result)
+            should_sort = self._sort_fetch_results if sort_result is None else sort_result
+            if should_sort:
+                result = recursively_sort_dict(result)
         except Exception as err:
             print('Error with match query! Exception retrieved: ', err)
             return []
         return result
+
+    def fetch_database_unordered(
+            self, query: str) -> list[dict[str, MatchResultDict]]:
+        """
+        Perform fetch query with unordered result keys.
+
+        :param query: Query to be performed.
+        :return: Query result, if query fails return None.
+        """
+        return self.fetch_database(query, sort_result=False)
+
+    def fetch_database_ordered(
+            self, query: str) -> list[dict[str, MatchResultDict]]:
+        """
+        Perform fetch query with recursively sorted result keys.
+
+        :param query: Query to be performed.
+        :return: Query result, if query fails return None.
+        """
+        return self.fetch_database(query, sort_result=True)
 
     def get_database(self, query: str) -> int | float | None:
         """
