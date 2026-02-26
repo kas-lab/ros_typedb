@@ -85,7 +85,8 @@ def generate_test_description():
         output='screen',
         parameters=[{
             'schema_path': [str(path_tql / 'schema.tql')],
-            'data_path': [str(path_tql / 'data.tql')]
+            'data_path': [str(path_tql / 'data.tql')],
+            'sort_fetch_results': True
         }]
     )
 
