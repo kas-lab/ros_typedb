@@ -28,6 +28,7 @@ def typedb_interface():
         schema_path=['test/typedb_test_data/schema.tql'],
         data_path=['test/typedb_test_data/data.tql'],
         force_data=True,
+        sort_fetch_results=True
     )
     yield typedb_interface
     typedb_interface.delete_database()

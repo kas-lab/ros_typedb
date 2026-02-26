@@ -317,6 +317,8 @@ class ROSTypeDBInterface(Node):
         self.declare_parameter('schema_path', [''])
         self.declare_parameter('data_path', [''])
 
+        self.declare_parameter('sort_fetch_results', False)
+
         self.typedb_interface_class = TypeDBInterface
 
         self.query_cb_group = MutuallyExclusiveCallbackGroup()
@@ -329,7 +331,8 @@ class ROSTypeDBInterface(Node):
             data_path: Optional[list[str] | str] = None,
             force_database: Optional[bool] = False,
             force_data: Optional[bool] = False,
-            infer: Optional[bool] = False) -> None:
+            infer: Optional[bool] = False,
+            sort_fetch_results: Optional[bool] = False) -> None:
         """
         Initialize self.typedb_interface.
 
@@ -340,6 +343,7 @@ class ROSTypeDBInterface(Node):
         :param force_database: if database should override an existing database
         :param force_data: if the database data should be overriden.
         :param infer: if inference engine should be used.
+        :param sort_fetch_results: if fetch query results should be recursively sorted.
         """
         self.typedb_interface = self.typedb_interface_class(
             address,
@@ -348,7 +352,8 @@ class ROSTypeDBInterface(Node):
             data_path,
             force_database,
             force_data,
-            infer
+            infer,
+            sort_fetch_results
         )
 
         self.typedb_interface.insert_data_event = self.insert_data_event
@@ -385,7 +390,8 @@ class ROSTypeDBInterface(Node):
             data_path=self.get_parameter('data_path').value,
             force_database=self.get_parameter('force_database').value,
             force_data=self.get_parameter('force_data').value,
-            infer=self.get_parameter('infer').value
+            infer=self.get_parameter('infer').value,
+            sort_fetch_results=self.get_parameter('sort_fetch_results').value
         )
 
         self.event_pub = self.create_lifecycle_publisher(
