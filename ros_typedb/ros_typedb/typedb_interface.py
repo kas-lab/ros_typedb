@@ -20,6 +20,7 @@ from typing import Literal
 from typing import Optional
 from typing import TypedDict
 
+from typedb.common.datetime import Datetime as TypeDBDatetime
 from typedb.driver import Credentials
 from typedb.driver import DriverOptions
 from typedb.driver import TransactionType
@@ -118,6 +119,12 @@ def _value_type_to_str(value_type: Any) -> str:
 
 def _query_value_to_json(value: Any, value_type: str) -> Any:
     """Convert a TypeDB attribute value to a JSON-serialisable form."""
+    if isinstance(value, TypeDBDatetime):
+        millis = value.nanos // 1_000_000
+        dt = datetime(value.year, value.month, value.day,
+                      value.hour, value.minute, value.second,
+                      millis * 1000)
+        return dt.isoformat(timespec='milliseconds')
     if isinstance(value, datetime):
         return value.isoformat(timespec='milliseconds')
     if value_type == 'datetime' and isinstance(value, str):
