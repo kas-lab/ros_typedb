@@ -28,8 +28,23 @@ $guest isa person, has full-name "Random guest", has email "guest@tudelft.nl";
 ## Company
 $tu_delft isa company, has name "TU Delft", has address "street 1", has address "street 2";
 
-## Employment 
+match
+    $tu_delft isa company, has name "TU Delft";
+    $boss isa person, has email "boss@tudelft.nl";
+insert
+    (employer: $tu_delft, employee: $boss) isa employment,
+    has role-name "boss of the boss", has salary 999999;
 
-$e1 (employer: $tu_delft, employee: $boss) isa employment, has role-name "boss of the boss", has salary 999999;
-$e2 (employer: $tu_delft, employee: $phd) isa employment, has role-name "PhD candidate", has salary 30000;
-$e3 (employer: $tu_delft, employee: $guest) isa employment, has role-name "Guest", has salary 0;
+match
+    $tu_delft isa company, has name "TU Delft";
+    $phd isa person, has email "phd@tudelft.nl";
+insert
+    (employer: $tu_delft, employee: $phd) isa employment,
+    has role-name "PhD candidate", has salary 30000;
+
+match
+    $tu_delft isa company, has name "TU Delft";
+    $guest isa person, has email "guest@tudelft.nl";
+insert
+    (employer: $tu_delft, employee: $guest) isa employment,
+    has role-name "Guest", has salary 0;
