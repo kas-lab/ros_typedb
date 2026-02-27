@@ -30,8 +30,8 @@ from rcl_interfaces.msg import ParameterType
 import rclpy
 from rclpy.node import Node
 
-from ros_typedb.ros_typedb_interface import convert_attribute_dict_to_ros_msg
-from ros_typedb.ros_typedb_interface import fetch_result_to_ros_result_tree
+from ros_typedb.ros_typedb_helpers import convert_attribute_dict_to_ros_msg
+from ros_typedb.ros_typedb_helpers import fetch_result_to_ros_result_tree
 
 from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import IndexList
