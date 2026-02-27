@@ -13,13 +13,61 @@
 # limitations under the License.
 """typedb_helpers - standalone helper functions for TypeDB operations."""
 
+from datetime import datetime
 from typing import Literal
 from typing import Optional
 from typing import Tuple
 
-from ros_typedb.typedb_interface import convert_py_type_to_query_type
-from ros_typedb.typedb_interface import convert_query_type_to_py_type
 from ros_typedb.typedb_interface import TypeDBInterface
+
+
+def convert_query_type_to_py_type(
+        value_dict: Optional[dict] = None,
+        value: Optional[str] = None,
+        value_type: Optional[str] = None) -> 'datetime | int | str | float':
+    """
+    Convert typedb 'value_type' to python type.
+
+    :param value: Data to be converted.
+    :param value_type: Data type string (e.g. 'long', 'string').
+    :param value_dict: Typedb value dict, overrides value and value_type.
+    :return: Converted data.
+    """
+    if value_dict is not None:
+        value_type = value_dict.get('type').get('value_type')
+        value = value_dict.get('value')
+    if value_type == 'datetime':
+        return datetime.fromisoformat(value)
+    elif value_type == 'long':
+        return int(value)
+    elif value_type == 'string':
+        return str(value)
+    elif value_type == 'double':
+        return float(value)
+    elif value_type == 'long_array':
+        return list(map(int, value))
+    elif value_type == 'double_array':
+        return list(map(float, value))
+    elif value_type == 'string_array':
+        return list(map(str, value))
+    return value
+
+
+def convert_py_type_to_query_type(data: 'datetime | str | bool') -> str:
+    """
+    Convert a Python value to a properly formatted TypeQL string.
+
+    :param data: Data to be converted.
+    :return: Converted data as string.
+    """
+    if isinstance(data, str):
+        if len(data) > 0 and data[0] != '$':
+            return "'{}'".format(data)
+    elif isinstance(data, datetime):
+        return data.isoformat(timespec='milliseconds')
+    elif isinstance(data, bool):
+        return str(data).lower()
+    return data
 
 
 def attribute_dict_to_query(db: TypeDBInterface, attribute_dict: dict) -> str:

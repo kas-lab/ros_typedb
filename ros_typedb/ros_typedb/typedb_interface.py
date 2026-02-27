@@ -27,55 +27,6 @@ from typedb.driver import TransactionType
 from typedb.driver import TypeDB
 
 
-def convert_query_type_to_py_type(
-        value_dict: Optional[dict] = None,
-        value: Optional[str] = None,
-        value_type: Optional[str] = None) -> datetime | int | str | float:
-    """
-    Convert typedb 'value_type' to python type.
-
-    :param value: Data to be converted.
-    :param value_type: Data type string (e.g. 'long', 'string').
-    :param value_dict: Typedb value dict, overrides value and value_type.
-    :return: Converted data.
-    """
-    if value_dict is not None:
-        value_type = value_dict.get('type').get('value_type')
-        value = value_dict.get('value')
-    if value_type == 'datetime':
-        return datetime.fromisoformat(value)
-    elif value_type == 'long':
-        return int(value)
-    elif value_type == 'string':
-        return str(value)
-    elif value_type == 'double':
-        return float(value)
-    elif value_type == 'long_array':
-        return list(map(int, value))
-    elif value_type == 'double_array':
-        return list(map(float, value))
-    elif value_type == 'string_array':
-        return list(map(str, value))
-    return value
-
-
-def convert_py_type_to_query_type(data: datetime | str | bool) -> str:
-    """
-    Convert a Python value to a properly formatted TypeQL string.
-
-    :param data: Data to be converted.
-    :return: Converted data as string.
-    """
-    if isinstance(data, str):
-        if len(data) > 0 and data[0] != '$':
-            return "'{}'".format(data)
-    elif isinstance(data, datetime):
-        return data.isoformat(timespec='milliseconds')
-    elif isinstance(data, bool):
-        return str(data).lower()
-    return data
-
-
 def string_to_string_array(string: str) -> list[str]:
     """
     Convert a comma-separated string to a list of strings.
@@ -84,21 +35,6 @@ def string_to_string_array(string: str) -> list[str]:
     :return: list of strings
     """
     return [s.strip(" '") for s in string.strip('[]').split(',')]
-
-
-def recursively_sort_dict(obj):
-    """
-    Recursively sort dict keys in a dict or list.
-
-    :param obj: dictionary or list
-    :return: new sorted dictionary (does not mutate original).
-    """
-    if isinstance(obj, dict):
-        return {k: recursively_sort_dict(obj[k]) for k in sorted(obj)}
-    elif isinstance(obj, list):
-        return [recursively_sort_dict(item) for item in obj]
-    else:
-        return obj
 
 
 def _value_type_to_str(value_type: Any) -> str:

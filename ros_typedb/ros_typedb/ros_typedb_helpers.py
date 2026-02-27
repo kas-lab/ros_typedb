@@ -25,7 +25,7 @@ import rcl_interfaces
 from rcl_interfaces.msg import ParameterType
 from rcl_interfaces.msg import ParameterValue
 
-from ros_typedb.typedb_interface import convert_query_type_to_py_type
+from ros_typedb.typedb_helpers import convert_query_type_to_py_type
 from ros_typedb.typedb_interface import MatchResultDict
 
 import ros_typedb_msgs
