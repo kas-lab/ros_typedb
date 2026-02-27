@@ -27,7 +27,7 @@ from typedb.driver import TransactionType
 from typedb.driver import TypeDB
 
 
-def string_to_string_array(string: str) -> list[str]:
+def _string_to_string_array(string: str) -> list[str]:
     """
     Convert a comma-separated string to a list of strings.
 
@@ -104,14 +104,14 @@ class TypeDBInterface:
         self.connect_driver(address)
         self.create_database(database_name, force=force_database)
         if isinstance(schema_path, str):
-            schema_path = string_to_string_array(schema_path)
+            schema_path = _string_to_string_array(schema_path)
         if isinstance(schema_path, list):
             for path in schema_path:
                 self.load_schema(path)
         if force_data:
             self.delete_all_data()
         if isinstance(data_path, str):
-            data_path = string_to_string_array(data_path)
+            data_path = _string_to_string_array(data_path)
         if isinstance(data_path, list):
             for path in data_path:
                 self.load_data(path)
