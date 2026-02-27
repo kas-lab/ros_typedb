@@ -26,6 +26,7 @@ setup(
         'test': [
             'pytest',
         ],
+        'typedb': ['typedb-driver'],
     },
     entry_points={
         'console_scripts': [

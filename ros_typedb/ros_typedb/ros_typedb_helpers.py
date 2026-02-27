@@ -13,6 +13,7 @@
 # limitations under the License.
 """ros_typedb_helpers - ROS conversion helpers for TypeDB query results."""
 
+from datetime import datetime
 from typing import Any
 from typing import Dict
 from typing import List
@@ -65,6 +66,76 @@ _TYPEDB_ROOT_TYPE_TO_THING_TYPE = {
     'entity': Thing.ENTITY,
     'relation': Thing.RELATION,
 }
+
+
+def _py_type_to_value_type(value) -> str:
+    """Infer TypeDB value type string from a Python native value."""
+    if isinstance(value, bool):
+        return 'boolean'
+    if isinstance(value, int):
+        return 'long'
+    if isinstance(value, float):
+        return 'double'
+    return 'string'
+
+
+def _native_value_to_ros_attr(key: str, value) -> 'Attribute':
+    """
+    Convert a TypeDB3 fetch native value to :class:`ros_typedb_msgs.msg.Attribute`.
+
+    :param key: fetch result key (used as variable_name and label).
+    :param value: native Python value returned by TypeDB3 fetch.
+    :return: Attribute message.
+    """
+    attr = Attribute()
+    attr.variable_name = key
+    attr.label = key
+    if value is None:
+        return attr
+    try:
+        from typedb.common.datetime import Datetime as TypeDBDatetime
+        if isinstance(value, TypeDBDatetime):
+            millis = value.nanos // 1_000_000
+            dt = datetime(value.year, value.month, value.day,
+                          value.hour, value.minute, value.second,
+                          millis * 1000)
+            value = dt.isoformat(timespec='milliseconds')
+            attr.value = set_query_result_value(value, 'datetime')
+            return attr
+    except ImportError:
+        pass
+    if isinstance(value, datetime):
+        value = value.isoformat(timespec='milliseconds')
+        attr.value = set_query_result_value(value, 'datetime')
+        return attr
+    attr.value = set_query_result_value(value, _py_type_to_value_type(value))
+    return attr
+
+
+def _native_list_to_ros_attr(key: str, values: list) -> 'Attribute':
+    """
+    Convert a TypeDB3 multi-valued fetch list to :class:`ros_typedb_msgs.msg.Attribute`.
+
+    :param key: fetch result key (used as variable_name and label).
+    :param values: list of native Python values.
+    :return: Attribute message.
+    """
+    attr = Attribute()
+    attr.variable_name = key
+    attr.label = key
+    if not values:
+        return attr
+    first = values[0]
+    if isinstance(first, bool):
+        vtype = 'boolean_array'
+    elif isinstance(first, int):
+        vtype = 'long_array'
+    elif isinstance(first, float):
+        vtype = 'double_array'
+    else:
+        vtype = 'string_array'
+    attr.value = set_query_result_value(values, vtype)
+    return attr
 
 
 def set_query_result_value(
@@ -181,22 +252,34 @@ def fetch_result_to_ros_result_tree(json_obj, start_index=0):
 
             result_tree.results.append(query_result)
         elif isinstance(values, list):
-            query_result.type = QueryResult.SUB_QUERY
-            query_result.sub_query_name = key
+            if values and not isinstance(values[0], dict):
+                # TypeDB3 multi-valued attribute: list of native Python values
+                query_result.type = QueryResult.ATTRIBUTE
+                query_result.attribute = _native_list_to_ros_attr(key, values)
+                result_tree.results.append(query_result)
+            else:
+                # TypeDB2 sub-query: list of result dicts (or empty list)
+                query_result.type = QueryResult.SUB_QUERY
+                query_result.sub_query_name = key
 
-            children_results = []
-            for value_dict in values:
-                child_result_tree, child_last_index = fetch_result_to_ros_result_tree(
-                    value_dict, index)
-                sub_tree_index_list = IndexList()
-                sub_tree_index_list.index = list(
-                    range(index, child_last_index))
-                index = child_last_index
-                query_result.children_index.append(sub_tree_index_list)
-                children_results.extend(child_result_tree.results)
+                children_results = []
+                for value_dict in values:
+                    child_result_tree, child_last_index = fetch_result_to_ros_result_tree(
+                        value_dict, index)
+                    sub_tree_index_list = IndexList()
+                    sub_tree_index_list.index = list(
+                        range(index, child_last_index))
+                    index = child_last_index
+                    query_result.children_index.append(sub_tree_index_list)
+                    children_results.extend(child_result_tree.results)
 
+                result_tree.results.append(query_result)
+                result_tree.results.extend(children_results)
+        else:
+            # TypeDB3 single native value (int, float, str, bool, datetime)
+            query_result.type = QueryResult.ATTRIBUTE
+            query_result.attribute = _native_value_to_ros_attr(key, values)
             result_tree.results.append(query_result)
-            result_tree.results.extend(children_results)
 
     return result_tree, index
 
