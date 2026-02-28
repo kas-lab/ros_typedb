@@ -13,8 +13,6 @@
 # limitations under the License.
 """ros_typedb_interface - ROS 2 lifecycle node for TypeDB interaction."""
 
-from typing import Optional
-
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.lifecycle import Node
@@ -58,11 +56,11 @@ class ROSTypeDBInterface(Node):
             self,
             address: str,
             database_name: str,
-            schema_path: Optional[list[str] | str] = None,
-            data_path: Optional[list[str] | str] = None,
-            force_database: Optional[bool] = False,
-            force_data: Optional[bool] = False,
-            infer: Optional[bool] = False) -> None:
+            schema_path: list[str] | str | None = None,
+            data_path: list[str] | str | None = None,
+            force_database: bool | None = False,
+            force_data: bool | None = False,
+            infer: bool | None = False) -> None:
         """
         Initialize self.typedb_interface.
 
@@ -150,6 +148,7 @@ class ROSTypeDBInterface(Node):
         """
         self.destroy_publisher(self.event_pub)
         self.destroy_service(self.query_service)
+        self.destroy_service(self.delete_db_service)
 
         self.get_logger().info(self.get_name() + ' :on_cleanup() is called.')
         return TransitionCallbackReturn.SUCCESS

@@ -15,16 +15,14 @@
 
 from datetime import datetime
 from typing import Literal
-from typing import Optional
-from typing import Tuple
 
 from ros_typedb.typedb_interface import TypeDBInterface
 
 
 def convert_query_type_to_py_type(
-        value_dict: Optional[dict] = None,
-        value: Optional[str] = None,
-        value_type: Optional[str] = None) -> 'datetime | int | str | float':
+        value_dict: dict | None = None,
+        value: str | None = None,
+        value_type: str | None = None) -> 'datetime | int | str | float':
     """
     Convert typedb 'value_type' to python type.
 
@@ -70,11 +68,10 @@ def convert_py_type_to_query_type(data: 'datetime | str | bool') -> str:
     return data
 
 
-def attribute_dict_to_query(db: TypeDBInterface, attribute_dict: dict) -> str:
+def attribute_dict_to_query(attribute_dict: dict) -> str:
     """
     Convert an attribute dict to a TypeQL 'has' clause fragment.
 
-    :param db: TypeDBInterface instance (unused, kept for API consistency).
     :param attribute_dict: dict mapping attribute names to values.
     :return: TypeQL string fragment like " has email 'x', has age 5".
     """
@@ -92,13 +89,11 @@ def attribute_dict_to_query(db: TypeDBInterface, attribute_dict: dict) -> str:
 
 
 def create_match_query(
-        db: TypeDBInterface,
         things_list: list,
-        prefix: str = 't') -> Tuple[str, list]:
+        prefix: str = 't') -> tuple[str, list]:
     """
     Build a match clause from a list of (type, attr, value) tuples.
 
-    :param db: TypeDBInterface instance (unused, kept for API consistency).
     :param things_list: list of (thing_type, attr_name, attr_value) tuples.
     :param prefix: variable name prefix.
     :return: tuple of (match_clause_string, list_of_variable_names).
@@ -116,15 +111,13 @@ def create_match_query(
 
 
 def create_relationship_query(
-        db: TypeDBInterface,
         relationship: str,
         related_dict: dict,
-        attribute_list: Optional[list] = None,
+        attribute_list: list | None = None,
         prefix: str = 'r') -> str:
     """
     Build a TypeQL insert clause for a relationship.
 
-    :param db: TypeDBInterface instance (unused, kept for API consistency).
     :param relationship: relationship type name.
     :param related_dict: dict mapping role names to lists of variable name strings.
     :param attribute_list: list of (attr_name, attr_value) tuples.
@@ -171,7 +164,7 @@ def delete_thing(
 def insert_entity(
         db: TypeDBInterface,
         entity: str,
-        attribute_list: Optional[list] = None) -> bool | None:
+        attribute_list: list | None = None) -> bool | None:
     """
     Insert an entity into the database with optional attributes.
 
@@ -195,7 +188,7 @@ def insert_relationship(
         db: TypeDBInterface,
         relationship: str,
         related_dict: dict,
-        attribute_list: Optional[list] = None) -> bool | None:
+        attribute_list: list | None = None) -> bool | None:
     """
     Insert a relationship between existing things.
 
@@ -210,11 +203,11 @@ def insert_relationship(
     match_query = 'match '
     _related_dict = {}
     for key, things in related_dict.items():
-        _match_query, _prefix_list = create_match_query(db, things, key)
+        _match_query, _prefix_list = create_match_query(things, key)
         match_query += _match_query
         _related_dict[key] = _prefix_list
     insert_query = 'insert ' + create_relationship_query(
-        db, relationship, _related_dict, attribute_list=attribute_list, prefix=relationship)
+        relationship, _related_dict, attribute_list=attribute_list, prefix=relationship)
     return db.insert_database(match_query + insert_query)
 
 
@@ -392,12 +385,20 @@ def update_attributes_in_thing(
         update_attribute_in_thing(db, thing, key, key_value, attr, attr_value)
 
 
-def dict_to_query(db: TypeDBInterface, data_dict: dict) -> str:
+def dict_to_query(data_dict: dict) -> str:
     """
     Convert a dict of attributes to a TypeQL 'has' clause fragment.
 
-    :param db: TypeDBInterface instance (unused, kept for API consistency).
+    This is a simple alias for :func:`attribute_dict_to_query`.
+
+    .. note::
+        In the original TypeDB 2 implementation, ``dict_to_query`` accepted a
+        ``things_dict`` with ``attribute_str``/``delete_attribute_str`` keys and
+        handled composite insert/update/delete operations.  That composite
+        behaviour was removed as part of the TypeDB 3 migration; this function
+        now simply delegates to ``attribute_dict_to_query``.
+
     :param data_dict: dict mapping attribute names to values.
     :return: TypeQL string fragment.
     """
-    return attribute_dict_to_query(db, data_dict)
+    return attribute_dict_to_query(data_dict)

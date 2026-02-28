@@ -5,39 +5,28 @@
 This package provides a basic generic integration between ROS and [typeDB](https://typedb.com/).
 The package was designed in a way to enable users to easily extend it to fulfill their needs, the package design is explained in the [Package Design](#package-design) section.
 
-This package was tested in Ubuntu 22.04 with ROS Humble and typedb v2.28.3.
+This package was tested in Ubuntu 22.04 with ROS Humble and TypeDB 3.
 
 ## Install
 
-To use this package, you need to install ROS 2 Humble, typedb, and typedb python driver.
+To use this package, you need to install ROS 2 Humble and TypeDB 3.
 
 #### Install ROS2 Humble
 
 Follow the [official instructions](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html) for installing ROS 2 Humble.
 
-#### Install TypeDB
+#### Install TypeDB 3
 
-**Note:** This package has been tested with TypeDB version `2.28.3` and the typedb python driver version `2.28.0`.
+Install TypeDB following the official documentation: https://typedb.com/docs/home/
 
-Install typedb: follow the[official instructions](https://typedb.com/docs/typedb/2.x/installation.html).
+For development, this repository provides `Dockerfile-TypeDB3` which installs:
+- TypeDB server
+- TypeDB 3 C client library (`libtypedb_driver_clib.so`)
+- C header (`typedb_driver.h`)
 
-Install [typedb python driver](https://typedb.com/docs/clients/2.x/python/python-install.html):
-
-```bash
-pip install typedb-client
-```
-
-How we installed in the time of writing this README (might be outdated, check official instructions):
+Optional Python fallback backend dependency:
 ```Bash
-sudo apt install software-properties-common apt-transport-https gpg
-gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-key 17507562824cfdcc
-gpg --export 17507562824cfdcc | sudo tee /etc/apt/trusted.gpg.d/vaticle.gpg > /dev/null
-echo "deb https://repo.typedb.com/public/public-release/deb/ubuntu trusty main" | sudo tee /etc/apt/sources.list.d/vaticle.list > /dev/null
-
-sudo apt update
-sudo apt install -y openjdk-11-jre
-sudo apt install -y typedb=2.28.3
-pip3 install typedb-driver==2.28.0
+pip3 install typedb-driver
 ```
 
 #### Install ros_typedb package
@@ -105,8 +94,6 @@ docker run -d --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -
 ## Package Design
 
 The integration between ROS and TypeDB is implemented with 2 classes, [TypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/typedb_interface.py) and [ROSTypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/ros_typedb_interface.py).
-
-The [TypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/typedb_interface.py) class interacts with the typeDB database using the [typedb python api](https://typedb.com/docs/clients/2.x/python/python-tutorial.html), and it contains basic functionalities that are common for all applications, such as [insert_database](https://github.com/Rezenders/ros_typedb/blob/c16e3f8f1958f4ac2333c7b7d0612c8c79d698a0/ros_typedb/ros_typedb/typedb_interface.py#L153) and [match_database](https://github.com/Rezenders/ros_typedb/blob/c16e3f8f1958f4ac2333c7b7d0612c8c79d698a0/ros_typedb/ros_typedb/typedb_interface.py#L175).
 
 The [ROSTypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/ros_typedb_interface.py) class is a ROS 2 [LifeCycle](https://design.ros2.org/articles/node_lifecycle.html) Node, and it implements 2 ROS interfaces. A ROS service server `ros_typedb_interface/query` that is used to query the database, which uses the [Query.srv](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb_msgs/srv/Query.srv) service type. And the ROS topic `ros_typedb_interface/events`, where it publishes insert and delete events when data is inserted or deleted from the database with the query service.
 

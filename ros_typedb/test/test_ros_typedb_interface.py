@@ -86,7 +86,6 @@ def generate_test_description():
         parameters=[{
             'schema_path': [str(path_tql / 'schema.tql')],
             'data_path': [str(path_tql / 'data.tql')],
-            'sort_fetch_results': True
         }]
     )
 
@@ -112,7 +111,7 @@ def test_node():
     try:
         yield node
     finally:
-        node.delete_dabase()
+        node.delete_database()
         node.destroy_node()
 
 
@@ -991,5 +990,5 @@ class MakeTestNode(Node):
         self.typedb_event_data = msg.data
         self.typedb_event.set()
 
-    def delete_dabase(self):
+    def delete_database(self):
         self.call_service(self.delete_db_cli, Empty.Request())

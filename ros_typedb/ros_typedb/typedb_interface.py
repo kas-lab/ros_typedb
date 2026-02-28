@@ -17,7 +17,6 @@ from datetime import datetime
 import logging
 from typing import Any
 from typing import Literal
-from typing import Optional
 from typing import TypedDict
 
 from typedb.common.datetime import Datetime as TypeDBDatetime
@@ -83,11 +82,13 @@ class TypeDBInterface:
             self,
             address: str,
             database_name: str,
-            schema_path: Optional[list[str] | str] = None,
-            data_path: Optional[list[str] | str] = None,
-            force_database: Optional[bool] = False,
-            force_data: Optional[bool] = False,
-            infer: Optional[bool] = False) -> None:
+            schema_path: list[str] | str | None = None,
+            data_path: list[str] | str | None = None,
+            force_database: bool | None = False,
+            force_data: bool | None = False,
+            infer: bool | None = False,
+            username: str = 'admin',
+            password: str = 'password') -> None:
         """
         Connect to a TypeDB server and initialise the database.
 
@@ -98,10 +99,13 @@ class TypeDBInterface:
         :param force_database: delete and recreate the database if it exists.
         :param force_data: clear all data before loading data_path files.
         :param infer: enable the inference engine (unused in TypeDB 3).
+        :param username: TypeDB username (default: 'admin').
+        :param password: TypeDB password (default: 'password').
         """
         self.logger = logging.getLogger()
         self._infer = infer
-        self.connect_driver(address)
+        self.database_name = None
+        self.connect_driver(address, username, password)
         self.create_database(database_name, force=force_database)
         if isinstance(schema_path, str):
             schema_path = _string_to_string_array(schema_path)
@@ -123,13 +127,18 @@ class TypeDBInterface:
         except AttributeError:
             pass
 
-    def connect_driver(self, address: str) -> None:
+    def connect_driver(
+            self, address: str,
+            username: str = 'admin',
+            password: str = 'password') -> None:
         """
         Connect to TypeDB server.
 
         :param address: TypeDB server address.
+        :param username: TypeDB username.
+        :param password: TypeDB password.
         """
-        credentials = Credentials('admin', 'password')
+        credentials = Credentials(username, password)
         driver_options = DriverOptions(is_tls_enabled=False)
         self.driver = TypeDB.driver(address, credentials, driver_options)
 
@@ -150,6 +159,9 @@ class TypeDBInterface:
         """
         if database_name is None:
             database_name = self.database_name
+        if database_name is None:
+            self.logger.warning('delete_database called but no database name set.')
+            return
         if self.driver.databases.contains(database_name):
             self.driver.databases.get(database_name).delete()
 
@@ -165,7 +177,7 @@ class TypeDBInterface:
         return self.driver.databases.contains(database_name)
 
     def create_database(
-            self, database_name: str, force: Optional[bool] = False) -> None:
+            self, database_name: str, force: bool | None = False) -> None:
         """
         Create database.
 
@@ -176,7 +188,8 @@ class TypeDBInterface:
             self.delete_database(database_name)
         self.database_name = database_name
         if self.driver.databases.contains(database_name):
-            print('Database', database_name, 'already exists. Skipping create.')
+            self.logger.warning(
+                'Database %s already exists. Skipping create.', database_name)
             return
         self.driver.databases.create(database_name)
 
@@ -232,7 +245,7 @@ class TypeDBInterface:
                 'define', 'insert', 'delete', 'fetch', 'get',
                 'get_aggregate', 'update'],
             query: str,
-            options: Optional[dict[str, Any]] = None
+            options: dict[str, Any] | None = None
     ) -> Literal[True] | list[dict[str, Any]] | None | int | float:
         """
         Execute a query against the database.
@@ -325,7 +338,8 @@ class TypeDBInterface:
             self.write_database_file('define', schema_path)
 
     def delete_all_data(self) -> None:
-        """Delete all data from the database."""
+        """Delete all data from the database (entities and relations)."""
+        # Delete all entities by concrete type
         try:
             with self._transaction(TransactionType.WRITE) as tx:
                 answer = tx.query('match $e isa entity; select $e;').resolve()
@@ -339,7 +353,23 @@ class TypeDBInterface:
                 self.delete_from_database(
                     'match $e isa {}; delete $e;'.format(label))
         except Exception as err:
-            print('Error in delete_all_data:', err)
+            self.logger.error('Error deleting entities in delete_all_data: %s', err)
+
+        # Delete all relations by concrete type
+        try:
+            with self._transaction(TransactionType.WRITE) as tx:
+                answer = tx.query('match $r isa relation; select $r;').resolve()
+                rel_types_seen = set()
+                for row in answer.as_concept_rows():
+                    concept = row.get('r')
+                    if concept and concept.is_relation():
+                        label = concept.get_label()
+                        rel_types_seen.add(label)
+            for label in rel_types_seen:
+                self.delete_from_database(
+                    'match $r isa {}; delete $r;'.format(label))
+        except Exception as err:
+            self.logger.error('Error deleting relations in delete_all_data: %s', err)
 
     def load_data(self, data_path: str) -> None:
         """
@@ -351,15 +381,15 @@ class TypeDBInterface:
             try:
                 self.write_database_file('insert', data_path)
             except Exception as err:
-                print('Error in load_data:', err)
+                self.logger.error('Error in load_data: %s', err)
 
     def insert_data_event(self):
         """Insert data event hook (override to react to inserts)."""
-        print('Data has been inserted!')
+        self.logger.warning('Data has been inserted!')
 
     def delete_data_event(self):
         """Delete data event hook (override to react to deletes)."""
-        print('Data has been deleted!')
+        self.logger.warning('Data has been deleted!')
 
     def insert_database(self, query: str) -> bool | None:
         """
@@ -371,7 +401,7 @@ class TypeDBInterface:
         try:
             return self.database_query('data', 'write', 'insert', query)
         except Exception as err:
-            print('Error with insert query:', err)
+            self.logger.error('Error with insert query: %s', err)
             return None
 
     def update_database(self, query: str) -> bool | None:
@@ -384,7 +414,7 @@ class TypeDBInterface:
         try:
             return self.database_query('data', 'write', 'update', query)
         except Exception as err:
-            print('Error with update query:', err)
+            self.logger.error('Error with update query: %s', err)
             return None
 
     def delete_from_database(self, query: str) -> Literal[True] | None:
@@ -397,7 +427,7 @@ class TypeDBInterface:
         try:
             return self.database_query('data', 'write', 'delete', query)
         except Exception as err:
-            print('Error with delete query:', err)
+            self.logger.error('Error with delete query: %s', err)
             return None
 
     def fetch_database(self, query: str) -> list[dict[str, MatchResultDict]]:
@@ -410,7 +440,7 @@ class TypeDBInterface:
         try:
             return self.database_query('data', 'read', 'fetch', query)
         except Exception as err:
-            print('Error with fetch query:', err)
+            self.logger.error('Error with fetch query: %s', err)
             return []
 
     def get_database(self, query: str) -> list[dict[str, MatchResultDict]] | None:
@@ -423,7 +453,7 @@ class TypeDBInterface:
         try:
             return self.database_query('data', 'read', 'get', query)
         except Exception as err:
-            print('Error with get query:', err)
+            self.logger.error('Error with get query: %s', err)
             return None
 
     def get_aggregate_database(self, query: str) -> int | float | None:
@@ -436,5 +466,5 @@ class TypeDBInterface:
         try:
             return self.database_query('data', 'read', 'get_aggregate', query)
         except Exception as err:
-            print('Error with get_aggregate query:', err)
+            self.logger.error('Error with get_aggregate query: %s', err)
             return None

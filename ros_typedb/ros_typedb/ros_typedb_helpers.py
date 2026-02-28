@@ -15,10 +15,7 @@
 
 from datetime import datetime
 from typing import Any
-from typing import Dict
-from typing import List
 from typing import Literal
-from typing import Union
 
 import rcl_interfaces
 
@@ -139,7 +136,7 @@ def _native_list_to_ros_attr(key: str, values: list) -> 'Attribute':
 
 
 def set_query_result_value(
-    value: Union[bool, int, float, str, List[bool], List[int], List[float], List[str]],
+    value: bool | int | float | str | list[bool] | list[int] | list[float] | list[str],
     value_type: str
 ) -> rcl_interfaces.msg.ParameterValue:
     """
@@ -168,7 +165,7 @@ def set_query_result_value(
 
 def convert_attribute_dict_to_ros_msg(
     attr_name: str,
-    attribute_value: List[Dict[str, Any]] | Dict[str, Any]
+    attribute_value: list[dict[str, Any]] | dict[str, Any]
 ) -> Attribute:
     """
     Convert a TypeDB attribute dict to :class:`ros_typedb_msgs.msg.Attribute`.
@@ -306,7 +303,7 @@ def fetch_query_result_to_ros_msg(
 
 
 def get_query_result_to_ros_msg(
-    query_result: int | float | None
+    query_result: list[dict[str, Any]] | None
 ) -> ros_typedb_msgs.srv.Query.Response:
     """
     Convert get query result to :class:`ros_typedb_msgs.srv.Query`.
