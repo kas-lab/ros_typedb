@@ -267,7 +267,7 @@ class TypeDBInterface:
 
         with self._transaction(tdb_transaction_type) as transaction:
             if query_type == 'define':
-                transaction.query(query).resolve()
+                transaction.query(query)
                 transaction.commit()
                 return True
             elif query_type == 'insert':
@@ -371,17 +371,54 @@ class TypeDBInterface:
         except Exception as err:
             self.logger.error('Error deleting relations in delete_all_data: %s', err)
 
+    def _split_data_statements(self, content: str) -> list[str]:
+        """
+        Split a .tql data file into individual statements.
+
+        A statement is delimited by a line that starts with 'insert' or
+        'match' at the beginning of the line (ignoring leading whitespace).
+        Empty statements (whitespace/comments only) are discarded.
+
+        :param content: raw file content.
+        :return: list of statement strings, each including its keyword.
+        """
+        import re
+        # Split on lines that begin a new statement keyword.
+        parts = re.split(r'(?m)^(?=insert\b|match\b)', content)
+        statements = []
+        for part in parts:
+            stripped = part.strip()
+            # Skip empty parts and pure comment blocks.
+            non_comment = re.sub(r'#[^\n]*', '', stripped).strip()
+            if non_comment:
+                statements.append(part.rstrip())
+        return statements
+
     def load_data(self, data_path: str) -> None:
         """
         Load a .tql data file into the database.
 
+        Files may contain multiple statements (insert or match...insert
+        blocks).  Each statement is executed as a separate transaction so
+        that later statements can match entities created by earlier ones.
+
         :param data_path: path to .tql file.
         """
-        if data_path is not None and data_path != '':
-            try:
-                self.write_database_file('insert', data_path)
-            except Exception as err:
-                self.logger.error('Error in load_data: %s', err)
+        if data_path is None or data_path == '':
+            return
+        try:
+            with open(data_path, mode='r') as fh:
+                content = fh.read()
+            statements = self._split_data_statements(content)
+            for stmt in statements:
+                try:
+                    self.database_query('data', 'write', 'insert', stmt)
+                except Exception as err:
+                    self.logger.error(
+                        'Error in load_data statement: %s\nStatement: %s',
+                        err, stmt[:200])
+        except Exception as err:
+            self.logger.error('Error in load_data: %s', err)
 
     def insert_data_event(self):
         """Insert data event hook (override to react to inserts)."""
