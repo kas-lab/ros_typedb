@@ -335,41 +335,19 @@ class TypeDBInterface:
         :param schema_path: path to .tql file.
         """
         if schema_path is not None and schema_path != '':
+            print('SCHEMA FILE ', schema_path)
             self.write_database_file('define', schema_path)
 
     def delete_all_data(self) -> None:
         """Delete all data from the database (entities and relations)."""
-        # Delete all entities by concrete type
-        try:
-            with self._transaction(TransactionType.WRITE) as tx:
-                answer = tx.query('match $e isa entity; select $e;').resolve()
-                types_seen = set()
-                for row in answer.as_concept_rows():
-                    concept = row.get('e')
-                    if concept and concept.is_entity():
-                        label = concept.get_label()
-                        types_seen.add(label)
-            for label in types_seen:
-                self.delete_from_database(
-                    'match $e isa {}; delete $e;'.format(label))
-        except Exception as err:
-            self.logger.error('Error deleting entities in delete_all_data: %s', err)
-
-        # Delete all relations by concrete type
-        try:
-            with self._transaction(TransactionType.WRITE) as tx:
-                answer = tx.query('match $r isa relation; select $r;').resolve()
-                rel_types_seen = set()
-                for row in answer.as_concept_rows():
-                    concept = row.get('r')
-                    if concept and concept.is_relation():
-                        label = concept.get_label()
-                        rel_types_seen.add(label)
-            for label in rel_types_seen:
-                self.delete_from_database(
-                    'match $r isa {}; delete $r;'.format(label))
-        except Exception as err:
-            self.logger.error('Error deleting relations in delete_all_data: %s', err)
+        self.delete_from_database(
+            '''
+                match
+                    $t isa $my_type;
+                    $instance isa $my_type;
+                delete $instance;
+            '''
+        )
 
     def _split_data_statements(self, content: str) -> list[str]:
         """
