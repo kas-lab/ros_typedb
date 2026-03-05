@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run tests inside the ros_typedb container (non-interactive).
 CONTAINER_NAME="ros_typedb"
 
 if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}\$"; then
@@ -11,12 +10,18 @@ if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}\$"; then
   exit 1
 fi
 
-pytest_args=()
-if [[ "${1:-}" == "-k" ]]; then
-  pytest_args=("--pytest-args" "-k" "${2:-}")
-fi
-
+echo "[1/2] Running flake8 test..."
 docker exec "${CONTAINER_NAME}" bash -lc \
   "source /opt/ros/humble/setup.bash && \
    source /home/ubuntu-user/typedb_ws/install/setup.bash && \
-   colcon test --event-handlers console_cohesion+ --packages-select ros_typedb ${pytest_args[*]}"
+   cd /home/ubuntu-user/typedb_ws && \
+   colcon test --event-handlers console_cohesion+ --packages-select ros_typedb --pytest-args -k test_flake8"
+
+echo "[2/2] Running pep257 test..."
+docker exec "${CONTAINER_NAME}" bash -lc \
+  "source /opt/ros/humble/setup.bash && \
+   source /home/ubuntu-user/typedb_ws/install/setup.bash && \
+   cd /home/ubuntu-user/typedb_ws && \
+   colcon test --event-handlers console_cohesion+ --packages-select ros_typedb --pytest-args -k test_pep257"
+
+echo "Mandatory checks passed."

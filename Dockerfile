@@ -24,25 +24,26 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     gpg \
     openjdk-11-jre \
+    tar \
     && rm -rf /var/lib/apt/lists/*
 
-RUN rosdep init 
+RUN rosdep init
 
 ## Install TypeDB
 RUN gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-key 17507562824cfdcc
-RUN gpg --export 17507562824cfdcc | sudo tee /etc/apt/trusted.gpg.d/vaticle.gpg > /dev/null
-RUN echo "deb https://repo.typedb.com/public/public-release/deb/ubuntu trusty main" | tee /etc/apt/sources.list.d/vaticle.list > /dev/null
+RUN gpg --export 17507562824cfdcc | sudo tee /etc/apt/trusted.gpg.d/typedb.gpg > /dev/null
+RUN echo "deb https://repo.typedb.com/public/public-release/deb/ubuntu trusty main" | tee /etc/apt/sources.list.d/typedb.list > /dev/null
 
 RUN apt-get update && apt-get install -y \
-    typedb=2.28.3 \
+    typedb \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install typedb-driver==2.28.0
+RUN pip install typedb-driver
 
 ## Install TypeDB studio
-RUN sudo mkdir /usr/share/desktop-directories/
-RUN wget https://repo.typedb.com/public/public-release/raw/names/typedb-studio-linux-x86_64-deb/versions/2.28.0/typedb-studio-linux-x86_64-2.28.0.deb
-RUN dpkg -i typedb-studio-linux-x86_64-2.28.0.deb
+# RUN sudo mkdir /usr/share/desktop-directories/
+# RUN wget https://repo.typedb.com/public/public-release/raw/names/typedb-studio-linux-x86_64-deb/versions/2.28.0/typedb-studio-linux-x86_64-2.28.0.deb
+# RUN dpkg -i typedb-studio-linux-x86_64-2.28.0.deb
 
 ## Create ubuntu-user user, disable password, and add it to sudo group
 RUN groupadd -g 1000 ubuntu-user \
