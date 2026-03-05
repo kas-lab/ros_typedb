@@ -23,13 +23,10 @@ from ros_typedb.ros_typedb_helpers import query_result_to_ros_msg
 from ros_typedb.typedb_interface import TypeDBInterface
 from ros_typedb.typedb_interface import TypeDBQueryError
 
-import ros_typedb_msgs
-
 from ros_typedb_msgs.srv import Query
 
 from std_msgs.msg import String
 
-import std_srvs
 from std_srvs.srv import Empty
 
 
@@ -43,9 +40,6 @@ class ROSTypeDBInterface(Node):
         self.declare_parameter('database_name', 'ros_typedb')
         self.declare_parameter('force_database', True)
         self.declare_parameter('force_data', True)
-        self.declare_parameter('infer', True)
-
-        self.default_schema_path = ''
         self.declare_parameter('schema_path', [''])
         self.declare_parameter('data_path', [''])
 
@@ -59,9 +53,8 @@ class ROSTypeDBInterface(Node):
             database_name: str,
             schema_path: list[str] | str | None = None,
             data_path: list[str] | str | None = None,
-            force_database: bool | None = False,
-            force_data: bool | None = False,
-            infer: bool | None = False) -> None:
+            force_database: bool = False,
+            force_data: bool = False) -> None:
         """
         Initialize self.typedb_interface.
 
@@ -71,7 +64,6 @@ class ROSTypeDBInterface(Node):
         :param data_path: list with paths to data files (.tql).
         :param force_database: if database should override an existing database
         :param force_data: if the database data should be overridden.
-        :param infer: if inference engine should be used.
         """
         self.typedb_interface = self.typedb_interface_class(
             address,
@@ -80,7 +72,6 @@ class ROSTypeDBInterface(Node):
             data_path,
             force_database,
             force_data,
-            infer,
         )
 
         self.typedb_interface.insert_data_event = self.insert_data_event
@@ -102,7 +93,7 @@ class ROSTypeDBInterface(Node):
         """Publish 'delete' in the /event topic."""
         self.publish_data_event('delete')
 
-    def on_configure(self, state: State) -> TransitionCallbackReturn:
+    def on_configure(self, _state: State) -> TransitionCallbackReturn:
         """
         Configure ROSTypeDBInterface when the configure transition is called.
 
@@ -117,7 +108,6 @@ class ROSTypeDBInterface(Node):
             data_path=self.get_parameter('data_path').value,
             force_database=self.get_parameter('force_database').value,
             force_data=self.get_parameter('force_data').value,
-            infer=self.get_parameter('infer').value,
         )
 
         self.event_pub = self.create_lifecycle_publisher(
@@ -141,7 +131,7 @@ class ROSTypeDBInterface(Node):
         self.get_logger().info(self.get_name() + ':on_configure() completed.')
         return TransitionCallbackReturn.SUCCESS
 
-    def on_cleanup(self, state: State) -> TransitionCallbackReturn:
+    def on_cleanup(self, _state: State) -> TransitionCallbackReturn:
         """
         Cleanup ROSTypeDBInterface when the cleanup transition is called.
 
@@ -156,9 +146,9 @@ class ROSTypeDBInterface(Node):
 
     def query_service_cb(
         self,
-        req: ros_typedb_msgs.srv.Query.Request,
-        response: ros_typedb_msgs.srv.Query.Response
-    ) -> ros_typedb_msgs.srv.Query.Response:
+        req: Query.Request,
+        response: Query.Response
+    ) -> Query.Response:
         """
         Handle callback for ~/query service.
 
@@ -168,19 +158,16 @@ class ROSTypeDBInterface(Node):
         :param response: query result
         :return: query result
         """
-        if req.query_type == Query.Request.INSERT:
-            query_func = self.typedb_interface.insert_database
-        elif req.query_type == Query.Request.DELETE:
-            query_func = self.typedb_interface.delete_from_database
-        elif req.query_type == Query.Request.FETCH:
-            query_func = self.typedb_interface.fetch_database
-        elif req.query_type == Query.Request.GET:
-            query_func = self.typedb_interface.get_database
-        elif req.query_type == Query.Request.GET_AGGREGATE:
-            query_func = self.typedb_interface.get_aggregate_database
-        elif req.query_type == Query.Request.UPDATE:
-            query_func = self.typedb_interface.update_database
-        else:
+        query_handlers = {
+            Query.Request.INSERT: self.typedb_interface.insert_database,
+            Query.Request.DELETE: self.typedb_interface.delete_from_database,
+            Query.Request.FETCH: self.typedb_interface.fetch_database,
+            Query.Request.GET: self.typedb_interface.get_database,
+            Query.Request.GET_AGGREGATE: self.typedb_interface.get_aggregate_database,
+            Query.Request.UPDATE: self.typedb_interface.update_database,
+        }
+        query_func = query_handlers.get(req.query_type)
+        if query_func is None:
             self.get_logger().warning(
                 'Query type {} not recognized'.format(req.query_type))
             response.success = False
@@ -208,9 +195,9 @@ class ROSTypeDBInterface(Node):
 
     def delete_db_cb(
         self,
-        req: std_srvs.srv.Empty.Request,
-        response: std_srvs.srv.Empty.Response
-    ) -> std_srvs.srv.Empty.Response:
+        _req: Empty.Request,
+        response: Empty.Response
+    ) -> Empty.Response:
         """
         Handle callback for ~/delete_database service.
 

@@ -15,6 +15,7 @@
 
 from datetime import datetime
 import logging
+import re
 from typing import Any
 from typing import Literal
 from typing import TypedDict
@@ -45,7 +46,7 @@ class TypeDBQueryError(Exception):
         self.transaction_type = transaction_type
         self.query_type = query_type
         self.query = query
-        query_preview = ' '.join(query.strip().split())[:]
+        query_preview = ' '.join(query.strip().split())
         message = (
             'TypeDB query failed '
             f'(session_type={session_type}, '
@@ -114,9 +115,8 @@ class TypeDBInterface:
             database_name: str,
             schema_path: list[str] | str | None = None,
             data_path: list[str] | str | None = None,
-            force_database: bool | None = False,
-            force_data: bool | None = False,
-            infer: bool | None = False,
+            force_database: bool = False,
+            force_data: bool = False,
             username: str = 'admin',
             password: str = 'password') -> None:
         """
@@ -128,12 +128,10 @@ class TypeDBInterface:
         :param data_path: list of paths to data files (.tql).
         :param force_database: delete and recreate the database if it exists.
         :param force_data: clear all data before loading data_path files.
-        :param infer: enable the inference engine (unused in TypeDB 3).
         :param username: TypeDB username (default: 'admin').
         :param password: TypeDB password (default: 'password').
         """
         self.logger = logging.getLogger(__name__)
-        self._infer = infer
         self.database_name = None
         self.connect_driver(address, username, password)
         self.create_database(database_name, force=force_database)
@@ -179,9 +177,11 @@ class TypeDBInterface:
         :param transaction_type: TransactionType enum value.
         :return: transaction context manager.
         """
+        if self.database_name is None:
+            raise ValueError('No database selected.')
         return self.driver.transaction(self.database_name, transaction_type)
 
-    def delete_database(self, database_name: str = None) -> None:
+    def delete_database(self, database_name: str | None = None) -> None:
         """
         Delete database.
 
@@ -204,10 +204,12 @@ class TypeDBInterface:
         """
         if database_name is None:
             database_name = self.database_name
+        if database_name is None:
+            return False
         return self.driver.databases.contains(database_name)
 
     def create_database(
-            self, database_name: str, force: bool | None = False) -> None:
+            self, database_name: str, force: bool = False) -> None:
         """
         Create database.
 
@@ -284,13 +286,10 @@ class TypeDBInterface:
     def _execute_write_query(
             self,
             transaction,
-            query: str,
-            *,
-            resolve: bool = True) -> Literal[True]:
+            query: str) -> Literal[True]:
         """Execute a write query and commit the transaction."""
         answer = transaction.query(query)
-        if resolve:
-            answer.resolve()
+        answer.resolve()
         transaction.commit()
         return True
 
@@ -334,8 +333,7 @@ class TypeDBInterface:
             query_type: Literal[
                 'define', 'insert', 'delete', 'fetch', 'get',
                 'get_aggregate', 'update'],
-            query: str,
-            options: dict[str, Any] | None = None
+            query: str
     ) -> Literal[True] | list[dict[str, Any]] | None | int | float:
         """
         Execute a query against the database.
@@ -344,10 +342,8 @@ class TypeDBInterface:
         :param transaction_type: 'read' or 'write'.
         :param query_type: one of define/insert/delete/fetch/get/get_aggregate/update.
         :param query: TypeQL query string.
-        :param options: unused, kept for API compatibility.
         :return: query result.
         """
-        del options  # TODO: remove options
         query_handler_map = {
             'define': lambda tx: self._execute_write_query(tx, query),
             'insert': lambda tx: self._execute_write_query(tx, query),
@@ -368,7 +364,7 @@ class TypeDBInterface:
             with self._transaction(tdb_transaction_type) as transaction:
                 return query_handler(transaction)
         except Exception as err:
-            query_preview = ' '.join(query.strip().split())[:]
+            query_preview = ' '.join(query.strip().split())
             self.logger.exception(
                 'database_query failed (db=%s, session_type=%s, '
                 'transaction_type=%s, query_type=%s, query="%s"): %s',
@@ -396,10 +392,8 @@ class TypeDBInterface:
         """
         with open(file_path, mode='r') as file:
             query = file.read()
-        if query_type == 'define':
-            self.database_query('schema', 'write', query_type, query)
-            return
-        self.database_query('data', 'write', query_type, query)
+        session_type = 'schema' if query_type == 'define' else 'data'
+        self.database_query(session_type, 'write', query_type, query)
 
     def load_schema(self, schema_path: str) -> None:
         """
@@ -407,8 +401,9 @@ class TypeDBInterface:
 
         :param schema_path: path to .tql file.
         """
-        if schema_path is not None and schema_path != '':
-            self.write_database_file('define', schema_path)
+        if not schema_path:
+            return
+        self.write_database_file('define', schema_path)
 
     def delete_all_data(self) -> None:
         """Delete all data from the database (entities and relations)."""
@@ -431,8 +426,6 @@ class TypeDBInterface:
         :param content: raw file content.
         :return: list of statement strings, each including its keyword.
         """
-        import re
-
         match_line_pattern = re.compile(r'(?m)^\s*match\b')
         match_positions = [m.start() for m in match_line_pattern.finditer(content)]
         parts = []
@@ -468,21 +461,13 @@ class TypeDBInterface:
 
         :param data_path: path to .tql file.
         """
-        if data_path is None or data_path == '':
+        if not data_path:
             return
-        try:
-            with open(data_path, mode='r') as fh:
-                content = fh.read()
-            statements = self._split_data_statements(content)
-            for stmt in statements:
-                try:
-                    self.database_query('data', 'write', 'insert', stmt)
-                except Exception as err:
-                    self.logger.error(
-                        'Error in load_data statement: %s\nStatement: %s',
-                        err, stmt[:200])
-        except Exception as err:
-            self.logger.error('Error in load_data: %s', err)
+        with open(data_path, mode='r') as fh:
+            content = fh.read()
+        statements = self._split_data_statements(content)
+        for statement in statements:
+            self.database_query('data', 'write', 'insert', statement)
 
     def insert_data_event(self):
         """Insert data event hook (override to react to inserts)."""
@@ -523,10 +508,9 @@ class TypeDBInterface:
         if attribute_list is None:
             attribute_list = []
         query = 'insert $entity isa {}'.format(entity)
-        for attribute in attribute_list:
-            if attribute[0] is not None:
-                value = convert_py_type_to_query_type(attribute[1])
-                query += ', has {} {}'.format(attribute[0], value)
+        for attr_name, attr_value in attribute_list:
+            value = convert_py_type_to_query_type(attr_value)
+            query += ', has {} {}'.format(attr_name, value)
         query += ';'
         return self.insert_database(query)
 
@@ -552,8 +536,7 @@ class TypeDBInterface:
             match_query += _match_query
             _related_dict[key] = _prefix_list
         insert_query = 'insert ' + create_relationship_query(
-            relationship, _related_dict, attribute_list=attribute_list,
-            prefix=relationship)
+            relationship, _related_dict, attribute_list=attribute_list)
         return self.insert_database(match_query + insert_query)
 
     def fetch_attribute_from_thing(

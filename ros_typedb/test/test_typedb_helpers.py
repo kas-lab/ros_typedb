@@ -56,7 +56,7 @@ def test_convert_py_type_to_query_type():
     assert convert_py_type_to_query_type('$var') == '$var'
     assert convert_py_type_to_query_type(True) == 'true'
     assert convert_py_type_to_query_type(dt) == '2024-01-02T03:04:05.678'
-    assert convert_py_type_to_query_type(42) == 42
+    assert convert_py_type_to_query_type(42) == '42'
 
 
 def test_convert_py_type_to_query_type_escapes_quotes_and_backslashes():
@@ -121,7 +121,7 @@ def test_create_relationship_query_with_attributes():
     )
     assert query == (
         " (employee:$emp_0,employee:$emp_1,employer:$org_0) isa employment,"
-        " has salary 1200 , has role-name 'boss' ;"
+        " has salary 1200, has role-name 'boss';"
     )
 
 

@@ -14,12 +14,13 @@
 """typedb_helpers - utility functions for TypeDB query/value conversions."""
 
 from datetime import datetime
+from typing import Any
 
 
 def convert_query_type_to_py_type(
-        value_dict: dict | None = None,
-        value: str | None = None,
-        value_type: str | None = None) -> 'datetime | int | str | float':
+        value_dict: dict[str, Any] | None = None,
+        value: Any = None,
+        value_type: str | None = None) -> Any:
     """
     Convert typedb 'value_type' to python type.
 
@@ -38,24 +39,34 @@ def convert_query_type_to_py_type(
             raise ValueError("value_dict must include a 'value' key.")
         value_type = value_type_dict.get('value_type')
         value = value_dict.get('value')
-    if value_type == 'datetime':
-        return datetime.fromisoformat(value)
-    elif value_type == 'long':
-        return int(value)
-    elif value_type == 'string':
-        return str(value)
-    elif value_type == 'double':
-        return float(value)
-    elif value_type == 'long_array':
-        return list(map(int, value))
-    elif value_type == 'double_array':
-        return list(map(float, value))
-    elif value_type == 'string_array':
-        return list(map(str, value))
+    if value_type is None:
+        return value
+
+    converters = {
+        'datetime': datetime.fromisoformat,
+        'long': int,
+        'string': str,
+        'double': float,
+    }
+    array_converters = {
+        'long_array': int,
+        'double_array': float,
+        'string_array': str,
+    }
+    if value_type == 'boolean':
+        if isinstance(value, str):
+            return value.lower() == 'true'
+        return bool(value)
+    converter = converters.get(value_type)
+    if converter is not None:
+        return converter(value)
+    array_converter = array_converters.get(value_type)
+    if array_converter is not None:
+        return [array_converter(v) for v in value]
     return value
 
 
-def convert_py_type_to_query_type(data: 'datetime | str | bool') -> str:
+def convert_py_type_to_query_type(data: Any) -> str:
     """
     Convert a Python value to a properly formatted TypeQL string.
 
@@ -66,35 +77,36 @@ def convert_py_type_to_query_type(data: 'datetime | str | bool') -> str:
         if len(data) > 0 and data[0] != '$':
             escaped_data = data.replace('\\', '\\\\').replace("'", "\\'")
             return "'{}'".format(escaped_data)
+        return data
     elif isinstance(data, datetime):
         return data.isoformat(timespec='milliseconds')
     elif isinstance(data, bool):
         return str(data).lower()
-    return data
+    return str(data)
 
 
-def attribute_dict_to_query(attribute_dict: dict) -> str:
+def attribute_dict_to_query(attribute_dict: dict[str, Any]) -> str:
     """
     Convert an attribute dict to a TypeQL 'has' clause fragment.
 
     :param attribute_dict: dict mapping attribute names to values.
     :return: TypeQL string fragment like " has email 'x', has age 5".
     """
-    _query = ''
-    first = True
+    fragments = []
     for attr, attr_value in attribute_dict.items():
         if not isinstance(attr_value, list):
             attr_value = [attr_value]
         for v in attr_value:
-            if first is False:
-                _query += ','
-            _query += ' has {0} {1}'.format(attr, convert_py_type_to_query_type(v))
-            first = False
-    return _query
+            fragments.append(
+                'has {0} {1}'.format(attr, convert_py_type_to_query_type(v))
+            )
+    if not fragments:
+        return ''
+    return ' ' + ', '.join(fragments)
 
 
 def create_match_query(
-        things_list: list,
+        things_list: list[tuple[str, str, Any]],
         prefix: str = 't') -> tuple[str, list]:
     """
     Build a match clause from a list of (type, attr, value) tuples.
@@ -103,52 +115,50 @@ def create_match_query(
     :param prefix: variable name prefix.
     :return: tuple of (match_clause_string, list_of_variable_names).
     """
-    match_query = ''
+    fragments = []
     prefix_list = []
-    t_counter = 0
-    for thing in things_list:
-        match_query += ' ${0}_{1} isa {2},'.format(prefix, t_counter, thing[0])
-        match_query += ' has {0} {1};'.format(
-            thing[1], convert_py_type_to_query_type(thing[2]))
-        prefix_list.append('{0}_{1}'.format(prefix, t_counter))
-        t_counter += 1
-    return match_query, prefix_list
+    for index, (thing_type, attr_name, attr_value) in enumerate(things_list):
+        var_name = '{0}_{1}'.format(prefix, index)
+        fragments.append(
+            ' ${0} isa {1}, has {2} {3};'.format(
+                var_name,
+                thing_type,
+                attr_name,
+                convert_py_type_to_query_type(attr_value))
+        )
+        prefix_list.append(var_name)
+    return ''.join(fragments), prefix_list
 
 
 def create_relationship_query(
         relationship: str,
-        related_dict: dict,
-        attribute_list: list | None = None,
-        prefix: str = 'r') -> str:
+        related_dict: dict[str, list[str]],
+        attribute_list: list[tuple[str, Any]] | None = None) -> str:
     """
     Build a TypeQL insert clause for a relationship.
 
     :param relationship: relationship type name.
     :param related_dict: dict mapping role names to lists of variable name strings.
     :param attribute_list: list of (attr_name, attr_value) tuples.
-    :param prefix: variable name prefix for the relationship variable.
     :return: TypeQL insert clause string.
     """
-    del prefix
     if attribute_list is None:
         attribute_list = []
-    related_things = ''
-    for role, variables in related_dict.items():
-        for v in variables:
-            aux = '{0}:${1}'.format(role, v)
-            if related_things != '':
-                aux = ',' + aux
-            related_things += aux
+
+    related_things = ','.join(
+        '{0}:${1}'.format(role, variable_name)
+        for role, variables in related_dict.items()
+        for variable_name in variables
+    )
     query = ' ({0}) isa {1}'.format(related_things, relationship)
-    for attribute in attribute_list:
-        if attribute[0] is not None:
-            query += ', has {} {} '.format(
-                attribute[0], convert_py_type_to_query_type(attribute[1]))
+    for attr_name, attr_value in attribute_list:
+        query += ', has {} {}'.format(
+            attr_name, convert_py_type_to_query_type(attr_value))
     query += ';'
     return query
 
 
-def dict_to_query(data_dict: dict) -> str:
+def dict_to_query(data_dict: dict[str, Any]) -> str:
     """
     Convert a dict of attributes to a TypeQL 'has' clause fragment.
 
