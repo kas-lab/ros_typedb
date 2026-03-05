@@ -211,6 +211,18 @@ def test_ros_typedb_wrong_query(test_node, insert_query):
     assert query_res.success is False
 
 
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_malformed_query_returns_failure(test_node):
+    test_node.activate_ros_typedb()
+
+    query_req = Query.Request()
+    query_req.query_type = query_req.GET
+    query_req.query = 'this is not valid typeql'
+    query_res = test_node.call_service(test_node.query_cli, query_req)
+
+    assert query_res.success is False
+
+
 def test_convert_attribute_dict_to_ros_msg():
     expected_address_attr = Attribute()
     expected_address_attr.variable_name = 'company_var'
