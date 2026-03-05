@@ -40,7 +40,12 @@ class ROSTypeDBInterface(Node):
     """ROS lifecycle node to interact with typedb."""
 
     def __init__(self, node_name: str, **kwargs):
-        """Create ROSTypeDBInterface node, inherits from lifecycle node."""
+        """
+        Initialize the lifecycle node and declare runtime parameters.
+
+        :param node_name: ROS node name.
+        :param kwargs: Extra keyword arguments passed to ``Node``.
+        """
         super().__init__(node_name, **kwargs)
         self.declare_parameter('address', 'localhost:1729')
         self.declare_parameter('database_name', 'ros_typedb')
@@ -70,6 +75,7 @@ class ROSTypeDBInterface(Node):
         :param data_path: list with paths to data files (.tql).
         :param force_database: if database should override an existing database
         :param force_data: if the database data should be overridden.
+        :return: None.
         """
         self.typedb_interface = self.typedb_interface_class(
             address,
@@ -88,22 +94,32 @@ class ROSTypeDBInterface(Node):
         Publish message in the `/event` topic.
 
         :param event_type: event to be published, e.g., 'insert' or 'delete'.
+        :return: None.
         """
         self.event_pub.publish(String(data=event_type))
 
     def insert_data_event(self) -> None:
-        """Publish 'insert' in the /event topic."""
+        """
+        Publish an insert event in the ``/event`` topic.
+
+        :return: None.
+        """
         self.publish_data_event('insert')
 
     def delete_data_event(self) -> None:
-        """Publish 'delete' in the /event topic."""
+        """
+        Publish a delete event in the ``/event`` topic.
+
+        :return: None.
+        """
         self.publish_data_event('delete')
 
     def on_configure(self, _state: State) -> TransitionCallbackReturn:
         """
         Configure ROSTypeDBInterface when the configure transition is called.
 
-        :return: transition result
+        :param _state: Lifecycle transition state (unused).
+        :return: Transition callback status.
         """
         self.get_logger().info(self.get_name() + ': on_configure() is called.')
 
@@ -141,7 +157,8 @@ class ROSTypeDBInterface(Node):
         """
         Cleanup ROSTypeDBInterface when the cleanup transition is called.
 
-        :return: transition result
+        :param _state: Lifecycle transition state (unused).
+        :return: Transition callback status.
         """
         self.destroy_publisher(self.event_pub)
         self.destroy_service(self.query_service)
@@ -160,9 +177,9 @@ class ROSTypeDBInterface(Node):
 
         Perform the query requested with the ~/query service.
 
-        :param req: query to be performed
-        :param response: query result
-        :return: query result
+        :param req: Incoming service request with query type and TypeQL text.
+        :param response: Pre-allocated ROS service response.
+        :return: Filled response with success flag and optional payload.
         """
         query_handlers = {
             Query.Request.INSERT: self.typedb_interface.insert_database,
@@ -206,7 +223,9 @@ class ROSTypeDBInterface(Node):
         """
         Handle callback for ~/delete_database service.
 
-        Delete the database.
+        :param _req: Empty request payload (unused).
+        :param response: Empty service response.
+        :return: Response after deleting the configured database.
         """
         self.typedb_interface.delete_database()
         return response

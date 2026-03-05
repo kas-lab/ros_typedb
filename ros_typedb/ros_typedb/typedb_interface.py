@@ -45,6 +45,15 @@ class TypeDBQueryError(Exception):
             transaction_type: str,
             query_type: str,
             query: str) -> None:
+        """
+        Build a contextual error for failed TypeDB query execution.
+
+        :param session_type: Requested API session type (schema/data).
+        :param transaction_type: Requested transaction mode (read/write).
+        :param query_type: Logical query kind (insert/get/fetch/etc.).
+        :param query: Original TypeQL query text.
+        :return: None.
+        """
         self.session_type = session_type
         self.transaction_type = transaction_type
         self.query_type = query_type
@@ -96,7 +105,12 @@ def _string_to_string_array(string: str) -> list[str]:
 
 
 def _value_type_to_str(value_type: Any) -> str:
-    """Normalise a TypeDB value type object to a lowercase string."""
+    """
+    Normalize a TypeDB value type object to a lowercase string label.
+
+    :param value_type: TypeDB value-type object or equivalent representation.
+    :return: Normalized value-type label.
+    """
     value = str(value_type).lower()
     if 'boolean' in value or value == 'bool':
         return 'boolean'
@@ -112,7 +126,13 @@ def _value_type_to_str(value_type: Any) -> str:
 
 
 def _query_value_to_json(value: Any, value_type: str) -> Any:
-    """Convert a TypeDB attribute value to a JSON-serialisable form."""
+    """
+    Convert a TypeDB attribute value to a JSON-serializable representation.
+
+    :param value: Raw attribute value from the TypeDB driver.
+    :param value_type: Normalized TypeDB value-type label.
+    :return: JSON-serializable value.
+    """
     if isinstance(value, TypeDBDatetime):
         millis = value.nanos // 1_000_000
         dt = datetime(value.year, value.month, value.day,
@@ -158,6 +178,7 @@ class TypeDBInterface:
         :param force_data: clear all data before loading data_path files.
         :param username: TypeDB username (default: 'admin').
         :param password: TypeDB password (default: 'password').
+        :return: None.
         """
         self.logger = logging.getLogger(__name__)
         self.database_name = None
@@ -193,6 +214,7 @@ class TypeDBInterface:
         :param address: TypeDB server address.
         :param username: TypeDB username.
         :param password: TypeDB password.
+        :return: None.
         """
         credentials = Credentials(username, password)
         driver_options = DriverOptions(is_tls_enabled=False)
@@ -204,6 +226,7 @@ class TypeDBInterface:
 
         :param transaction_type: TransactionType enum value.
         :return: transaction context manager.
+        :raises ValueError: If no active database is configured.
         """
         if self.database_name is None:
             raise ValueError('No database selected.')
@@ -214,6 +237,7 @@ class TypeDBInterface:
         Delete database.
 
         :param database_name: database name (defaults to current database).
+        :return: None.
         """
         if database_name is None:
             database_name = self.database_name
@@ -243,6 +267,7 @@ class TypeDBInterface:
 
         :param database_name: database name.
         :param force: delete existing database before creating.
+        :return: None.
         """
         if force:
             self.delete_database(database_name)
@@ -254,7 +279,12 @@ class TypeDBInterface:
         self.driver.databases.create(database_name)
 
     def _normalize_attribute(self, attribute) -> dict[str, Any]:
-        """Convert a TypeDB 3 attribute concept to a normalised dict."""
+        """
+        Convert a TypeDB attribute concept to a normalized dictionary.
+
+        :param attribute: TypeDB attribute concept.
+        :return: Normalized attribute dictionary.
+        """
         value_type = _value_type_to_str(attribute.get_value_type())
         return {
             'type': {
@@ -266,7 +296,13 @@ class TypeDBInterface:
         }
 
     def _normalize_thing(self, thing, root: str) -> dict[str, Any]:
-        """Convert a TypeDB 3 entity/relation concept to a normalised dict."""
+        """
+        Convert a TypeDB entity/relation concept to a normalized dictionary.
+
+        :param thing: TypeDB entity or relation concept.
+        :param root: Root concept label (``entity`` or ``relation``).
+        :return: Normalized thing dictionary.
+        """
         return {
             'type': {
                 'label': thing.get_type().get_label(),
@@ -275,7 +311,12 @@ class TypeDBInterface:
         }
 
     def _normalize_get_result(self, result_iterable) -> list[dict[str, Any]]:
-        """Convert a stream of ConceptRows to a list of normalised dicts."""
+        """
+        Convert a stream of concept rows to normalized dictionaries.
+
+        :param result_iterable: Iterable of TypeDB concept rows.
+        :return: List of normalized query rows.
+        """
         result_rows = []
         for concept_row in result_iterable:
             row = {}
@@ -299,7 +340,14 @@ class TypeDBInterface:
 
     def _resolve_transaction_type(
             self, session_type: str, transaction_type: str) -> TransactionType:
-        """Map API session/transaction strings to TypeDB TransactionType."""
+        """
+        Map API session/transaction labels to ``TransactionType``.
+
+        :param session_type: API session type label.
+        :param transaction_type: API transaction mode label.
+        :return: Matching TypeDB ``TransactionType``.
+        :raises ValueError: If labels are unsupported.
+        """
         if session_type == 'schema':
             return TransactionType.SCHEMA
         if session_type != 'data':
@@ -315,7 +363,13 @@ class TypeDBInterface:
             self,
             transaction,
             query: str) -> Literal[True]:
-        """Execute a write query and commit the transaction."""
+        """
+        Execute a write query and commit the transaction.
+
+        :param transaction: Open TypeDB transaction.
+        :param query: TypeQL write query.
+        :return: Always ``True`` on success.
+        """
         answer = transaction.query(query)
         answer.resolve()
         transaction.commit()
@@ -323,19 +377,37 @@ class TypeDBInterface:
 
     def _execute_fetch_query(
             self, transaction, query: str) -> list[dict[str, Any]]:
-        """Execute a fetch query and return concept documents as dicts."""
+        """
+        Execute a fetch query and return concept documents as dictionaries.
+
+        :param transaction: Open TypeDB transaction.
+        :param query: TypeQL fetch query.
+        :return: List of concept-document dictionaries.
+        """
         answer = transaction.query(query).resolve()
         return list(answer.as_concept_documents())
 
     def _execute_get_query(
             self, transaction, query: str) -> list[dict[str, Any]]:
-        """Execute a get/select query and normalise concept rows."""
+        """
+        Execute a get/select query and normalize concept rows.
+
+        :param transaction: Open TypeDB transaction.
+        :param query: TypeQL get query.
+        :return: List of normalized query rows.
+        """
         answer = transaction.query(query).resolve()
         return self._normalize_get_result(answer.as_concept_rows())
 
     def _execute_get_aggregate_query(
             self, transaction, query: str) -> int | float | None:
-        """Execute an aggregate query and return the first numeric value."""
+        """
+        Execute an aggregate query and return the first numeric value.
+
+        :param transaction: Open TypeDB transaction.
+        :param query: TypeQL aggregate query.
+        :return: Numeric value or ``None`` when no rows are returned.
+        """
         answer = transaction.query(query).resolve()
         rows = list(answer.as_concept_rows())
         if not rows:
@@ -371,6 +443,8 @@ class TypeDBInterface:
         :param query_type: one of define/insert/delete/fetch/get/get_aggregate/update.
         :param query: TypeQL query string.
         :return: query result.
+        :raises ValueError: If a provided query/session/transaction type is unsupported.
+        :raises TypeDBQueryError: If query execution fails in the database driver.
         """
         query_handler_map = {
             'define': lambda tx: self._execute_write_query(tx, query),
@@ -417,6 +491,7 @@ class TypeDBInterface:
 
         :param query_type: 'define' or 'insert'.
         :param file_path: path to .tql file.
+        :return: None.
         """
         with open(file_path, mode='r') as file:
             query = file.read()
@@ -428,13 +503,18 @@ class TypeDBInterface:
         Load a .tql schema file into the database.
 
         :param schema_path: path to .tql file.
+        :return: None.
         """
         if not schema_path:
             return
         self.write_database_file('define', schema_path)
 
     def delete_all_data(self) -> None:
-        """Delete all data from the database (entities and relations)."""
+        """
+        Delete all data from the database (entities and relations).
+
+        :return: None.
+        """
         self.delete_from_database(
             '''
                 match $instance isa $instance_type;
@@ -487,6 +567,8 @@ class TypeDBInterface:
         that later statements can match entities created by earlier ones.
 
         :param data_path: path to .tql file.
+        :return: None.
+        :raises TypeDBQueryError: If any statement fails during execution.
         """
         if not data_path:
             return
@@ -497,11 +579,23 @@ class TypeDBInterface:
             self.database_query('data', 'write', 'insert', statement)
 
     def insert_data_event(self):
-        """Insert data event hook (override to react to inserts)."""
+        """
+        Insert data event hook.
+
+        Override in subclasses to react when insert operations occur.
+
+        :return: None.
+        """
         self.logger.warning('Data has been inserted!')
 
     def delete_data_event(self):
-        """Delete data event hook (override to react to deletes)."""
+        """
+        Delete data event hook.
+
+        Override in subclasses to react when delete operations occur.
+
+        :return: None.
+        """
         self.logger.warning('Data has been deleted!')
 
     def delete_thing(
@@ -668,6 +762,7 @@ class TypeDBInterface:
         :param key: key attribute name.
         :param key_value: key attribute value.
         :param attr_list: list of attribute names to delete.
+        :return: None.
         """
         for attr in attr_list:
             self.delete_attribute_from_thing(thing, key, key_value, attr)
@@ -685,6 +780,7 @@ class TypeDBInterface:
         :param key: key attribute name.
         :param key_value: key attribute value.
         :param attribute_list: list of (attr_name, attr_value) tuples to insert.
+        :return: None.
         """
         for attr, attr_value in attribute_list:
             self.insert_attribute_in_thing(
@@ -724,6 +820,7 @@ class TypeDBInterface:
         :param key: key attribute name.
         :param key_value: key attribute value.
         :param attribute_list: list of (attr_name, new_attr_value) tuples.
+        :return: None.
         """
         for attr, attr_value in attribute_list:
             self.update_attribute_in_thing(

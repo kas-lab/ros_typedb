@@ -27,13 +27,13 @@ def convert_query_type_to_py_type(
         value: Any = None,
         value_type: str | None = None) -> Any:
     """
-    Convert typedb 'value_type' to python type.
+    Convert a TypeDB value representation to a native Python type.
 
-    :param value: Data to be converted.
-    :param value_type: Data type string (e.g. 'long', 'string').
-    :param value_dict: Typedb value dict, overrides value and value_type.
-    :return: Converted data.
-    :raises ValueError: If value_dict misses required typedb value fields.
+    :param value_dict: Normalised TypeDB value dict.
+    :param value: Raw scalar/array value to convert.
+    :param value_type: TypeDB value type label (e.g. ``long``, ``datetime``).
+    :return: Converted Python value.
+    :raises ValueError: If ``value_dict`` is missing required keys.
     """
     if value_dict is not None:
         value_type_dict = value_dict.get('type')
@@ -75,8 +75,8 @@ def convert_py_type_to_query_type(data: Any) -> str:
     """
     Convert a Python value to a properly formatted TypeQL string.
 
-    :param data: Data to be converted.
-    :return: Converted data as string.
+    :param data: Python value to serialise into a TypeQL literal/variable.
+    :return: TypeQL-ready string representation.
     """
     if isinstance(data, str):
         if len(data) > 0 and data[0] != '$':
@@ -94,8 +94,8 @@ def attribute_dict_to_query(attribute_dict: dict[str, Any]) -> str:
     """
     Convert an attribute dict to a TypeQL 'has' clause fragment.
 
-    :param attribute_dict: dict mapping attribute names to values.
-    :return: TypeQL string fragment like " has email 'x', has age 5".
+    :param attribute_dict: Mapping of attribute labels to scalar/list values.
+    :return: ``has`` clause fragment prefixed with a space when non-empty.
     """
     fragments = []
     for attr, attr_value in attribute_dict.items():
@@ -116,9 +116,9 @@ def create_match_query(
     """
     Build a match clause from a list of (type, attr, value) tuples.
 
-    :param things_list: list of (thing_type, attr_name, attr_value) tuples.
-    :param prefix: variable name prefix.
-    :return: tuple of (match_clause_string, list_of_variable_names).
+    :param things_list: Sequence of ``(thing_type, attr_name, attr_value)`` tuples.
+    :param prefix: Prefix used to generate TypeQL variable names.
+    :return: Tuple with match fragment and generated variable names.
     """
     fragments = []
     prefix_list = []
@@ -142,10 +142,10 @@ def create_relationship_query(
     """
     Build a TypeQL insert clause for a relationship.
 
-    :param relationship: relationship type name.
-    :param related_dict: dict mapping role names to lists of variable name strings.
-    :param attribute_list: list of (attr_name, attr_value) tuples.
-    :return: TypeQL insert clause string.
+    :param relationship: Relationship type label.
+    :param related_dict: Role-to-variable-name mapping.
+    :param attribute_list: Optional relationship attribute tuples.
+    :return: Relationship insert fragment ending with ``;``.
     """
     if attribute_list is None:
         attribute_list = []

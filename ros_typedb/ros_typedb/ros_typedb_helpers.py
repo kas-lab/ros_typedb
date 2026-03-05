@@ -65,7 +65,12 @@ _TYPEDB_ROOT_TYPE_TO_THING_TYPE = {
 
 
 def _py_type_to_value_type(value) -> str:
-    """Infer TypeDB value type string from a Python native value."""
+    """
+    Infer a TypeDB value type label from a Python native value.
+
+    :param value: Python value.
+    :return: TypeDB scalar type label.
+    """
     if isinstance(value, bool):
         return 'boolean'
     if isinstance(value, int):
@@ -141,9 +146,10 @@ def set_query_result_value(
     """
     Convert value to :class:`rcl_interfaces.msg.ParameterValue`.
 
-    :param value: value to be converted
-    :param value_type: value type, e.g., `boolean`, `float` etc.
-    :return: converted value
+    :param value: Value to be converted.
+    :param value_type: Type label used by ``_PARAM_TYPE_MAP``.
+    :return: Converted ROS parameter value.
+    :raises ValueError: If ``value_type`` is unsupported.
     """
     param_value = ParameterValue()
 
@@ -212,7 +218,7 @@ def fetch_result_to_ros_result_tree(json_obj, start_index=0):
     """
     Convert a TypeDB fetch result dict to a :class:`ros_typedb_msgs.msg.ResultTree`.
 
-    :param json_obj: single fetch result dict.
+    :param json_obj: Single fetch result dictionary/document.
     :param start_index: starting index for result indexing.
     :return: tuple of (ResultTree, next_index).
     """
@@ -284,7 +290,7 @@ def fetch_query_result_to_ros_msg(
     query_result: list[dict[str, MatchResultDict]] | None
 ) -> ros_typedb_msgs.srv.Query.Response:
     """
-    Convert typedb fetch query result to :class:`ros_typedb_msgs.srv.Query`.
+    Convert a TypeDB fetch query result to :class:`ros_typedb_msgs.srv.Query`.
 
     :param query_result: typedb fetch query result.
     :return: converted query response.
@@ -305,7 +311,7 @@ def get_query_result_to_ros_msg(
     query_result: list[dict[str, Any]] | None
 ) -> ros_typedb_msgs.srv.Query.Response:
     """
-    Convert get query result to :class:`ros_typedb_msgs.srv.Query`.
+    Convert a TypeDB get query result to :class:`ros_typedb_msgs.srv.Query`.
 
     :param query_result: typedb get query result.
     :return: converted query response.
@@ -334,9 +340,9 @@ def get_aggregate_query_result_to_ros_msg(
     query_result: int | float | None
 ) -> ros_typedb_msgs.srv.Query.Response:
     """
-    Convert get aggregate query result to :class:`ros_typedb_msgs.srv.Query`.
+    Convert a TypeDB aggregate result to :class:`ros_typedb_msgs.srv.Query`.
 
-    :param query_result: typedb get aggregate query result.
+    :param query_result: Aggregate numeric result or ``None`` for empty result.
     :return: converted query response.
     """
     response = Query.Response()
@@ -364,11 +370,11 @@ def query_result_to_ros_msg(
     query_result: list[dict[str, MatchResultDict]] | int | float | None
 ) -> ros_typedb_msgs.srv.Query.Response:
     """
-    Convert typedb query result to :class:`ros_typedb_msgs.srv.Query`.
+    Convert a TypeDB query result to :class:`ros_typedb_msgs.srv.Query`.
 
-    :param query_type: query_type, e.g., 'fetch' or 'get_aggregate'
+    :param query_type: Query enum value from :class:`ros_typedb_msgs.srv.Query.Request`.
     :param query_result: typedb query result.
-    :return: converted query response.
+    :return: Converted query response.
     """
     query_converters = {
         Query.Request.FETCH: fetch_query_result_to_ros_msg,
