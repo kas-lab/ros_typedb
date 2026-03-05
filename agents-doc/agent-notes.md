@@ -1,50 +1,39 @@
 # Agent Notes
 
-This file is a short checklist for agents working in this repo.
+Short checklist for day-to-day feature work.
 
-## Quick test entrypoint
+## Quick start
 
-Preferred focused run inside Docker:
+Start container (if needed):
+
+```bash
+docker run -d --rm --name ros_typedb -v /etc/localtime:/etc/localtime:ro -v $PWD:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb sudo typedb server
+```
+
+Run tests:
 
 ```bash
 scripts/run-tests-docker.sh
 ```
 
-## Code style
+Run mandatory checks:
 
-- Python code must pass flake8 and pep257 tests
-- Add the following copyright to python files
-
-```Python
-# Copyright 2026 KAS Lab
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+```bash
+scripts/run-mandatory-checks-docker.sh
 ```
+
+## Before finishing a task
+
+- Confirm relevant tests pass.
+- Confirm `scripts/run-mandatory-checks-docker.sh` passes.
+- Confirm TypeDB server is running before executing build/test/launch/query commands.
+- In final response, include:
+  - commands executed
+  - pass/fail result
+  - blocker (if anything could not run)
 
 ## Common failure checks
 
-- Is TypeDB running on `localhost:1729`?
-- Is the ROS + workspace environment sourced?
-- Is the `tactical_retreat` container running (if using Docker)?
-
-## Rule authoring reminders
-
-- Avoid negation cycles: do not read/write the same predicate under `not {}`.
-- Variables in `then` must be bound in `when` outside nested blocks.
-- If you need to assign attributes to a relation, bind or create the relation first.
-
-## Mandatory completion checks
-
-- Always run and pass both lint/style tests before marking work as done:
-  - `colcon test --event-handlers console_cohesion+ --packages-select typedb_tactics --pytest-args -k test_flake8`
-  - `colcon test --event-handlers console_cohesion+ --packages-select typedb_tactics --pytest-args -k test_pep257`
+- Is `ros_typedb` running?
+- Was ROS/workspace sourced inside container?
+- Is TypeDB reachable at `localhost:1729`?
