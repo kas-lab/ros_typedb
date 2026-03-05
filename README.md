@@ -2,105 +2,137 @@
 [![tests](https://github.com/Rezenders/ros_typedb/actions/workflows/test.yml/badge.svg)](https://github.com/Rezenders/ros_typedb/actions/workflows/test.yml)
 [![documentation](https://github.com/Rezenders/ros_typedb/actions/workflows/doc.yml/badge.svg)](https://github.com/Rezenders/ros_typedb/actions/workflows/doc.yml)
 
-This package provides a basic generic integration between ROS and [typeDB](https://typedb.com/).
-The package was designed in a way to enable users to easily extend it to fulfill their needs, the package design is explained in the [Package Design](#package-design) section.
+This package provides a generic integration between ROS 2 and [TypeDB](https://typedb.com/) (TypeDB 3).
+The package is designed so users can extend query behavior while reusing the existing ROS lifecycle/query interfaces.
 
-This package was tested in Ubuntu 22.04 with ROS Humble and TypeDB 3.
+This package is tested on Ubuntu 22.04 with ROS 2 Humble and TypeDB 3.
 
 ## Install
 
-To use this package, you need to install ROS 2 Humble and TypeDB 3.
+To use this package, install ROS 2 Humble and TypeDB 3.
 
 #### Install ROS2 Humble
 
-Follow the [official instructions](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html) for installing ROS 2 Humble.
+Follow the [official instructions](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html).
 
 #### Install TypeDB 3
 
 Install TypeDB following the official documentation: https://typedb.com/docs/home/
 
-For development, this repository provides `Dockerfile-TypeDB3` which installs:
-- TypeDB server
-- TypeDB 3 C client library (`libtypedb_driver_clib.so`)
-- C header (`typedb_driver.h`)
+For development, this repository provides `Dockerfile` with TypeDB 3 server and Python driver support.
 
-Optional Python fallback backend dependency:
-```Bash
-pip3 install typedb-driver
-```
+Before running build, tests, launch, or query commands, make sure the TypeDB server is running.
 
 #### Install ros_typedb package
 
 Create a ROS workspace and clone the repository:
-```Bash
-mkdir -p ~/ros_typedb_ws/src/
-cd ~/ros_typedb_ws/src
-git clone https://github.com/Rezenders/ros_typedb.git
+
+```bash
+mkdir -p ~/typedb_ws/src
+cd ~/typedb_ws/src
+git clone https://github.com/kas-lab/ros_typedb.git
 ```
 
-Install the dependencies:
-```Bash
+Install dependencies:
+
+```bash
 source /opt/ros/humble/setup.bash
-cd ~/ros_typedb_ws/
+cd ~/typedb_ws
 rosdep install --from-paths src --ignore-src -r -y
 ```
 
-Build the project:
-```Bash
-cd ~/ros_typedb_ws/
+Build:
+
+```bash
+cd ~/typedb_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
 
 ## Run with Docker
 
-Build:
-```Bash
+Build the TypeDB 3 image:
+
+```bash
 docker build -t ros_typedb .
 ```
 
-If you want to use typedb studio, run the following command to allow the container to access the host display:
-```Bash
+If you want to use TypeDB Studio, allow X access:
+
+```bash
 xhost +
 ```
 
-Start dev container with display and the `ros_typedb` directory mounted:
-```Bash
+Start dev container with display and repository mounted:
+
+```bash
 docker run -it --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -v /dev/dri:/dev/dri -v /tmp/.X11-unix:/tmp/.X11-unix -v /etc/localtime:/etc/localtime:ro -v $HOME/typedb_ws/src/ros_typedb:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb
 ```
 
-Start dev container **without** display and the `ros_typedb` directory mounted:
-```Bash
+Start dev container without display:
+
+```bash
 docker run -it --rm --name ros_typedb -v /etc/localtime:/etc/localtime:ro -v $HOME/typedb_ws/src/ros_typedb:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb
 ```
 
-**Note:** replace the path `$HOME/typedb_ws/src/ros_typedb` with the path of the `ros_typedb` repo in your host machine.
+Start new terminal in container:
 
-Start new terminal in the container:
-```Bash
+```bash
 docker exec -it ros_typedb bash
 ```
 
-Start container in the background with typedb server running:
-```Bash
-docker run -d --name ros_typedb ros_typedb typedb server
-```
+Start container in background with TypeDB server running:
 
-Start container in the background with typedb server running:
-```Bash
-docker run -d --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -v /dev/dri:/dev/dri -v /tmp/.X11-unix:/tmp/.X11-unix -v /etc/localtime:/etc/localtime:ro -v $HOME/rebet_ws/src/ros_typedb:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb typedb server
+```bash
+docker run -d --rm --name ros_typedb -v /etc/localtime:/etc/localtime:ro -v $PWD:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb sudo typedb server
 ```
 
 ## Package Design
 
-The integration between ROS and TypeDB is implemented with 2 classes, [TypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/typedb_interface.py) and [ROSTypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/ros_typedb_interface.py).
+The integration is centered around two classes:
 
-The [ROSTypeDBInterface](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/ros_typedb_interface.py) class is a ROS 2 [LifeCycle](https://design.ros2.org/articles/node_lifecycle.html) Node, and it implements 2 ROS interfaces. A ROS service server `ros_typedb_interface/query` that is used to query the database, which uses the [Query.srv](https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb_msgs/srv/Query.srv) service type. And the ROS topic `ros_typedb_interface/events`, where it publishes insert and delete events when data is inserted or deleted from the database with the query service.
+- `TypeDBInterface` in `ros_typedb/ros_typedb/typedb_interface.py`
+- `ROSTypeDBInterface` in `ros_typedb/ros_typedb/ros_typedb_interface.py`
+
+`ROSTypeDBInterface` is a ROS 2 lifecycle node exposing:
+
+- `~/query` service (`ros_typedb_msgs/srv/Query.srv`) for insert/delete/fetch/get/update operations
+- `~/events` topic (`std_msgs/String`) for insert/delete events
+
+`TypeDBInterface` manages connection, schema/data loading, and query execution against TypeDB.
 
 Class diagram:
-<p align="center">
-  <img src="https://github.com/Rezenders/ros_typedb/assets/20564040/4cf4f799-3dab-40c4-a323-8d1e8e376e62" width="500">
-</p>
+
+```mermaid
+classDiagram
+    class LifecycleNode {
+      <<ROS 2>>
+    }
+
+    class TypeDBInterface {
+      +connect_driver()
+      +database_query()
+      +load_schema()
+      +load_data()
+    }
+
+    class ROSTypeDBInterface {
+      +typedb_interface_class
+      +typedb_interface
+      +init_typedb_interface()
+      +query_service_cb()
+    }
+
+    class MyTypeDBInterface
+    class MyROSTypeDBInterface
+
+    LifecycleNode <|-- ROSTypeDBInterface
+    TypeDBInterface <|-- MyTypeDBInterface
+    ROSTypeDBInterface <|-- MyROSTypeDBInterface
+
+    ROSTypeDBInterface *-- TypeDBInterface : composes (instance)
+    MyROSTypeDBInterface *-- MyTypeDBInterface : via typedb_interface_class
+```
 
 Overview:
 <p align="center">
@@ -109,74 +141,106 @@ Overview:
 
 ## Using the package
 
-To run the ros_typedb_interface:
+Recommended: launch the lifecycle node through the provided launch file (it auto-configures/activates):
+
 ```bash
-ros2 run ros_typedb ros_typedb_interface -p schema_path:=<schema_path> -p data_path:=<data_path>
+ros2 launch ros_typedb ros_typedb.launch.py schema_path:="['/absolute/path/schema.tql']" data_path:="['/absolute/path/data.tql']"
 ```
 
-**Note:** Make sure to replace <schema_path> and <data_path> with the real path for your schema and data file
-**Note 2:** Remember that ros_typedb_interface is a [LifeCycle](https://design.ros2.org/articles/node_lifecycle.html) node, so you need to change its state to active before using it. Check the [lifecycle tutorial](https://github.com/ros2/demos/tree/rolling/lifecycle).
+Run node directly:
+
+```bash
+ros2 run ros_typedb ros_typedb
+```
+
+If running directly, manage lifecycle state transitions before sending queries.
 
 ## Extend the package
 
-To extend this package with custom functionalities, you can create a new ROS Node inheriting from ROSTypeDBInterface and a new typedb interface inheriting from TypeDBInterface. Then you simply need to add the new functionalities you need into your class.
+Use composition for custom features:
 
-Example:
+- Keep query/domain logic in plain Python classes.
+- Inject `TypeDBInterface` into those classes.
+- Optionally create a `ROSTypeDBInterface` subclass only to wire ROS lifecycle/services.
 
-New typedb interface:
+Custom query class (no inheritance from `TypeDBInterface`):
+
 ```python
-class MyModelInterface(TypeDBInterface):
-    def __init__(self, address, database_name, schema_path, data_path=None,
-                 force_database=False, force_data=False):
+from ros_typedb.typedb_interface import TypeDBInterface
 
-        super().__init__(
-            address,
-            database_name,
-            schema_path,
-            data_path,
-            force_database,
-            force_data
+
+class PeopleQueries:
+    def __init__(self, db: TypeDBInterface):
+        self.db = db
+
+    def fetch_people(self):
+        return self.db.fetch_database(
+            'match $p isa person; fetch { "email": $p.email };'
         )
+
+    def add_person(self, email: str):
+        return self.db.insert_entity('person', [('email', email)])
 ```
 
-New ROS interface:
+Custom ROS interface (wiring/composition only):
+
 ```python
-class MyModelROSInterface(ROSTypeDBInterface):
-    def __init__(self, node_name, schema_path='', data_path='', **kwargs):
-        super().__init__(node_name, schema_path, data_path, **kwargs)
-        self.typedb_interface_class = MyModelInterface
+from ros_typedb.ros_typedb_interface import ROSTypeDBInterface
+from my_queries import PeopleQueries
+
+
+class MyROSTypeDBInterface(ROSTypeDBInterface):
+    def __init__(self, node_name='my_typedb_node', **kwargs):
+        super().__init__(node_name, **kwargs)
+
+    def on_configure(self, state):
+        result = super().on_configure(state)
+        self.people_queries = PeopleQueries(self.typedb_interface)
+        return result
 ```
 
 Spin ROS node:
+
 ```python
+import rclpy
+from rclpy.executors import MultiThreadedExecutor
+
+
 def main():
     rclpy.init()
-    traceback_logger = rclpy.logging.get_logger(
-        'mymodel_kb_traceback_logger')
-
-    lc_node = MyModelROSInterface('mymodel_kb')
-
-    executor = rclpy.executors.MultiThreadedExecutor()
-    executor.add_node(lc_node)
+    node = MyROSTypeDBInterface()
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
     try:
         executor.spin()
-    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
-        pass
-    except Exception as exception:
-        traceback_logger.error(traceback.format_exc())
-        raise exception
     finally:
-        lc_node.destroy_node()
+        node.destroy_node()
+        rclpy.shutdown()
 ```
 
 ## Example of packages using ros_type
+
 - [ROSA](https://github.com/kas-lab/rosa/tree/main/rosa_kb)
 - [navigation_graph_map](https://github.com/kas-lab/navigation_graph_map/tree/main/navigation_kb)
 
 ## Run tests
 
+Feature/integration tests in Docker:
+
+```bash
+scripts/run-tests-docker.sh
+```
+
+Mandatory style/docstring checks:
+
+```bash
+scripts/run-mandatory-checks-docker.sh
+```
+
+Manually:
+
 ```Bash
-colcon test --event-handlers console_cohesion+ --packages-up-to ros_typedb
+colcon test --event-handlers console_cohesion+ --packages-select ros_typedb
 ```
 
 ## Acknowledgments
