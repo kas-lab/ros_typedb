@@ -32,6 +32,7 @@ from rclpy.node import Node
 
 from ros_typedb.ros_typedb_helpers import convert_attribute_dict_to_ros_msg
 from ros_typedb.ros_typedb_helpers import fetch_result_to_ros_result_tree
+from ros_typedb.ros_typedb_helpers import query_result_to_ros_msg
 
 from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import IndexList
@@ -918,6 +919,25 @@ def test_ros_typedb_get_aggregate_query(test_node, insert_query):
 
 
 @pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_get_aggregate_empty_result_is_success(test_node):
+    test_node.activate_ros_typedb()
+
+    query_req = Query.Request()
+    query_req.query_type = query_req.GET_AGGREGATE
+    query_req.query = """
+        match
+            $person isa person,
+                has email 'missing-aggregate@test.com';
+            (employee:$person) isa employment, has salary $s;
+        select $s; reduce $max = max($s);
+    """
+    query_res = test_node.call_service(test_node.query_cli, query_req)
+
+    assert query_res.success is True
+    assert len(query_res.results) == 0
+
+
+@pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_update_query(test_node, insert_query):
     test_node.activate_ros_typedb()
 
@@ -937,6 +957,12 @@ def test_ros_typedb_update_query(test_node, insert_query):
 
     assert query_res.success is True
     # Potential TODO: add get to make sure the email was updated
+
+
+def test_query_result_to_ros_msg_get_aggregate_none_is_success():
+    response = query_result_to_ros_msg(Query.Request.GET_AGGREGATE, None)
+    assert response.success is True
+    assert len(response.results) == 0
 
 
 class MakeTestNode(Node):

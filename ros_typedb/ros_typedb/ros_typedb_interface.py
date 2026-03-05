@@ -29,6 +29,12 @@ from std_msgs.msg import String
 
 from std_srvs.srv import Empty
 
+_READ_QUERY_TYPES = {
+    Query.Request.FETCH,
+    Query.Request.GET,
+    Query.Request.GET_AGGREGATE,
+}
+
 
 class ROSTypeDBInterface(Node):
     """ROS lifecycle node to interact with typedb."""
@@ -187,10 +193,9 @@ class ROSTypeDBInterface(Node):
                 f'{req.query_type}: {err}')
             response.success = False
             return response
-        if query_result is None:
-            response.success = False
-        else:
-            response.success = True
+        if req.query_type in _READ_QUERY_TYPES:
+            return response
+        response.success = bool(query_result)
         return response
 
     def delete_db_cb(

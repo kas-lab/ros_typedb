@@ -16,6 +16,11 @@
 from datetime import datetime
 from typing import Any
 
+AttributePair = tuple[str, Any]
+ThingMatchTuple = tuple[str, str, Any]
+RelatedThingsDict = dict[str, list[ThingMatchTuple]]
+RelatedVariablesDict = dict[str, list[str]]
+
 
 def convert_query_type_to_py_type(
         value_dict: dict[str, Any] | None = None,
@@ -106,8 +111,8 @@ def attribute_dict_to_query(attribute_dict: dict[str, Any]) -> str:
 
 
 def create_match_query(
-        things_list: list[tuple[str, str, Any]],
-        prefix: str = 't') -> tuple[str, list]:
+        things_list: list[ThingMatchTuple],
+        prefix: str = 't') -> tuple[str, list[str]]:
     """
     Build a match clause from a list of (type, attr, value) tuples.
 
@@ -132,8 +137,8 @@ def create_match_query(
 
 def create_relationship_query(
         relationship: str,
-        related_dict: dict[str, list[str]],
-        attribute_list: list[tuple[str, Any]] | None = None) -> str:
+        related_dict: RelatedVariablesDict,
+        attribute_list: list[AttributePair] | None = None) -> str:
     """
     Build a TypeQL insert clause for a relationship.
 

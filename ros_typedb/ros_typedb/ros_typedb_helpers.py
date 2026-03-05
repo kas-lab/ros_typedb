@@ -15,7 +15,6 @@
 
 from datetime import datetime
 from typing import Any
-from typing import Literal
 
 import rcl_interfaces
 
@@ -341,6 +340,10 @@ def get_aggregate_query_result_to_ros_msg(
     :return: converted query response.
     """
     response = Query.Response()
+    if query_result is None:
+        response.success = True
+        return response
+
     attr = Attribute()
     attr.value = set_query_result_value(
         query_result,
@@ -352,11 +355,12 @@ def get_aggregate_query_result_to_ros_msg(
     result_tree = ResultTree()
     result_tree.results.append(query_result_ros_msg)
     response.results.append(result_tree)
+    response.success = True
     return response
 
 
 def query_result_to_ros_msg(
-    query_type: Literal[2, 3, 4],
+    query_type: int,
     query_result: list[dict[str, MatchResultDict]] | int | float | None
 ) -> ros_typedb_msgs.srv.Query.Response:
     """
@@ -366,11 +370,12 @@ def query_result_to_ros_msg(
     :param query_result: typedb query result.
     :return: converted query response.
     """
-    response = Query.Response()
-    if query_type == Query.Request.FETCH:
-        response = fetch_query_result_to_ros_msg(query_result)
-    elif query_type == Query.Request.GET:
-        response = get_query_result_to_ros_msg(query_result)
-    elif query_type == Query.Request.GET_AGGREGATE:
-        response = get_aggregate_query_result_to_ros_msg(query_result)
-    return response
+    query_converters = {
+        Query.Request.FETCH: fetch_query_result_to_ros_msg,
+        Query.Request.GET: get_query_result_to_ros_msg,
+        Query.Request.GET_AGGREGATE: get_aggregate_query_result_to_ros_msg,
+    }
+    converter = query_converters.get(query_type)
+    if converter is None:
+        return Query.Response()
+    return converter(query_result)

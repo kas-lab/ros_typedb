@@ -13,6 +13,7 @@
 # limitations under the License.
 """typedb_interface - Python interface to interact with TypeDB 3."""
 
+import ast
 from datetime import datetime
 import logging
 import re
@@ -28,8 +29,10 @@ from typedb.driver import TypeDB
 
 from ros_typedb.typedb_helpers import convert_py_type_to_query_type
 from ros_typedb.typedb_helpers import convert_query_type_to_py_type
+from ros_typedb.typedb_helpers import AttributePair
 from ros_typedb.typedb_helpers import create_match_query
 from ros_typedb.typedb_helpers import create_relationship_query
+from ros_typedb.typedb_helpers import RelatedThingsDict
 
 
 class TypeDBQueryError(Exception):
@@ -59,12 +62,37 @@ class TypeDBQueryError(Exception):
 
 def _string_to_string_array(string: str) -> list[str]:
     """
-    Convert a comma-separated string to a list of strings.
+    Convert a path parameter string to a list of strings.
 
-    :param string: string to be converted
-    :return: list of strings
+    Supports raw path strings (e.g. `/tmp/schema.tql`) and list literals
+    (e.g. `['a.tql', 'b.tql']`).
+
+    :param string: string to be converted.
+    :return: list of path strings.
+    :raises ValueError: If a list literal is malformed or contains non-strings.
     """
-    return [s.strip(" '") for s in string.strip('[]').split(',')]
+    raw = string.strip()
+    if raw == '':
+        return []
+    if raw.startswith('['):
+        try:
+            parsed = ast.literal_eval(raw)
+        except (SyntaxError, ValueError) as err:
+            raise ValueError(
+                'Invalid list literal for schema/data paths: {}'.format(raw)
+            ) from err
+        if not isinstance(parsed, list) or not all(
+                isinstance(item, str) for item in parsed):
+            raise ValueError(
+                'Path list must be a list of strings: {}'.format(raw))
+        return parsed
+    try:
+        parsed = ast.literal_eval(raw)
+        if isinstance(parsed, str):
+            return [parsed]
+    except (SyntaxError, ValueError):
+        pass
+    return [raw]
 
 
 def _value_type_to_str(value_type: Any) -> str:
@@ -444,11 +472,10 @@ class TypeDBInterface:
 
         statements = []
         for part in parts:
-            stripped = part.strip()
-            # Skip empty parts and pure comment blocks.
-            non_comment = re.sub(r'#[^\n]*', '', stripped).strip()
-            if non_comment:
-                statements.append(part.rstrip())
+            # Strip full-line comments and skip empty/pure-comment chunks.
+            cleaned = re.sub(r'(?m)^\s*#[^\n]*$', '', part).strip()
+            if cleaned:
+                statements.append(cleaned)
         return statements
 
     def load_data(self, data_path: str) -> None:
@@ -497,7 +524,7 @@ class TypeDBInterface:
     def insert_entity(
             self,
             entity: str,
-            attribute_list: list | None = None) -> Literal[True]:
+            attribute_list: list[AttributePair] | None = None) -> Literal[True]:
         """
         Insert an entity into the database with optional attributes.
 
@@ -517,8 +544,8 @@ class TypeDBInterface:
     def insert_relationship(
             self,
             relationship: str,
-            related_dict: dict,
-            attribute_list: list | None = None) -> Literal[True]:
+            related_dict: RelatedThingsDict,
+            attribute_list: list[AttributePair] | None = None) -> Literal[True]:
         """
         Insert a relationship between existing things.
 
@@ -530,19 +557,19 @@ class TypeDBInterface:
         if attribute_list is None:
             attribute_list = []
         match_query = 'match '
-        _related_dict = {}
+        related_variables: dict[str, list[str]] = {}
         for key, things in related_dict.items():
             _match_query, _prefix_list = create_match_query(things, key)
             match_query += _match_query
-            _related_dict[key] = _prefix_list
+            related_variables[key] = _prefix_list
         insert_query = 'insert ' + create_relationship_query(
-            relationship, _related_dict, attribute_list=attribute_list)
+            relationship, related_variables, attribute_list=attribute_list)
         return self.insert_database(match_query + insert_query)
 
     def fetch_attribute_from_thing(
             self,
             thing: str,
-            key_attr_list: list,
+            key_attr_list: list[AttributePair],
             attr: str) -> list:
         """
         Fetch attribute values from a thing matched by one or more key attributes.
@@ -565,7 +592,7 @@ class TypeDBInterface:
     def fetch_attribute_from_thing_raw(
             self,
             thing: str,
-            key_attr_list: list,
+            key_attr_list: list[AttributePair],
             attr: str) -> list:
         """
         Fetch raw normalised attribute dicts from a thing matched by key attributes.
@@ -633,7 +660,7 @@ class TypeDBInterface:
             thing: str,
             key: str,
             key_value,
-            attr_list: list) -> None:
+            attr_list: list[str]) -> None:
         """
         Delete multiple attributes from a thing matched by a key attribute.
 
@@ -650,7 +677,7 @@ class TypeDBInterface:
             thing: str,
             key: str,
             key_value,
-            attribute_list: list) -> None:
+            attribute_list: list[AttributePair]) -> None:
         """
         Insert multiple attributes into a thing matched by a key attribute.
 
@@ -689,7 +716,7 @@ class TypeDBInterface:
             thing: str,
             key: str,
             key_value,
-            attribute_list: list) -> None:
+            attribute_list: list[AttributePair]) -> None:
         """
         Update multiple attributes in a thing.
 

@@ -18,6 +18,7 @@ import pytest
 
 from ros_typedb.typedb_interface import TypeDBInterface
 from ros_typedb.typedb_interface import TypeDBQueryError
+from ros_typedb.typedb_interface import _string_to_string_array
 
 
 @pytest.fixture
@@ -137,6 +138,79 @@ def test_database_query_unsupported_query_type_raises_value_error(
         typedb_interface.database_query(  # type: ignore[arg-type]
             'data', 'read', 'unknown',
             'match $p isa person; select $p;')
+
+
+@pytest.mark.parametrize(
+    'raw,expected',
+    [
+        ("['a.tql', 'b.tql']", ['a.tql', 'b.tql']),
+        ("'/tmp/schema.tql'", ['/tmp/schema.tql']),
+        ('/tmp/data,with,comma.tql', ['/tmp/data,with,comma.tql']),
+        ('', []),
+    ],
+)
+def test_string_to_string_array_parses_paths(raw, expected):
+    """Path-string parser should support literals and raw path strings."""
+    assert _string_to_string_array(raw) == expected
+
+
+@pytest.mark.parametrize(
+    'raw',
+    [
+        '[a.tql, b.tql]',
+        "['a.tql', 123]",
+    ],
+)
+def test_string_to_string_array_invalid_list_literal_raises(raw):
+    """Malformed list-literal path values should raise a clear ValueError."""
+    with pytest.raises(ValueError):
+        _string_to_string_array(raw)
+
+
+def test_split_data_statements_handles_insert_prelude_and_match_blocks(
+        typedb_interface):
+    """Split logic should preserve insert prelude and subsequent match blocks."""
+    content = """
+        # comment prelude
+        insert
+            $p isa person, has email 'split@test.test';
+
+        match
+            $p isa person, has email 'split@test.test';
+        insert
+            $p has nickname 'split';
+
+        match
+            $p isa person, has email 'split@test.test';
+        delete $p;
+    """
+    statements = typedb_interface._split_data_statements(content)
+    assert len(statements) == 3
+    assert statements[0].lstrip().startswith('insert')
+    assert statements[1].lstrip().startswith('match')
+    assert statements[2].lstrip().startswith('match')
+
+
+def test_split_data_statements_discards_comment_only_content(typedb_interface):
+    """Split logic should return no statements for comment-only content."""
+    content = """
+        # comment 1
+        # comment 2
+    """
+    assert typedb_interface._split_data_statements(content) == []
+
+
+def test_split_data_statements_keeps_single_insert_block(typedb_interface):
+    """Split logic should keep a plain insert-only content as one statement."""
+    content = """
+
+            insert
+                $p isa person, has email 'single@test.test';
+
+    """
+    statements = typedb_interface._split_data_statements(content)
+    assert len(statements) == 1
+    assert statements[0].lstrip().startswith('insert')
 
 
 def test_database_query_logs_and_raises_typedb_query_error(
