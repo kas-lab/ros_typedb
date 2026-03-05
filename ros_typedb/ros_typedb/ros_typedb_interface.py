@@ -21,6 +21,7 @@ from rclpy.lifecycle import TransitionCallbackReturn
 
 from ros_typedb.ros_typedb_helpers import query_result_to_ros_msg
 from ros_typedb.typedb_interface import TypeDBInterface
+from ros_typedb.typedb_interface import TypeDBQueryError
 
 import ros_typedb_msgs
 
@@ -185,8 +186,20 @@ class ROSTypeDBInterface(Node):
             response.success = False
             return response
 
-        query_result = query_func(req.query)
-        response = query_result_to_ros_msg(req.query_type, query_result)
+        try:
+            query_result = query_func(req.query)
+            response = query_result_to_ros_msg(req.query_type, query_result)
+        except TypeDBQueryError as err:
+            self.get_logger().error(
+                f'TypeDB query failed for query_type {req.query_type}: {err}')
+            response.success = False
+            return response
+        except Exception as err:
+            self.get_logger().error(
+                f'Unexpected error in query callback for query_type '
+                f'{req.query_type}: {err}')
+            response.success = False
+            return response
         if query_result is None:
             response.success = False
         else:

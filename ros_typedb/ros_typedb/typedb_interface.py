@@ -25,6 +25,36 @@ from typedb.driver import DriverOptions
 from typedb.driver import TransactionType
 from typedb.driver import TypeDB
 
+from ros_typedb.typedb_helpers import convert_py_type_to_query_type
+from ros_typedb.typedb_helpers import convert_query_type_to_py_type
+from ros_typedb.typedb_helpers import create_match_query
+from ros_typedb.typedb_helpers import create_relationship_query
+
+
+class TypeDBQueryError(Exception):
+    """Raised when a TypeDB query fails during execution."""
+
+    def __init__(
+            self,
+            *,
+            session_type: str,
+            transaction_type: str,
+            query_type: str,
+            query: str) -> None:
+        self.session_type = session_type
+        self.transaction_type = transaction_type
+        self.query_type = query_type
+        self.query = query
+        query_preview = ' '.join(query.strip().split())[:]
+        message = (
+            'TypeDB query failed '
+            f'(session_type={session_type}, '
+            f'transaction_type={transaction_type}, '
+            f'query_type={query_type}, '
+            f'query="{query_preview}")'
+        )
+        super().__init__(message)
+
 
 def _string_to_string_array(string: str) -> list[str]:
     """
@@ -102,7 +132,7 @@ class TypeDBInterface:
         :param username: TypeDB username (default: 'admin').
         :param password: TypeDB password (default: 'password').
         """
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(__name__)
         self._infer = infer
         self.database_name = None
         self.connect_driver(address, username, password)
@@ -237,6 +267,66 @@ class TypeDBInterface:
             result_rows.append(row)
         return result_rows
 
+    def _resolve_transaction_type(
+            self, session_type: str, transaction_type: str) -> TransactionType:
+        """Map API session/transaction strings to TypeDB TransactionType."""
+        if session_type == 'schema':
+            return TransactionType.SCHEMA
+        if session_type != 'data':
+            raise ValueError('Unsupported session_type {}'.format(session_type))
+        if transaction_type == 'read':
+            return TransactionType.READ
+        if transaction_type == 'write':
+            return TransactionType.WRITE
+        raise ValueError(
+            'Unsupported transaction_type {}'.format(transaction_type))
+
+    def _execute_write_query(
+            self,
+            transaction,
+            query: str,
+            *,
+            resolve: bool = True) -> Literal[True]:
+        """Execute a write query and commit the transaction."""
+        answer = transaction.query(query)
+        if resolve:
+            answer.resolve()
+        transaction.commit()
+        return True
+
+    def _execute_fetch_query(
+            self, transaction, query: str) -> list[dict[str, Any]]:
+        """Execute a fetch query and return concept documents as dicts."""
+        answer = transaction.query(query).resolve()
+        return list(answer.as_concept_documents())
+
+    def _execute_get_query(
+            self, transaction, query: str) -> list[dict[str, Any]]:
+        """Execute a get/select query and normalise concept rows."""
+        answer = transaction.query(query).resolve()
+        return self._normalize_get_result(answer.as_concept_rows())
+
+    def _execute_get_aggregate_query(
+            self, transaction, query: str) -> int | float | None:
+        """Execute an aggregate query and return the first numeric value."""
+        answer = transaction.query(query).resolve()
+        rows = list(answer.as_concept_rows())
+        if not rows:
+            return None
+        row = rows[0]
+        for col in row.column_names():
+            concept = row.get(col)
+            if concept is None:
+                continue
+            if concept.is_integer():
+                return concept.try_get_integer()
+            if concept.is_double():
+                return concept.try_get_double()
+            val = concept.try_get_value()
+            if isinstance(val, (int, float)):
+                return val
+        return None
+
     def database_query(
             self,
             session_type: str,
@@ -257,59 +347,42 @@ class TypeDBInterface:
         :param options: unused, kept for API compatibility.
         :return: query result.
         """
-        del options
-        if session_type == 'schema':
-            tdb_transaction_type = TransactionType.SCHEMA
-        elif transaction_type == 'read':
-            tdb_transaction_type = TransactionType.READ
-        else:
-            tdb_transaction_type = TransactionType.WRITE
+        del options  # TODO: remove options
+        query_handler_map = {
+            'define': lambda tx: self._execute_write_query(tx, query),
+            'insert': lambda tx: self._execute_write_query(tx, query),
+            'update': lambda tx: self._execute_write_query(tx, query),
+            'delete': lambda tx: self._execute_write_query(tx, query),
+            'fetch': lambda tx: self._execute_fetch_query(tx, query),
+            'get': lambda tx: self._execute_get_query(tx, query),
+            'get_aggregate': lambda tx: self._execute_get_aggregate_query(
+                tx, query),
+        }
+        query_handler = query_handler_map.get(query_type)
+        if query_handler is None:
+            raise ValueError('Unsupported query_type {}'.format(query_type))
 
-        with self._transaction(tdb_transaction_type) as transaction:
-            if query_type == 'define':
-                transaction.query(query)
-                transaction.commit()
-                return True
-            elif query_type == 'insert':
-                transaction.query(query).resolve()
-                transaction.commit()
-                return True
-            elif query_type == 'update':
-                transaction.query(query).resolve()
-                transaction.commit()
-                return True
-            elif query_type == 'delete':
-                transaction.query(query).resolve()
-                transaction.commit()
-                return True
-            elif query_type == 'fetch':
-                answer = transaction.query(query).resolve()
-                return list(answer.as_concept_documents())
-            elif query_type == 'get':
-                answer = transaction.query(query).resolve()
-                return self._normalize_get_result(answer.as_concept_rows())
-            elif query_type == 'get_aggregate':
-                answer = transaction.query(query).resolve()
-                rows = list(answer.as_concept_rows())
-                if not rows:
-                    return None
-                row = rows[0]
-                for col in row.column_names():
-                    concept = row.get(col)
-                    if concept is None:
-                        continue
-                    if concept.is_integer():
-                        val = concept.try_get_integer()
-                        return val
-                    if concept.is_double():
-                        val = concept.try_get_double()
-                        return val
-                    val = concept.try_get_value()
-                    if isinstance(val, (int, float)):
-                        return val
-                return None
-            else:
-                raise ValueError('Unsupported query_type {}'.format(query_type))
+        tdb_transaction_type = self._resolve_transaction_type(
+            session_type, transaction_type)
+        try:
+            with self._transaction(tdb_transaction_type) as transaction:
+                return query_handler(transaction)
+        except Exception as err:
+            query_preview = ' '.join(query.strip().split())[:]
+            self.logger.exception(
+                'database_query failed (db=%s, session_type=%s, '
+                'transaction_type=%s, query_type=%s, query="%s"): %s',
+                self.database_name,
+                session_type,
+                transaction_type,
+                query_type,
+                query_preview,
+                err)
+            raise TypeDBQueryError(
+                session_type=session_type,
+                transaction_type=transaction_type,
+                query_type=query_type,
+                query=query) from err
 
     def write_database_file(
             self,
@@ -335,16 +408,13 @@ class TypeDBInterface:
         :param schema_path: path to .tql file.
         """
         if schema_path is not None and schema_path != '':
-            print('SCHEMA FILE ', schema_path)
             self.write_database_file('define', schema_path)
 
     def delete_all_data(self) -> None:
         """Delete all data from the database (entities and relations)."""
         self.delete_from_database(
             '''
-                match
-                    $t isa $my_type;
-                    $instance isa $my_type;
+                match $instance isa $instance_type;
                 delete $instance;
             '''
         )
@@ -353,16 +423,32 @@ class TypeDBInterface:
         """
         Split a .tql data file into individual statements.
 
-        A statement is delimited by a line that starts with 'insert' or
-        'match' at the beginning of the line (ignoring leading whitespace).
+        We split on top-level 'match' lines so each 'match ... insert ...'
+        block remains intact. Any prelude before the first match (usually a
+        plain 'insert' block) is kept as a single statement.
         Empty statements (whitespace/comments only) are discarded.
 
         :param content: raw file content.
         :return: list of statement strings, each including its keyword.
         """
         import re
-        # Split on lines that begin a new statement keyword.
-        parts = re.split(r'(?m)^(?=insert\b|match\b)', content)
+
+        match_line_pattern = re.compile(r'(?m)^\s*match\b')
+        match_positions = [m.start() for m in match_line_pattern.finditer(content)]
+        parts = []
+        if not match_positions:
+            parts = [content]
+        else:
+            first_match = match_positions[0]
+            if first_match > 0:
+                parts.append(content[:first_match])
+            for index, start in enumerate(match_positions):
+                if index + 1 < len(match_positions):
+                    end = match_positions[index + 1]
+                else:
+                    end = len(content)
+                parts.append(content[start:end])
+
         statements = []
         for part in parts:
             stripped = part.strip()
@@ -406,80 +492,283 @@ class TypeDBInterface:
         """Delete data event hook (override to react to deletes)."""
         self.logger.warning('Data has been deleted!')
 
-    def insert_database(self, query: str) -> bool | None:
+    def delete_thing(
+            self,
+            thing: str,
+            key: str,
+            key_value) -> Literal[True]:
+        """
+        Delete a thing from the database by its key attribute.
+
+        :param thing: thing type (e.g. 'person').
+        :param key: key attribute name (e.g. 'email').
+        :param key_value: key attribute value.
+        :return: True on success.
+        """
+        query = 'match $thing isa {}, has {} {}; delete $thing;'.format(
+            thing, key, convert_py_type_to_query_type(key_value))
+        return self.delete_from_database(query)
+
+    def insert_entity(
+            self,
+            entity: str,
+            attribute_list: list | None = None) -> Literal[True]:
+        """
+        Insert an entity into the database with optional attributes.
+
+        :param entity: entity type name.
+        :param attribute_list: list of (attr_name, attr_value) tuples.
+        :return: True on success.
+        """
+        if attribute_list is None:
+            attribute_list = []
+        query = 'insert $entity isa {}'.format(entity)
+        for attribute in attribute_list:
+            if attribute[0] is not None:
+                value = convert_py_type_to_query_type(attribute[1])
+                query += ', has {} {}'.format(attribute[0], value)
+        query += ';'
+        return self.insert_database(query)
+
+    def insert_relationship(
+            self,
+            relationship: str,
+            related_dict: dict,
+            attribute_list: list | None = None) -> Literal[True]:
+        """
+        Insert a relationship between existing things.
+
+        :param relationship: relationship type name.
+        :param related_dict: dict mapping role names to lists of (type, key, value) tuples.
+        :param attribute_list: list of (attr_name, attr_value) tuples for the relationship.
+        :return: True on success.
+        """
+        if attribute_list is None:
+            attribute_list = []
+        match_query = 'match '
+        _related_dict = {}
+        for key, things in related_dict.items():
+            _match_query, _prefix_list = create_match_query(things, key)
+            match_query += _match_query
+            _related_dict[key] = _prefix_list
+        insert_query = 'insert ' + create_relationship_query(
+            relationship, _related_dict, attribute_list=attribute_list,
+            prefix=relationship)
+        return self.insert_database(match_query + insert_query)
+
+    def fetch_attribute_from_thing(
+            self,
+            thing: str,
+            key_attr_list: list,
+            attr: str) -> list:
+        """
+        Fetch attribute values from a thing matched by one or more key attributes.
+
+        :param thing: thing type name (e.g. 'person').
+        :param key_attr_list: list of (attr_name, attr_value) pairs to match on.
+        :param attr: attribute name to fetch.
+        :return: list of attribute values (Python-typed).
+        """
+        query = 'match $thing isa {}'.format(thing)
+        for key, value in key_attr_list:
+            query += ', has {} {}'.format(key, convert_py_type_to_query_type(value))
+        query += ', has {} $attribute; select $attribute;'.format(attr)
+        result = self.get_database(query)
+        return [
+            convert_query_type_to_py_type(value_dict=row.get('attribute'))
+            for row in result
+        ]
+
+    def fetch_attribute_from_thing_raw(
+            self,
+            thing: str,
+            key_attr_list: list,
+            attr: str) -> list:
+        """
+        Fetch raw normalised attribute dicts from a thing matched by key attributes.
+
+        :param thing: thing type name.
+        :param key_attr_list: list of (attr_name, attr_value) pairs to match on.
+        :param attr: attribute name to fetch.
+        :return: list of dicts with key 'attribute' containing normalised attribute dict.
+        """
+        query = 'match $thing isa {}'.format(thing)
+        for key, value in key_attr_list:
+            query += ', has {} {}'.format(key, convert_py_type_to_query_type(value))
+        query += ', has {} $attribute; select $attribute;'.format(attr)
+        return self.get_database(query)
+
+    def delete_attribute_from_thing(
+            self,
+            thing: str,
+            key: str,
+            key_value,
+            attr: str) -> Literal[True]:
+        """
+        Delete an attribute from a thing matched by a key attribute.
+
+        :param thing: thing type name.
+        :param key: key attribute name.
+        :param key_value: key attribute value.
+        :param attr: attribute name to delete.
+        :return: True on success.
+        """
+        query = (
+            'match $thing isa {}, has {} {}, has {} $attribute;'
+            ' delete $attribute of $thing;'
+        ).format(
+            thing, key, convert_py_type_to_query_type(key_value), attr)
+        return self.delete_from_database(query)
+
+    def insert_attribute_in_thing(
+            self,
+            thing: str,
+            key: str,
+            key_value,
+            attr: str,
+            attr_value) -> Literal[True]:
+        """
+        Insert an attribute into a thing matched by a key attribute.
+
+        :param thing: thing type name.
+        :param key: key attribute name.
+        :param key_value: key attribute value.
+        :param attr: attribute name to insert.
+        :param attr_value: attribute value to insert.
+        :return: True on success.
+        """
+        query = 'match $thing isa {}, has {} {}; insert $thing has {} {};'.format(
+            thing,
+            key,
+            convert_py_type_to_query_type(key_value),
+            attr,
+            convert_py_type_to_query_type(attr_value))
+        return self.insert_database(query)
+
+    def delete_attributes_from_thing(
+            self,
+            thing: str,
+            key: str,
+            key_value,
+            attr_list: list) -> None:
+        """
+        Delete multiple attributes from a thing matched by a key attribute.
+
+        :param thing: thing type name.
+        :param key: key attribute name.
+        :param key_value: key attribute value.
+        :param attr_list: list of attribute names to delete.
+        """
+        for attr in attr_list:
+            self.delete_attribute_from_thing(thing, key, key_value, attr)
+
+    def insert_attributes_in_thing(
+            self,
+            thing: str,
+            key: str,
+            key_value,
+            attribute_list: list) -> None:
+        """
+        Insert multiple attributes into a thing matched by a key attribute.
+
+        :param thing: thing type name.
+        :param key: key attribute name.
+        :param key_value: key attribute value.
+        :param attribute_list: list of (attr_name, attr_value) tuples to insert.
+        """
+        for attr, attr_value in attribute_list:
+            self.insert_attribute_in_thing(
+                thing, key, key_value, attr, attr_value)
+
+    def update_attribute_in_thing(
+            self,
+            thing: str,
+            key: str,
+            key_value,
+            attr: str,
+            attr_value) -> Literal[True]:
+        """
+        Update an attribute in a thing by deleting the old value and inserting the new one.
+
+        :param thing: thing type name.
+        :param key: key attribute name.
+        :param key_value: key attribute value.
+        :param attr: attribute name to update.
+        :param attr_value: new attribute value.
+        :return: True on success.
+        """
+        self.delete_attribute_from_thing(thing, key, key_value, attr)
+        return self.insert_attribute_in_thing(
+            thing, key, key_value, attr, attr_value)
+
+    def update_attributes_in_thing(
+            self,
+            thing: str,
+            key: str,
+            key_value,
+            attribute_list: list) -> None:
+        """
+        Update multiple attributes in a thing.
+
+        :param thing: thing type name.
+        :param key: key attribute name.
+        :param key_value: key attribute value.
+        :param attribute_list: list of (attr_name, new_attr_value) tuples.
+        """
+        for attr, attr_value in attribute_list:
+            self.update_attribute_in_thing(
+                thing, key, key_value, attr, attr_value)
+
+    def insert_database(self, query: str) -> Literal[True]:
         """
         Perform insert query.
 
         :param query: TypeQL insert query.
-        :return: True on success, None on failure.
+        :return: True on success.
         """
-        try:
-            return self.database_query('data', 'write', 'insert', query)
-        except Exception as err:
-            self.logger.error('Error with insert query: %s', err)
-            return None
+        return self.database_query('data', 'write', 'insert', query)
 
-    def update_database(self, query: str) -> bool | None:
+    def update_database(self, query: str) -> Literal[True]:
         """
         Perform update query.
 
         :param query: TypeQL update query.
-        :return: True on success, None on failure.
+        :return: True on success.
         """
-        try:
-            return self.database_query('data', 'write', 'update', query)
-        except Exception as err:
-            self.logger.error('Error with update query: %s', err)
-            return None
+        return self.database_query('data', 'write', 'update', query)
 
-    def delete_from_database(self, query: str) -> Literal[True] | None:
+    def delete_from_database(self, query: str) -> Literal[True]:
         """
         Perform delete query.
 
         :param query: TypeQL delete query.
-        :return: True on success, None on failure.
+        :return: True on success.
         """
-        try:
-            return self.database_query('data', 'write', 'delete', query)
-        except Exception as err:
-            self.logger.error('Error with delete query: %s', err)
-            return None
+        return self.database_query('data', 'write', 'delete', query)
 
     def fetch_database(self, query: str) -> list[dict[str, MatchResultDict]]:
         """
         Perform fetch query.
 
         :param query: TypeQL fetch query.
-        :return: list of result dicts; empty list on failure.
+        :return: list of result dicts.
         """
-        try:
-            return self.database_query('data', 'read', 'fetch', query)
-        except Exception as err:
-            self.logger.error('Error with fetch query: %s', err)
-            return []
+        return self.database_query('data', 'read', 'fetch', query)
 
-    def get_database(self, query: str) -> list[dict[str, MatchResultDict]] | None:
+    def get_database(self, query: str) -> list[dict[str, MatchResultDict]]:
         """
         Perform get query.
 
         :param query: TypeQL get query.
-        :return: list of result dicts; None on failure.
+        :return: list of result dicts.
         """
-        try:
-            return self.database_query('data', 'read', 'get', query)
-        except Exception as err:
-            self.logger.error('Error with get query: %s', err)
-            return None
+        return self.database_query('data', 'read', 'get', query)
 
     def get_aggregate_database(self, query: str) -> int | float | None:
         """
         Perform get aggregate query.
 
         :param query: TypeQL get aggregate query.
-        :return: numeric result; None on failure.
+        :return: numeric result or None when no aggregate row is returned.
         """
-        try:
-            return self.database_query('data', 'read', 'get_aggregate', query)
-        except Exception as err:
-            self.logger.error('Error with get_aggregate query: %s', err)
-            return None
+        return self.database_query('data', 'read', 'get_aggregate', query)
