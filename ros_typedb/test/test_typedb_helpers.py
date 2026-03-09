@@ -120,7 +120,7 @@ def test_create_relationship_query_with_attributes():
         attribute_list=[('salary', 1200), ('role-name', 'boss')],
     )
     assert query == (
-        " (employee:$emp_0,employee:$emp_1,employer:$org_0) isa employment,"
+        ' (employee:$emp_0,employee:$emp_1,employer:$org_0) isa employment,'
         " has salary 1200, has role-name 'boss';"
     )
 

@@ -21,18 +21,18 @@ from typing import Any
 from typing import Literal
 from typing import TypedDict
 
+from ros_typedb.typedb_helpers import AttributePair
+from ros_typedb.typedb_helpers import convert_py_type_to_query_type
+from ros_typedb.typedb_helpers import convert_query_type_to_py_type
+from ros_typedb.typedb_helpers import create_match_query
+from ros_typedb.typedb_helpers import create_relationship_query
+from ros_typedb.typedb_helpers import RelatedThingsDict
+
 from typedb.common.datetime import Datetime as TypeDBDatetime
 from typedb.driver import Credentials
 from typedb.driver import DriverOptions
 from typedb.driver import TransactionType
 from typedb.driver import TypeDB
-
-from ros_typedb.typedb_helpers import convert_py_type_to_query_type
-from ros_typedb.typedb_helpers import convert_query_type_to_py_type
-from ros_typedb.typedb_helpers import AttributePair
-from ros_typedb.typedb_helpers import create_match_query
-from ros_typedb.typedb_helpers import create_relationship_query
-from ros_typedb.typedb_helpers import RelatedThingsDict
 
 
 class TypeDBQueryError(Exception):
@@ -516,10 +516,10 @@ class TypeDBInterface:
         :return: None.
         """
         self.delete_from_database(
-            '''
+            """
                 match $instance isa $instance_type;
                 delete $instance;
-            '''
+            """
         )
 
     def _split_data_statements(self, content: str) -> list[str]:

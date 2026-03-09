@@ -16,9 +16,9 @@ from datetime import datetime
 
 import pytest
 
+from ros_typedb.typedb_interface import _string_to_string_array
 from ros_typedb.typedb_interface import TypeDBInterface
 from ros_typedb.typedb_interface import TypeDBQueryError
-from ros_typedb.typedb_interface import _string_to_string_array
 
 
 @pytest.fixture
