@@ -189,7 +189,7 @@ class TypeDBInterface:
         if isinstance(schema_path, list):
             for path in schema_path:
                 self.load_schema(path)
-        if force_data:
+        if force_data and not force_database:
             self.delete_all_data()
         if isinstance(data_path, str):
             data_path = _string_to_string_array(data_path)
