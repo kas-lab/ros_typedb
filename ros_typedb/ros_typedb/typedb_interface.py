@@ -58,7 +58,7 @@ class TypeDBQueryError(Exception):
         self.transaction_type = transaction_type
         self.query_type = query_type
         self.query = query
-        query_preview = ' '.join(query.strip().split())
+        query_preview = ' '.join(query.strip().split())[:200]
         message = (
             'TypeDB query failed '
             f'(session_type={session_type}, '
@@ -466,7 +466,7 @@ class TypeDBInterface:
             with self._transaction(tdb_transaction_type) as transaction:
                 return query_handler(transaction)
         except Exception as err:
-            query_preview = ' '.join(query.strip().split())
+            query_preview = ' '.join(query.strip().split())[:200]
             self.logger.exception(
                 'database_query failed (db=%s, session_type=%s, '
                 'transaction_type=%s, query_type=%s, query="%s"): %s',
