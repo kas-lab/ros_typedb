@@ -33,6 +33,7 @@ from ros_typedb_msgs.msg import ResultTree
 from ros_typedb_msgs.msg import Thing
 from ros_typedb_msgs.srv import Query
 
+from typedb.common.datetime import Datetime as TypeDBDatetime
 
 _PARAM_TYPE_MAP = {
     'boolean': (ParameterType.PARAMETER_BOOL, 'bool_value'),
@@ -93,18 +94,14 @@ def _native_value_to_ros_attr(key: str, value) -> 'Attribute':
     attr.label = key
     if value is None:
         return attr
-    try:
-        from typedb.common.datetime import Datetime as TypeDBDatetime
-        if isinstance(value, TypeDBDatetime):
-            millis = value.nanos // 1_000_000
-            dt = datetime(value.year, value.month, value.day,
-                          value.hour, value.minute, value.second,
-                          millis * 1000)
-            value = dt.isoformat(timespec='milliseconds')
-            attr.value = set_query_result_value(value, 'datetime')
-            return attr
-    except ImportError:
-        pass
+    if isinstance(value, TypeDBDatetime):
+        millis = value.nanos // 1_000_000
+        dt = datetime(value.year, value.month, value.day,
+                      value.hour, value.minute, value.second,
+                      millis * 1000)
+        value = dt.isoformat(timespec='milliseconds')
+        attr.value = set_query_result_value(value, 'datetime')
+        return attr
     if isinstance(value, datetime):
         value = value.isoformat(timespec='milliseconds')
         attr.value = set_query_result_value(value, 'datetime')
