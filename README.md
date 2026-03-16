@@ -7,6 +7,8 @@ The package is designed so users can extend query behavior while reusing the exi
 
 This package is tested on Ubuntu 22.04 with ROS 2 Humble and TypeDB 3.
 
+**Typedb 2:** The TypeDB 2 version is on the [typedb2](https://github.com/kas-lab/ros_typedb/tree/typedb2) branch
+
 ## Install
 
 To use this package, install ROS 2 Humble and TypeDB 3.
