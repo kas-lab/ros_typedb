@@ -54,6 +54,8 @@ class ROSTypeDBInterface(Node):
         self.declare_parameter('schema_path', [''])
         self.declare_parameter('data_path', [''])
 
+        self.declare_parameter('sort_fetch_results', False)
+
         self.typedb_interface_class = TypeDBInterface
 
         self.query_cb_group = MutuallyExclusiveCallbackGroup()
