@@ -1,0 +1,3 @@
+[submodule "agent-data/text2typeql"]
+	path = agent-data/text2typeql
+	url = https://github.com/typedb-osi/text2typeql.git

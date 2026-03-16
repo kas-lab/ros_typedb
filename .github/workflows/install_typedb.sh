@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 
-sudo apt install software-properties-common apt-transport-https gpg
-gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-key 17507562824cfdcc
-gpg --export 17507562824cfdcc | sudo tee /etc/apt/trusted.gpg.d/vaticle.gpg > /dev/null
-echo "deb https://repo.typedb.com/public/public-release/deb/ubuntu trusty main" | sudo tee /etc/apt/sources.list.d/vaticle.list > /dev/null
+## Install TypeDB (keyring-based apt source, jammy distro)
+mkdir -p /etc/apt/keyrings \
+    && gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-key 17507562824CFDCC \
+    && gpg --batch --export 17507562824CFDCC > /etc/apt/keyrings/typedb.gpg \
+    && chmod 644 /etc/apt/keyrings/typedb.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/typedb.gpg] https://repo.typedb.com/public/public-release/deb/ubuntu jammy main" \
+    > /etc/apt/sources.list.d/typedb.list
 
-sudo apt update
-sudo apt install -y openjdk-11-jre
-sudo apt install -y typedb=2.28.3
-pip3 install typedb-driver==2.28.0
+apt-get update && apt-get install -y \
+    typedb \
+    && rm -rf /var/lib/apt/lists/*
+
+python3 -m pip install typedb-driver

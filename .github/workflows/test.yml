@@ -17,7 +17,7 @@ jobs:
       - name: install typedb
         run: .github/workflows/install_typedb.sh
       - name: run typedb
-        run: typedb server&
+        run: sudo typedb server&
       - uses: ros-tooling/setup-ros@0.7.1
         with:
           required-ros-distributions: humble

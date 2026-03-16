@@ -16,6 +16,12 @@ from ros_typedb.ros_typedb_interface import ROSTypeDBInterface
 
 
 def main():
+    """
+    Run the ROS TypeDB lifecycle node with a multithreaded executor.
+
+    The function always attempts a graceful shutdown by removing and destroying
+    the node, shutting down the executor, and calling ``rclpy.shutdown()``.
+    """
     rclpy.init()
 
     executor = rclpy.executors.MultiThreadedExecutor()
@@ -24,7 +30,12 @@ def main():
     try:
         executor.spin()
     except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        pass
+    finally:
+        executor.remove_node(lc_node)
         lc_node.destroy_node()
+        executor.shutdown()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':

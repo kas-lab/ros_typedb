@@ -24,25 +24,29 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     gpg \
     openjdk-11-jre \
+    tar \
     && rm -rf /var/lib/apt/lists/*
 
-RUN rosdep init 
+RUN rosdep init
 
-## Install TypeDB
-RUN gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-key 17507562824cfdcc
-RUN gpg --export 17507562824cfdcc | sudo tee /etc/apt/trusted.gpg.d/vaticle.gpg > /dev/null
-RUN echo "deb https://repo.typedb.com/public/public-release/deb/ubuntu trusty main" | tee /etc/apt/sources.list.d/vaticle.list > /dev/null
+## Install TypeDB (keyring-based apt source, jammy distro)
+RUN mkdir -p /etc/apt/keyrings \
+    && gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-key 17507562824CFDCC \
+    && gpg --batch --export 17507562824CFDCC > /etc/apt/keyrings/typedb.gpg \
+    && chmod 644 /etc/apt/keyrings/typedb.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/typedb.gpg] https://repo.typedb.com/public/public-release/deb/ubuntu jammy main" \
+    > /etc/apt/sources.list.d/typedb.list
 
 RUN apt-get update && apt-get install -y \
-    typedb=2.28.3 \
+    typedb \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install typedb-driver==2.28.0
+RUN python3 -m pip install typedb-driver
 
 ## Install TypeDB studio
-RUN sudo mkdir /usr/share/desktop-directories/
-RUN wget https://repo.typedb.com/public/public-release/raw/names/typedb-studio-linux-x86_64-deb/versions/2.28.0/typedb-studio-linux-x86_64-2.28.0.deb
-RUN dpkg -i typedb-studio-linux-x86_64-2.28.0.deb
+# RUN sudo mkdir /usr/share/desktop-directories/
+# RUN wget https://repo.typedb.com/public/public-release/raw/names/typedb-studio-linux-x86_64-deb/versions/2.28.0/typedb-studio-linux-x86_64-2.28.0.deb
+# RUN dpkg -i typedb-studio-linux-x86_64-2.28.0.deb
 
 ## Create ubuntu-user user, disable password, and add it to sudo group
 RUN groupadd -g 1000 ubuntu-user \
@@ -50,6 +54,12 @@ RUN groupadd -g 1000 ubuntu-user \
     && adduser ubuntu-user sudo
 
 RUN echo 'ubuntu-user ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+## Create workspace and copy source from build context
+RUN mkdir -p /home/ubuntu-user/typedb_ws/src/ros_typedb
+COPY . /home/ubuntu-user/typedb_ws/src/ros_typedb
+RUN chown -R ubuntu-user:ubuntu-user /home/ubuntu-user/typedb_ws
+
 ENV HOME=/home/ubuntu-user
 USER ubuntu-user
 ENV DEBIAN_FRONTEND=noninteractive
@@ -58,10 +68,7 @@ WORKDIR $HOME
 ## Create alias for TypeDB studio
 RUN echo 'alias typedb-studio="/opt/typedb-studio/bin/TypeDB\ Studio"' >> ~/.bashrc
 
-## Create, install deps, and build ros_typedb workspace
-RUN mkdir -p typedb_ws/src
-WORKDIR $HOME/typedb_ws/src
-RUN git clone https://github.com/kas-lab/ros_typedb.git
+## Install deps and build ros_typedb workspace
 WORKDIR $HOME/typedb_ws/
 
 RUN ["/bin/bash", "-c", "source /opt/ros/humble/setup.bash \

@@ -3,50 +3,38 @@ define
 ################
 ## ATTRIBUTES ##
 ################
-name sub attribute, value string;
-full-name sub attribute, value string;
-nickname sub attribute, value string;
+attribute name, value string;
+attribute full-name, value string;
+attribute nickname, value string;
 
-event-date sub attribute,
-  abstract,
-  value datetime;
-birth-date sub event-date;
+attribute event-date @abstract, value datetime;
+attribute birth-date sub event-date;
 
-phone-number sub attribute,
-  value string;
+attribute phone-number, value string;
 
-email sub attribute,
-  value string;
+attribute email, value string;
 
-gender sub attribute,
-  value string;
+attribute gender, value string;
 
-height sub attribute,
-  value double;
+attribute height, value double;
 
-age sub attribute,
-  value long;
+attribute age, value integer;
 
-alive sub attribute,
-  value boolean;
+attribute alive, value boolean;
 
-salary sub attribute,
-  value long;
+attribute salary, value integer;
 
-role-name sub attribute,
-    value string;
+attribute role-name, value string;
 
-robot-type sub attribute,
-    value string;
+attribute robot-type, value string;
 
-address sub attribute,
-    value string;
+attribute address, value string;
 
-person sub entity,
+entity person,
   owns full-name,
   owns nickname,
   owns gender,
-  owns phone-number,
+  owns phone-number @card(0..),
   owns height,
   owns age,
   owns alive,
@@ -55,7 +43,7 @@ person sub entity,
   plays employment:employee,
   plays employment:employer;
 
-robot sub entity,
+entity robot,
   owns full-name @key,
   owns height,
   owns age,
@@ -63,13 +51,13 @@ robot sub entity,
   owns birth-date,
   owns robot-type;
 
-company sub entity,
+entity company,
   owns name @key,
-  owns address,
+  owns address @card(0..),
   plays employment:employer;
 
-employment sub relation,
+relation employment,
   owns role-name,
   owns salary,
-  relates employee,
-  relates employer;
+  relates employee @card(0..),
+  relates employer @card(0..);

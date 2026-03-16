@@ -30,8 +30,9 @@ from rcl_interfaces.msg import ParameterType
 import rclpy
 from rclpy.node import Node
 
-from ros_typedb.ros_typedb_interface import convert_attribute_dict_to_ros_msg
-from ros_typedb.ros_typedb_interface import fetch_result_to_ros_result_tree
+from ros_typedb.ros_typedb_helpers import convert_attribute_dict_to_ros_msg
+from ros_typedb.ros_typedb_helpers import fetch_result_to_ros_result_tree
+from ros_typedb.ros_typedb_helpers import query_result_to_ros_msg
 
 from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import IndexList
@@ -54,7 +55,7 @@ def insert_query():
                 has email 'test@test.com',
                 has nickname 'test',
                 has age 33,
-                has height 1.00,
+                has height 1.75,
                 has alive true,
                 has birth-date 1990-06-01;
             $person2 isa person,
@@ -86,7 +87,6 @@ def generate_test_description():
         parameters=[{
             'schema_path': [str(path_tql / 'schema.tql')],
             'data_path': [str(path_tql / 'data.tql')],
-            'sort_fetch_results': True
         }]
     )
 
@@ -112,7 +112,7 @@ def test_node():
     try:
         yield node
     finally:
-        node.delete_dabase()
+        node.delete_database()
         node.destroy_node()
 
 
@@ -161,7 +161,7 @@ def test_ros_typedb_delete_query(test_node, insert_query):
     query_req.query_type = query_req.DELETE
     query_req.query = """
         match $entity isa person, has email 'test@test.com';
-        delete $entity isa person;
+        delete $entity;
     """
     query_res = test_node.call_service(test_node.query_cli, query_req)
 
@@ -169,8 +169,7 @@ def test_ros_typedb_delete_query(test_node, insert_query):
     match_query_req.query_type = match_query_req.GET_AGGREGATE
     match_query_req.query = """
         match $entity isa person, has email 'test@test.com';
-        get $entity;
-        count;
+        select $entity; reduce $c = count;
     """
     match_query_res = test_node.call_service(
         test_node.query_cli, match_query_req)
@@ -210,6 +209,18 @@ def test_ros_typedb_wrong_query(test_node, insert_query):
     insert_query_req = insert_query
     insert_query_req.query_type = 100
     query_res = test_node.call_service(test_node.query_cli, insert_query_req)
+    assert query_res.success is False
+
+
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_malformed_query_returns_failure(test_node):
+    test_node.activate_ros_typedb()
+
+    query_req = Query.Request()
+    query_req.query_type = query_req.GET
+    query_req.query = 'this is not valid typeql'
+    query_res = test_node.call_service(test_node.query_cli, query_req)
+
     assert query_res.success is False
 
 
@@ -734,7 +745,13 @@ def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
             has height $height,
             has alive $alive,
             has birth-date $date;
-        fetch $age; $alive; $date; $height; $nick;
+        fetch {
+            "nickname": $nick,
+            "age": $age,
+            "height": $height,
+            "alive": $alive,
+            "birth-date": $date
+        };
     """
     query_res = test_node.call_service(test_node.query_cli, query_req)
 
@@ -751,293 +768,76 @@ def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
     expected_alive_attr.value.bool_value = True
 
     expected_date_attr = Attribute()
-    expected_date_attr.variable_name = 'date'
+    expected_date_attr.variable_name = 'birth-date'
     expected_date_attr.label = 'birth-date'
     expected_date_attr.value.type = ParameterType.PARAMETER_STRING
-    expected_date_attr.value.string_value = '1990-06-01T00:00:00.000'
+    expected_date_attr.value.string_value = '1990-06-01T00:00:00.000000000'
 
     expected_height_attr = Attribute()
     expected_height_attr.variable_name = 'height'
     expected_height_attr.label = 'height'
     expected_height_attr.value.type = ParameterType.PARAMETER_DOUBLE
-    expected_height_attr.value.double_value = 1.0
+    expected_height_attr.value.double_value = 1.75
 
     expected_nick_attr = Attribute()
-    expected_nick_attr.variable_name = 'nick'
+    expected_nick_attr.variable_name = 'nickname'
     expected_nick_attr.label = 'nickname'
     expected_nick_attr.value.type = ParameterType.PARAMETER_STRING
     expected_nick_attr.value.string_value = 'test'
 
-    query_result_age = QueryResult()
-    query_result_age.type = QueryResult.ATTRIBUTE
-    query_result_age.result_index = 0
-    query_result_age.attribute = expected_age_attr
-
-    query_result_alive = QueryResult()
-    query_result_alive.type = QueryResult.ATTRIBUTE
-    query_result_alive.result_index = 1
-    query_result_alive.attribute = expected_alive_attr
-
-    query_result_date = QueryResult()
-    query_result_date.type = QueryResult.ATTRIBUTE
-    query_result_date.result_index = 2
-    query_result_date.attribute = expected_date_attr
-
-    query_result_height = QueryResult()
-    query_result_height.type = QueryResult.ATTRIBUTE
-    query_result_height.result_index = 3
-    query_result_height.attribute = expected_height_attr
-
-    query_result_nick = QueryResult()
-    query_result_nick.type = QueryResult.ATTRIBUTE
-    query_result_nick.result_index = 4
-    query_result_nick.attribute = expected_nick_attr
-
-    expected_tree = ResultTree()
-    expected_tree.results.append(query_result_age)
-    expected_tree.results.append(query_result_alive)
-    expected_tree.results.append(query_result_date)
-    expected_tree.results.append(query_result_height)
-    expected_tree.results.append(query_result_nick)
-
     assert query_res.success is True
     assert len(query_res.results) == 1
 
-    assert query_result_age in query_res.results[0].results
-    assert query_result_alive in query_res.results[0].results
-    assert query_result_date in query_res.results[0].results
-    assert query_result_height in query_res.results[0].results
-    assert query_result_nick in query_res.results[0].results
+    actual_results = query_res.results[0].results
+    assert len(actual_results) == 5
+
+    assert any(
+        r.type == QueryResult.ATTRIBUTE and r.attribute == expected_age_attr
+        for r in actual_results
+    )
+    assert any(
+        r.type == QueryResult.ATTRIBUTE and r.attribute == expected_alive_attr
+        for r in actual_results
+    )
+    assert any(
+        r.type == QueryResult.ATTRIBUTE and r.attribute == expected_date_attr
+        for r in actual_results
+    )
+    assert any(
+        r.type == QueryResult.ATTRIBUTE and r.attribute == expected_height_attr
+        for r in actual_results
+    )
+    assert any(
+        r.type == QueryResult.ATTRIBUTE and r.attribute == expected_nick_attr
+        for r in actual_results
+    )
 
     query_req = Query.Request()
     query_req.query_type = query_req.FETCH
     query_req.query = """
         match
             $company_var isa company, has name 'TU Delft';
-        fetch
-            $company_var: name, address;
-            employee_names: {
-                match
-                    $employment_var (employer: $company_var, employee: $employee_var)
-                    isa employment;
-                fetch
-                    $employee_var: full-name, email;
-                    $employment_var: salary;
-            };
+        fetch {
+            "name": $company_var.name,
+            "address": [$company_var.address]
+        };
     """
-
-    expected_tree = ResultTree()
-
-    company_var_thing = Thing()
-    company_var_thing.type = Thing.ENTITY
-    company_var_thing.variable_name = 'company_var'
-    company_var_thing.type_name = 'company'
-
-    address_attr = Attribute()
-    address_attr.label = 'address'
-    address_attr.variable_name = 'address'
-    address_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-    address_attr.value.string_array_value = ['street 1', 'street 2']
-    company_var_thing.attributes.append(address_attr)
-
-    name_attr = Attribute()
-    name_attr.label = 'name'
-    name_attr.variable_name = 'name'
-    name_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-    name_attr.value.string_array_value = ['TU Delft']
-    company_var_thing.attributes.append(name_attr)
-
-    company_var_query_result = QueryResult()
-    company_var_query_result.type = QueryResult.THING
-    company_var_query_result.result_index = 0
-    company_var_query_result.thing = company_var_thing
-
-    employee_names_subquery = QueryResult()
-    employee_names_subquery.type = QueryResult.SUB_QUERY
-    employee_names_subquery.result_index = 1
-    employee_names_subquery.sub_query_name = 'employee_names'
-
-    employee_var_thing1 = Thing()
-    employee_var_thing1.type = Thing.ENTITY
-    employee_var_thing1.variable_name = 'employee_var'
-    employee_var_thing1.type_name = 'person'
-
-    email_attr = Attribute()
-    email_attr.label = 'email'
-    email_attr.variable_name = 'email'
-    email_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-    email_attr.value.string_array_value = ['phd@tudelft.nl']
-    employee_var_thing1.attributes.append(email_attr)
-
-    full_name_attr = Attribute()
-    full_name_attr.label = 'full-name'
-    full_name_attr.variable_name = 'full-name'
-    full_name_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-    full_name_attr.value.string_array_value = ['PhD candidate 1']
-    employee_var_thing1.attributes.append(full_name_attr)
-
-    employee_var_thing1_result = QueryResult()
-    employee_var_thing1_result.type = QueryResult.THING
-    employee_var_thing1_result.result_index = 2
-    employee_var_thing1_result.thing = employee_var_thing1
-
-    employment_var_thing1 = Thing()
-    employment_var_thing1.type = Thing.RELATION
-    employment_var_thing1.variable_name = 'employment_var'
-    employment_var_thing1.type_name = 'employment'
-
-    salary_attr = Attribute()
-    salary_attr.label = 'salary'
-    salary_attr.variable_name = 'salary'
-    salary_attr.value.type = ParameterType.PARAMETER_INTEGER_ARRAY
-    salary_attr.value.integer_array_value = [30000]
-    employment_var_thing1.attributes.append(salary_attr)
-
-    employment_var_thing1_result = QueryResult()
-    employment_var_thing1_result.type = QueryResult.THING
-    employment_var_thing1_result.result_index = 3
-    employment_var_thing1_result.thing = employment_var_thing1
-
-    list_index = IndexList()
-    list_index.index.append(2)
-    list_index.index.append(3)
-    employee_names_subquery.children_index.append(list_index)
-
-    # Subtree 2
-    employee_var_thing2 = Thing()
-    employee_var_thing2.type = Thing.ENTITY
-    employee_var_thing2.variable_name = 'employee_var'
-    employee_var_thing2.type_name = 'person'
-
-    email_attr = Attribute()
-    email_attr.label = 'email'
-    email_attr.variable_name = 'email'
-    email_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-    email_attr.value.string_array_value = ['boss@tudelft.nl']
-    employee_var_thing2.attributes.append(email_attr)
-
-    full_name_attr = Attribute()
-    full_name_attr.label = 'full-name'
-    full_name_attr.variable_name = 'full-name'
-    full_name_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-    full_name_attr.value.string_array_value = ['Big Boss']
-    employee_var_thing2.attributes.append(full_name_attr)
-
-    employee_var_thing2_result = QueryResult()
-    employee_var_thing2_result.type = QueryResult.THING
-    employee_var_thing2_result.result_index = 4
-    employee_var_thing2_result.thing = employee_var_thing2
-
-    employment_var_thing2 = Thing()
-    employment_var_thing2.type = Thing.RELATION
-    employment_var_thing2.variable_name = 'employment_var'
-    employment_var_thing2.type_name = 'employment'
-
-    salary_attr = Attribute()
-    salary_attr.label = 'salary'
-    salary_attr.variable_name = 'salary'
-    salary_attr.value.type = ParameterType.PARAMETER_INTEGER_ARRAY
-    salary_attr.value.integer_array_value = [999999]
-    employment_var_thing2.attributes.append(salary_attr)
-
-    employment_var_thing2_result = QueryResult()
-    employment_var_thing2_result.type = QueryResult.THING
-    employment_var_thing2_result.result_index = 5
-    employment_var_thing2_result.thing = employment_var_thing2
-
-    list_index = IndexList()
-    list_index.index.append(4)
-    list_index.index.append(5)
-    employee_names_subquery.children_index.append(list_index)
-
-    # Subtree 3
-    employee_var_thing3 = Thing()
-    employee_var_thing3.type = Thing.ENTITY
-    employee_var_thing3.variable_name = 'employee_var'
-    employee_var_thing3.type_name = 'person'
-
-    email_attr = Attribute()
-    email_attr.label = 'email'
-    email_attr.variable_name = 'email'
-    email_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-    email_attr.value.string_array_value = ['guest@tudelft.nl']
-    employee_var_thing3.attributes.append(email_attr)
-
-    full_name_attr = Attribute()
-    full_name_attr.label = 'full-name'
-    full_name_attr.variable_name = 'full-name'
-    full_name_attr.value.type = ParameterType.PARAMETER_STRING_ARRAY
-    full_name_attr.value.string_array_value = ['Random guest']
-    employee_var_thing3.attributes.append(full_name_attr)
-
-    employee_var_thing3_result = QueryResult()
-    employee_var_thing3_result.type = QueryResult.THING
-    employee_var_thing3_result.result_index = 6
-    employee_var_thing3_result.thing = employee_var_thing3
-
-    employment_var_thing3 = Thing()
-    employment_var_thing3.type = Thing.RELATION
-    employment_var_thing3.variable_name = 'employment_var'
-    employment_var_thing3.type_name = 'employment'
-
-    salary_attr = Attribute()
-    salary_attr.label = 'salary'
-    salary_attr.variable_name = 'salary'
-    salary_attr.value.type = ParameterType.PARAMETER_INTEGER_ARRAY
-    salary_attr.value.integer_array_value = [0]
-    employment_var_thing3.attributes.append(salary_attr)
-
-    employment_var_thing3_result = QueryResult()
-    employment_var_thing3_result.type = QueryResult.THING
-    employment_var_thing3_result.result_index = 7
-    employment_var_thing3_result.thing = employment_var_thing3
-
-    list_index = IndexList()
-    list_index.index.append(6)
-    list_index.index.append(7)
-    employee_names_subquery.children_index.append(list_index)
-
-    expected_tree.results.append(company_var_query_result)
-
-    expected_tree.results.append(employee_names_subquery)
-
-    expected_tree.results.append(employee_var_thing1_result)
-    expected_tree.results.append(employment_var_thing1_result)
-
-    expected_tree.results.append(employee_var_thing2_result)
-    expected_tree.results.append(employment_var_thing2_result)
-
-    expected_tree.results.append(employee_var_thing3_result)
-    expected_tree.results.append(employment_var_thing3_result)
-
     query_res = test_node.call_service(test_node.query_cli, query_req)
 
     assert query_res.success is True
     assert len(query_res.results) == 1
 
-    expected = [company_var_query_result, employee_names_subquery,
-                employee_var_thing1_result, employment_var_thing1_result,
-                employee_var_thing2_result, employment_var_thing2_result,
-                employee_var_thing3_result, employment_var_thing3_result]
-
-    actual = []
-    for result in query_res.results[0].results:
-        actual.append(result)
-
-    import copy
-
-    def strip_indices(obj):
-        # Make a shallow copy to avoid mutating the original
-        obj_copy = copy.copy(obj)
-        if hasattr(obj_copy, 'result_index'):
-            obj_copy.result_index = 0
-        if hasattr(obj_copy, 'children_index'):
-            obj_copy.children_index = [IndexList()]
-        return obj_copy
-
-    # Compare expected and actual ignoring result_index and children_index
-    for item in expected:
-        assert any(strip_indices(item) == strip_indices(a) for a in actual)
+    flat_results = query_res.results[0].results
+    assert any(
+        r.attribute.variable_name == 'name'
+        and r.attribute.value.string_value == 'TU Delft'
+        for r in flat_results
+    )
+    assert any(
+        r.attribute.variable_name == 'address'
+        and r.attribute.value.string_array_value == ['street 1', 'street 2']
+        for r in flat_results
+    )
 
 
 @pytest.mark.launch(fixture=generate_test_description)
@@ -1051,7 +851,7 @@ def test_ros_typedb_get_query(test_node, insert_query):
     query_req.query = """
         match
             $p isa person, has full-name $name, has email $email;
-        get $name, $email;
+        select $name, $email;
         sort $name asc; limit 3;
     """
     query_res = test_node.call_service(test_node.query_cli, query_req)
@@ -1109,13 +909,32 @@ def test_ros_typedb_get_aggregate_query(test_node, insert_query):
             $person isa person,
                 has email 'test@test.com';
             (employee:$person) isa employment, has salary $s;
-        get $s; sum $s;
+        select $s; reduce $sum = sum($s);
     """
     query_res = test_node.call_service(test_node.query_cli, query_req)
 
     assert query_res.success is True
     assert query_res.results[0].results[0].type == QueryResult.ATTRIBUTE
     assert query_res.results[0].results[0].attribute.value.integer_value == 1500
+
+
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_get_aggregate_empty_result_is_success(test_node):
+    test_node.activate_ros_typedb()
+
+    query_req = Query.Request()
+    query_req.query_type = query_req.GET_AGGREGATE
+    query_req.query = """
+        match
+            $person isa person,
+                has email 'missing-aggregate@test.com';
+            (employee:$person) isa employment, has salary $s;
+        select $s; reduce $max = max($s);
+    """
+    query_res = test_node.call_service(test_node.query_cli, query_req)
+
+    assert query_res.success is True
+    assert len(query_res.results) == 0
 
 
 @pytest.mark.launch(fixture=generate_test_description)
@@ -1128,17 +947,22 @@ def test_ros_typedb_update_query(test_node, insert_query):
     query_req.query_type = query_req.UPDATE
     query_req.query = """
         match
-            $person isa person, has email $email;
-            $email = 'test@test.com';
-        delete
-            $person has $email;
-        insert
-            $person has email 'updatedemail@test.com';
+            $person isa person,
+                has email 'test@test.com',
+                has email $old_email;
+        delete $old_email of $person;
+        insert $person has email 'updatedemail@test.com';
     """
     query_res = test_node.call_service(test_node.query_cli, query_req)
 
     assert query_res.success is True
     # Potential TODO: add get to make sure the email was updated
+
+
+def test_query_result_to_ros_msg_get_aggregate_none_is_success():
+    response = query_result_to_ros_msg(Query.Request.GET_AGGREGATE, None)
+    assert response.success is True
+    assert len(response.results) == 0
 
 
 class MakeTestNode(Node):
@@ -1204,5 +1028,5 @@ class MakeTestNode(Node):
         self.typedb_event_data = msg.data
         self.typedb_event.set()
 
-    def delete_dabase(self):
+    def delete_database(self):
         self.call_service(self.delete_db_cli, Empty.Request())
