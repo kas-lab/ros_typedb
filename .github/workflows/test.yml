@@ -14,10 +14,8 @@ jobs:
       image: rostooling/setup-ros-docker:ubuntu-jammy-latest
     steps:
       - uses: actions/checkout@v3.3.0
-      - name: Run TypeDB
-        uses: typedb/setup-typedb@1.0.0
-        with:
-          typedb_version: 3.8.1
+      - name: install typedb
+        run: .github/workflows/install_typedb.sh
       - name: run typedb
         run: sudo typedb server&
       - uses: ros-tooling/setup-ros@0.7.1
