@@ -1,0 +1,26 @@
+define
+
+name sub attribute,
+    value string;
+
+enabled sub attribute,
+    value boolean;
+
+connection sub relation,
+    relates source,
+    relates target as sink;
+
+server sub entity,
+    owns name @key,
+    owns enabled,
+    plays connection:source;
+
+client sub server,
+    plays connection:target;
+
+rule active_server:
+    when {
+        $s isa server;
+    } then {
+        $s has enabled true;
+    };

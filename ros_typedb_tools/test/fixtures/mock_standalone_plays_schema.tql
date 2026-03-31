@@ -1,0 +1,14 @@
+define
+
+measurement_interface sub relation,
+    relates source,
+    relates output;
+
+has_parameter_value sub relation,
+    relates parameter_value;
+
+Publisher sub entity;
+Value sub entity;
+
+Publisher plays measurement_interface:source;
+Value plays has_parameter_value:parameter_value;
