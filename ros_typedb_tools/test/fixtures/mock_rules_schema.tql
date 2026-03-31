@@ -1,0 +1,37 @@
+define
+
+status sub attribute, value string;
+confidence sub attribute, value double;
+
+measurement sub relation,
+    relates source,
+    relates value;
+
+alarm sub relation,
+    relates trigger;
+
+rule detect_alarm:
+    when {
+        (source: $s, value: $v) isa measurement;
+        $v has confidence $c;
+    } then {
+        (trigger: $s) isa alarm;
+    };
+
+rule escalate_alarm:
+    when {
+        $a isa alarm;
+    } then {
+        $a has status "open";
+    };
+
+rule monitor_alarm:
+    when {
+        {
+            $x isa alarm;
+        } or {
+            $x isa measurement;
+        };
+    } then {
+        $x has status "review";
+    };

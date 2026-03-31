@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='Gustavo Rezende',
     maintainer_email='g.rezendesilva@tudelft.nl',
-    description='Tools for TypeDB workflows, including schema diagram generation',
+    description='Tools for TypeDB workflows, including schema and rule diagram generation',
     license='Apache-2.0',
     extras_require={
         'test': [
@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'typedb_schema_diagram = ros_typedb_tools.typedb_schema_diagram:main',
+            'typedb_rule_diagram = ros_typedb_tools.typedb_rule_diagram:main',
         ],
     },
 )

@@ -3,7 +3,7 @@
 <package format="3">
   <name>ros_typedb_tools</name>
   <version>0.0.0</version>
-  <description>Utility tools for TypeDB workflows, including schema diagram generation.</description>
+  <description>Utility tools for TypeDB workflows, including schema and rule diagram generation.</description>
   <maintainer email="g.rezendesilva@tudelft.nl">Gustavo Rezende</maintainer>
   <license>Apache-2.0</license>
 
