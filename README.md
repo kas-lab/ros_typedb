@@ -75,17 +75,21 @@ If you want to use typedb studio, run the following command to allow the contain
 xhost +
 ```
 
+The commands below assume you are running them from the `src/ros_typedb` repository root:
+
+```Bash
+cd <workspace_root>/src/ros_typedb
+```
+
 Start dev container with display and the `ros_typedb` directory mounted:
 ```Bash
-docker run -it --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -v /dev/dri:/dev/dri -v /tmp/.X11-unix:/tmp/.X11-unix -v /etc/localtime:/etc/localtime:ro -v $HOME/typedb_ws/src/ros_typedb:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb
+docker run -it --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -v /dev/dri:/dev/dri -v /tmp/.X11-unix:/tmp/.X11-unix -v /etc/localtime:/etc/localtime:ro -v "$PWD:/home/ubuntu-user/typedb_ws/src/ros_typedb" ros_typedb
 ```
 
 Start dev container **without** display and the `ros_typedb` directory mounted:
 ```Bash
-docker run -it --rm --name ros_typedb -v /etc/localtime:/etc/localtime:ro -v $HOME/typedb_ws/src/ros_typedb:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb
+docker run -it --rm --name ros_typedb -v /etc/localtime:/etc/localtime:ro -v "$PWD:/home/ubuntu-user/typedb_ws/src/ros_typedb" ros_typedb
 ```
-
-**Note:** replace the path `$HOME/typedb_ws/src/ros_typedb` with the path of the `ros_typedb` repo in your host machine.
 
 Start new terminal in the container:
 ```Bash
@@ -99,7 +103,7 @@ docker run -d --name ros_typedb ros_typedb typedb server
 
 Start container in the background with typedb server running:
 ```Bash
-docker run -d --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -v /dev/dri:/dev/dri -v /tmp/.X11-unix:/tmp/.X11-unix -v /etc/localtime:/etc/localtime:ro -v $HOME/rebet_ws/src/ros_typedb:/home/ubuntu-user/typedb_ws/src/ros_typedb ros_typedb typedb server
+docker run -d --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -v /dev/dri:/dev/dri -v /tmp/.X11-unix:/tmp/.X11-unix -v /etc/localtime:/etc/localtime:ro -v "$PWD:/home/ubuntu-user/typedb_ws/src/ros_typedb" ros_typedb typedb server
 ```
 
 ## Package Design
