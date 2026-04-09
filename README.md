@@ -49,6 +49,12 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
+This repository contains three ROS packages:
+
+- `ros_typedb_msgs`: ROS messages/services used by the TypeDB node
+- `ros_typedb`: ROS lifecycle/query integration for TypeDB 3
+- `ros_typedb_tools`: CLI helpers for generating schema and TypeDB 3 function diagrams from `.tql` files
+
 ## Run with Docker
 
 Build the TypeDB 3 image:
@@ -240,8 +246,31 @@ scripts/run-mandatory-checks-docker.sh
 Manually:
 
 ```Bash
-colcon test --event-handlers console_cohesion+ --packages-select ros_typedb
+colcon test --event-handlers console_cohesion+ --packages-select ros_typedb ros_typedb_tools
 ```
+
+## Schema and Rule Diagram Tools
+
+The `ros_typedb_tools` package provides:
+
+- `typedb_schema_diagram`
+- `typedb_rule_diagram`
+
+Examples:
+
+```bash
+ros2 run ros_typedb_tools typedb_schema_diagram \
+  --input /absolute/path/schema.tql \
+  --format dot \
+  --output /tmp/schema.dot
+
+ros2 run ros_typedb_tools typedb_rule_diagram \
+  --input /absolute/path/functions.tql \
+  --output /tmp/functions.svg
+```
+
+`typedb_rule_diagram` now renders TypeDB 3 `fun` dependency/read graphs rather than TypeDB 2 rule graphs.
+See `ros_typedb_tools/README.md` for the full CLI reference.
 
 ## Acknowledgments
 

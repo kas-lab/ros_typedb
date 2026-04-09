@@ -23,7 +23,9 @@ RUN apt-get update && apt-get install -y \
     software-properties-common \
     apt-transport-https \
     gpg \
+    graphviz \
     openjdk-11-jre \
+    python3-pydot \
     tar \
     && rm -rf /var/lib/apt/lists/*
 

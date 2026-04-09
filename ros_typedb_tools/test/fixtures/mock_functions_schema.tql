@@ -1,0 +1,34 @@
+define
+
+attribute status, value string;
+attribute confidence, value double;
+
+relation measurement,
+    relates source,
+    relates value;
+
+entity Sensor,
+    owns status,
+    plays measurement:source;
+
+entity Reading,
+    owns confidence,
+    plays measurement:value;
+
+fun measurement_score($reading: Reading) -> double:
+  match
+    $reading has confidence $c;
+  return first $c;
+
+fun measurement_alert($reading: Reading) -> boolean:
+  match
+    let $score = measurement_score($reading);
+    $score > 0.7;
+    let $result = true;
+  return first $result;
+
+fun measurement_review_target($sensor: Sensor, $reading: Reading) -> { Sensor }:
+  match
+    measurement (source: $sensor, value: $reading);
+    true == measurement_alert($reading);
+  return { $sensor };

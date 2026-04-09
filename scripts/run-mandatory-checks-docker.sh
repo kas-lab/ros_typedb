@@ -15,13 +15,13 @@ docker exec "${CONTAINER_NAME}" bash -lc \
   "source /opt/ros/humble/setup.bash && \
    source /home/ubuntu-user/typedb_ws/install/setup.bash && \
    cd /home/ubuntu-user/typedb_ws && \
-   colcon test --event-handlers console_cohesion+ --packages-select ros_typedb --pytest-args -k test_flake8"
+   colcon test --event-handlers console_cohesion+ --packages-select ros_typedb ros_typedb_tools --pytest-args -k test_flake8"
 
 echo "[2/2] Running pep257 test..."
 docker exec "${CONTAINER_NAME}" bash -lc \
   "source /opt/ros/humble/setup.bash && \
    source /home/ubuntu-user/typedb_ws/install/setup.bash && \
    cd /home/ubuntu-user/typedb_ws && \
-   colcon test --event-handlers console_cohesion+ --packages-select ros_typedb --pytest-args -k test_pep257"
+   colcon test --event-handlers console_cohesion+ --packages-select ros_typedb ros_typedb_tools --pytest-args -k test_pep257"
 
 echo "Mandatory checks passed."

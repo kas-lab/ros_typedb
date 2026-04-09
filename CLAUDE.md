@@ -17,6 +17,8 @@ Claude-specific guidance for this repository.
 - ROS 2 package providing a TypeDB 3 client interface for robot knowledge bases.
 - Main entry point: `ros_typedb/typedb_interface.py`
 - Uses TypeDB 3 — do not use TypeDB 2 syntax (rules, `isa!`, old driver API).
+- `ros_typedb_tools` is a sibling ament-python package for schema/function diagram generation.
+- Prefer the local TypeDB skills in `.claude/skills/new-typedb-fun/` and `.claude/skills/typedb/` when editing `.tql` logic.
 
 ## Completion rule
 
