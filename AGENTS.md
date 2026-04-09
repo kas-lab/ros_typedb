@@ -8,18 +8,18 @@ At the beginning of a new session in this repository, call `serena.activate_proj
 
 Do not rerun Serena onboarding if it is already complete.
 
-## Agent docs location
+## Documentation scope
 
-- Keep agent process/checklist docs in `agents-doc/`.
 - `doc/` and `docs/` are project/user documentation.
 - Do not load `doc/` or `docs/` unless explicitly asked.
 
 ## Project layout
 
-- `ros_typedb/ros_typedb/typedb_interface.py`: core TypeDB access layer.
+- `typedb_utils/typedb_utils/typedb_interface.py`: reusable TypeDB access layer.
+- `typedb_utils/typedb_utils/typedb_helpers.py`: reusable TypeQL/value conversion helpers.
 - `ros_typedb/ros_typedb/ros_typedb_interface.py`: ROS lifecycle node + query service.
-- `ros_typedb/ros_typedb/typedb_helpers.py`: helper utilities for common TypeQL operations.
 - `ros_typedb/test/`: unit/integration tests.
+- `typedb_utils/test/`: generic TypeDB layer tests.
 - `ros_typedb_tools/`: ament-python tools package for schema/function diagram generation.
 
 ## Development environment
@@ -39,7 +39,7 @@ docker run -d --rm --name ros_typedb -v /etc/localtime:/etc/localtime:ro -v $PWD
 1. Build in container:
 
 ```bash
-docker exec ros_typedb bash -lc "source /opt/ros/humble/setup.bash && cd /home/ubuntu-user/typedb_ws && colcon build --symlink-install --packages-select ros_typedb ros_typedb_tools"
+docker exec ros_typedb bash -lc "source /opt/ros/humble/setup.bash && cd /home/ubuntu-user/typedb_ws && colcon build --symlink-install --packages-select typedb_utils ros_typedb ros_typedb_tools"
 ```
 
 2. Run relevant feature tests (targeted or full):
@@ -64,8 +64,9 @@ scripts/run-mandatory-checks-docker.sh
 Run all `ros_typedb` tests:
 
 ```bash
-docker exec ros_typedb bash -lc "source /opt/ros/humble/setup.bash && source /home/ubuntu-user/typedb_ws/install/setup.bash && cd /home/ubuntu-user/typedb_ws/src/ros_typedb/ros_typedb && python3 -m pytest -q test/test_typedb_interface.py test/test_typedb_helpers.py test/test_ros_typedb_interface.py"
+docker exec ros_typedb bash -lc "source /opt/ros/humble/setup.bash && source /home/ubuntu-user/typedb_ws/install/setup.bash && cd /home/ubuntu-user/typedb_ws/src/ros_typedb && python3 -m pytest -q typedb_utils/test/test_typedb_interface.py typedb_utils/test/test_typedb_helpers.py"
 docker exec ros_typedb bash -lc "source /opt/ros/humble/setup.bash && source /home/ubuntu-user/typedb_ws/install/setup.bash && cd /home/ubuntu-user/typedb_ws/src/ros_typedb && python3 -m pytest -q ros_typedb_tools/test/test_schema_diagram.py ros_typedb_tools/test/test_rule_diagram.py ros_typedb_tools/test/test_typedb_schema_diagram_cli.py ros_typedb_tools/test/test_typedb_rule_diagram_cli.py"
+docker exec ros_typedb bash -lc "source /opt/ros/humble/setup.bash && source /home/ubuntu-user/typedb_ws/install/setup.bash && cd /home/ubuntu-user/typedb_ws/src/ros_typedb/ros_typedb && python3 -m pytest -q test/test_ros_typedb_interface.py"
 ```
 
 Run one test pattern:

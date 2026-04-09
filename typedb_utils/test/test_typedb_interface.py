@@ -13,12 +13,16 @@
 # limitations under the License.
 
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
-from ros_typedb.typedb_interface import _string_to_string_array
-from ros_typedb.typedb_interface import TypeDBInterface
-from ros_typedb.typedb_interface import TypeDBQueryError
+from typedb_utils.typedb_interface import _string_to_string_array
+from typedb_utils.typedb_interface import TypeDBInterface
+from typedb_utils.typedb_interface import TypeDBQueryError
+
+
+TEST_DATA_DIR = Path(__file__).parent / 'typedb_test_data'
 
 
 @pytest.fixture
@@ -28,8 +32,8 @@ def typedb_interface():
         'localhost:1729',
         'test_database',
         force_database=True,
-        schema_path=['test/typedb_test_data/schema.tql'],
-        data_path=['test/typedb_test_data/data.tql'],
+        schema_path=[str(TEST_DATA_DIR / 'schema.tql')],
+        data_path=[str(TEST_DATA_DIR / 'data.tql')],
     )
     yield tdb
     tdb.delete_database()
@@ -41,8 +45,8 @@ def test_create_and_delete_database():
         'localhost:1729',
         'test_database',
         force_database=True,
-        schema_path=['test/typedb_test_data/schema.tql'],
-        data_path=['test/typedb_test_data/data.tql'],
+        schema_path=[str(TEST_DATA_DIR / 'schema.tql')],
+        data_path=[str(TEST_DATA_DIR / 'data.tql')],
     )
 
     assert typedb_interface.driver.databases.contains('test_database')
@@ -99,7 +103,6 @@ def test_fetch_query(typedb_interface):
         }
     ]
 
-    # Compare as sets so order does not matter
     assert {tuple(sorted(d.items())) for d in result} == \
         {tuple(sorted(d.items())) for d in expected}
 

@@ -74,13 +74,14 @@ def insert_query():
 
 @launch_pytest.fixture
 def generate_test_description():
-    path_to_test = Path(__file__).parents[1]
-    path_tql = path_to_test / 'test' / 'typedb_test_data'
+    path_to_package = Path(__file__).parents[1]
+    repo_root = Path(__file__).parents[2]
+    path_tql = repo_root / 'typedb_utils' / 'test' / 'typedb_test_data'
 
     ros_typedb_node = launch_ros.actions.Node(
         executable=sys.executable,
         arguments=[
-            str(path_to_test / 'ros_typedb' / 'ros_typedb_node.py')],
+            str(path_to_package / 'ros_typedb' / 'ros_typedb_node.py')],
         additional_env={'PYTHONUNBUFFERED': '1'},
         name='ros_typedb',
         output='screen',

@@ -16,12 +16,12 @@ from datetime import datetime
 
 import pytest
 
-from ros_typedb.typedb_helpers import attribute_dict_to_query
-from ros_typedb.typedb_helpers import convert_py_type_to_query_type
-from ros_typedb.typedb_helpers import convert_query_type_to_py_type
-from ros_typedb.typedb_helpers import create_match_query
-from ros_typedb.typedb_helpers import create_relationship_query
-from ros_typedb.typedb_helpers import dict_to_query
+from typedb_utils.typedb_helpers import attribute_dict_to_query
+from typedb_utils.typedb_helpers import convert_py_type_to_query_type
+from typedb_utils.typedb_helpers import convert_query_type_to_py_type
+from typedb_utils.typedb_helpers import create_match_query
+from typedb_utils.typedb_helpers import create_relationship_query
+from typedb_utils.typedb_helpers import dict_to_query
 
 
 def test_convert_query_type_to_py_type_from_value_dict():

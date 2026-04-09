@@ -17,7 +17,7 @@ To run the ros_typedb_interface:
 Extend the package
 ------------------
 
-To extend this package with custom functionalities, you can create a new ROS Node inheriting from ROSTypeDBInterface and a new typedb interface inheriting from TypeDBInterface. Then you simply need to add the new functionalities you need into your class.
+To extend this package with custom functionalities, you can create a new ROS Node inheriting from ROSTypeDBInterface and compose it with a custom typedb interface inheriting from :class:`typedb_utils.typedb_interface.TypeDBInterface`. Then you simply need to add the new functionalities you need into your class.
 
 Example:
 

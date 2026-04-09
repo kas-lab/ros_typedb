@@ -6,5 +6,5 @@ API
    :toctree: _autosummary
    :recursive:
 
-   ros_typedb.typedb_interface
+   typedb_utils.typedb_interface
    ros_typedb.ros_typedb_interface
