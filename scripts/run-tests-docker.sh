@@ -19,4 +19,4 @@ fi
 docker exec "${CONTAINER_NAME}" bash -lc \
   "source /opt/ros/humble/setup.bash && \
    source /home/ubuntu-user/typedb_ws/install/setup.bash && \
-   colcon test --event-handlers console_cohesion+ --packages-select ros_typedb ${pytest_args[*]}"
+   colcon test --event-handlers console_cohesion+ --packages-select typedb_utils ros_typedb ros_typedb_tools ${pytest_args[*]}"

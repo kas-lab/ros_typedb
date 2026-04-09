@@ -40,10 +40,10 @@ Overview:
     </p>
   </embed>
 
-.. TypeDBInterfaceLink: https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/typedb_interface.py
+.. TypeDBInterfaceLink: https://github.com/Rezenders/ros_typedb/blob/main/typedb_utils/typedb_utils/typedb_interface.py
 .. ROSTypeDBInterfaceLink: https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb/ros_typedb/ros_typedb_interface.py
-.. PythonAPILink: https://typedb.com/docs/clients/2.x/python/python-tutorial.html
-.. InsertDatabaseLink: https://github.com/Rezenders/ros_typedb/blob/c16e3f8f1958f4ac2333c7b7d0612c8c79d698a0/ros_typedb/ros_typedb/typedb_interface.py#L153
-.. MatchDatabaseLink: https://github.com/Rezenders/ros_typedb/blob/c16e3f8f1958f4ac2333c7b7d0612c8c79d698a0/ros_typedb/ros_typedb/typedb_interface.py#L175
+.. PythonAPILink: https://typedb.com/docs/drivers/python
+.. InsertDatabaseLink: https://github.com/Rezenders/ros_typedb/blob/main/typedb_utils/typedb_utils/typedb_interface.py
+.. MatchDatabaseLink: https://github.com/Rezenders/ros_typedb/blob/main/typedb_utils/typedb_utils/typedb_interface.py
 .. LifeCycleLink: https://design.ros2.org/articles/node_lifecycle.html
 .. QuerySrvLink: https://github.com/Rezenders/ros_typedb/blob/main/ros_typedb_msgs/srv/Query.srv

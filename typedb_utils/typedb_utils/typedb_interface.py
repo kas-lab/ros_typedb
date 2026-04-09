@@ -21,18 +21,19 @@ from typing import Any
 from typing import Literal
 from typing import TypedDict
 
-from ros_typedb.typedb_helpers import AttributePair
-from ros_typedb.typedb_helpers import convert_py_type_to_query_type
-from ros_typedb.typedb_helpers import convert_query_type_to_py_type
-from ros_typedb.typedb_helpers import create_match_query
-from ros_typedb.typedb_helpers import create_relationship_query
-from ros_typedb.typedb_helpers import RelatedThingsDict
-
 from typedb.common.datetime import Datetime as TypeDBDatetime
 from typedb.driver import Credentials
 from typedb.driver import DriverOptions
 from typedb.driver import TransactionType
 from typedb.driver import TypeDB
+from typedb_utils.typedb_helpers import (
+    AttributePair,
+    convert_py_type_to_query_type,
+    convert_query_type_to_py_type,
+    create_match_query,
+    create_relationship_query,
+    RelatedThingsDict,
+)
 
 
 class TypeDBQueryError(Exception):
@@ -205,7 +206,8 @@ class TypeDBInterface:
             pass
 
     def connect_driver(
-            self, address: str,
+            self,
+            address: str,
             username: str = 'admin',
             password: str = 'password') -> None:
         """
@@ -261,7 +263,9 @@ class TypeDBInterface:
         return self.driver.databases.contains(database_name)
 
     def create_database(
-            self, database_name: str, force: bool = False) -> None:
+            self,
+            database_name: str,
+            force: bool = False) -> None:
         """
         Create database.
 
@@ -274,7 +278,9 @@ class TypeDBInterface:
         self.database_name = database_name
         if self.driver.databases.contains(database_name):
             self.logger.warning(
-                'Database %s already exists. Skipping create.', database_name)
+                'Database %s already exists. Skipping create.',
+                database_name,
+            )
             return
         self.driver.databases.create(database_name)
 
@@ -339,7 +345,9 @@ class TypeDBInterface:
         return result_rows
 
     def _resolve_transaction_type(
-            self, session_type: str, transaction_type: str) -> TransactionType:
+            self,
+            session_type: str,
+            transaction_type: str) -> TransactionType:
         """
         Map API session/transaction labels to ``TransactionType``.
 
@@ -376,7 +384,9 @@ class TypeDBInterface:
         return True
 
     def _execute_fetch_query(
-            self, transaction, query: str) -> list[dict[str, Any]]:
+            self,
+            transaction,
+            query: str) -> list[dict[str, Any]]:
         """
         Execute a fetch query and return concept documents as dictionaries.
 
@@ -388,7 +398,9 @@ class TypeDBInterface:
         return list(answer.as_concept_documents())
 
     def _execute_get_query(
-            self, transaction, query: str) -> list[dict[str, Any]]:
+            self,
+            transaction,
+            query: str) -> list[dict[str, Any]]:
         """
         Execute a get/select query and normalize concept rows.
 
@@ -400,7 +412,9 @@ class TypeDBInterface:
         return self._normalize_get_result(answer.as_concept_rows())
 
     def _execute_get_aggregate_query(
-            self, transaction, query: str) -> int | float | None:
+            self,
+            transaction,
+            query: str) -> int | float | None:
         """
         Execute an aggregate query and return the first numeric value.
 
@@ -552,7 +566,6 @@ class TypeDBInterface:
 
         statements = []
         for part in parts:
-            # Strip full-line comments and skip empty/pure-comment chunks.
             cleaned = re.sub(r'(?m)^\s*#[^\n]*$', '', part).strip()
             if cleaned:
                 statements.append(cleaned)
@@ -563,7 +576,7 @@ class TypeDBInterface:
         Load a .tql data file into the database.
 
         Files may contain multiple statements (insert or match...insert
-        blocks).  Each statement is executed as a separate transaction so
+        blocks). Each statement is executed as a separate transaction so
         that later statements can match entities created by earlier ones.
 
         :param data_path: path to .tql file.
@@ -657,7 +670,10 @@ class TypeDBInterface:
             match_query += _match_query
             related_variables[key] = _prefix_list
         insert_query = 'insert ' + create_relationship_query(
-            relationship, related_variables, attribute_list=attribute_list)
+            relationship,
+            related_variables,
+            attribute_list=attribute_list,
+        )
         return self.insert_database(match_query + insert_query)
 
     def fetch_attribute_from_thing(
@@ -675,7 +691,10 @@ class TypeDBInterface:
         """
         query = 'match $thing isa {}'.format(thing)
         for key, value in key_attr_list:
-            query += ', has {} {}'.format(key, convert_py_type_to_query_type(value))
+            query += ', has {} {}'.format(
+                key,
+                convert_py_type_to_query_type(value),
+            )
         query += ', has {} $attribute; select $attribute;'.format(attr)
         result = self.get_database(query)
         return [
@@ -698,7 +717,10 @@ class TypeDBInterface:
         """
         query = 'match $thing isa {}'.format(thing)
         for key, value in key_attr_list:
-            query += ', has {} {}'.format(key, convert_py_type_to_query_type(value))
+            query += ', has {} {}'.format(
+                key,
+                convert_py_type_to_query_type(value),
+            )
         query += ', has {} $attribute; select $attribute;'.format(attr)
         return self.get_database(query)
 
@@ -721,7 +743,11 @@ class TypeDBInterface:
             'match $thing isa {}, has {} {}, has {} $attribute;'
             ' delete $attribute of $thing;'
         ).format(
-            thing, key, convert_py_type_to_query_type(key_value), attr)
+            thing,
+            key,
+            convert_py_type_to_query_type(key_value),
+            attr,
+        )
         return self.delete_from_database(query)
 
     def insert_attribute_in_thing(
@@ -746,7 +772,8 @@ class TypeDBInterface:
             key,
             convert_py_type_to_query_type(key_value),
             attr,
-            convert_py_type_to_query_type(attr_value))
+            convert_py_type_to_query_type(attr_value),
+        )
         return self.insert_database(query)
 
     def delete_attributes_from_thing(

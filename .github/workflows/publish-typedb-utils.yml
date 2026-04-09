@@ -1,0 +1,71 @@
+name: publish typedb_utils
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "typedb_utils-v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  test:
+    name: test typedb_utils publishing candidate
+    runs-on: ubuntu-latest
+    container:
+      image: rostooling/setup-ros-docker:ubuntu-jammy-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install typedb
+        run: .github/workflows/install_typedb.sh
+      - name: run typedb
+        run: sudo typedb server&
+      - uses: ros-tooling/setup-ros@0.7.1
+        with:
+          required-ros-distributions: humble
+      - uses: ros-tooling/action-ros-ci@0.4.3
+        with:
+          package-name: typedb_utils ros_typedb_msgs ros_typedb ros_typedb_tools
+          target-ros2-distro: humble
+
+  build:
+    name: build typedb_utils distribution
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build distribution
+        working-directory: typedb_utils
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: typedb_utils-dist
+          path: typedb_utils/dist/*
+
+  publish:
+    name: publish typedb_utils to PyPI
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/typedb_utils-v')
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/typedb_utils
+    steps:
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: typedb_utils-dist
+          path: dist
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

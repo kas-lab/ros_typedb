@@ -51,6 +51,13 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
+This repository contains four packages:
+
+- `typedb_utils`: reusable, non-ROS TypeDB 3 Python interface and helper layer
+- `ros_typedb_msgs`: ROS messages/services used by the TypeDB node
+- `ros_typedb`: ROS lifecycle/query integration for TypeDB 3
+- `ros_typedb_tools`: CLI helpers for generating schema and TypeDB 3 function diagrams from `.tql` files
+
 ## Run with Docker
 
 Build the TypeDB 3 image:
@@ -91,9 +98,9 @@ docker run -d --rm --name ros_typedb -v /etc/localtime:/etc/localtime:ro -v $PWD
 
 ## Package Design
 
-The integration is centered around two classes:
+The repository is centered around two layers:
 
-- `TypeDBInterface` in `ros_typedb/ros_typedb/typedb_interface.py`
+- `TypeDBInterface` in `typedb_utils/typedb_utils/typedb_interface.py`
 - `ROSTypeDBInterface` in `ros_typedb/ros_typedb/ros_typedb_interface.py`
 
 `ROSTypeDBInterface` is a ROS 2 lifecycle node exposing:
@@ -101,7 +108,7 @@ The integration is centered around two classes:
 - `~/query` service (`ros_typedb_msgs/srv/Query.srv`) for insert/delete/fetch/get/update operations
 - `~/events` topic (`std_msgs/String`) for insert/delete events
 
-`TypeDBInterface` manages connection, schema/data loading, and query execution against TypeDB.
+`TypeDBInterface` manages connection, schema/data loading, and query execution against TypeDB. `ros_typedb` depends on `typedb_utils` rather than embedding that generic layer directly.
 
 Class diagram:
 
@@ -168,7 +175,7 @@ Use composition for custom features:
 Custom query class (no inheritance from `TypeDBInterface`):
 
 ```python
-from ros_typedb.typedb_interface import TypeDBInterface
+from typedb_utils.typedb_interface import TypeDBInterface
 
 
 class PeopleQueries:
@@ -242,8 +249,31 @@ scripts/run-mandatory-checks-docker.sh
 Manually:
 
 ```Bash
-colcon test --event-handlers console_cohesion+ --packages-select ros_typedb
+colcon test --event-handlers console_cohesion+ --packages-select typedb_utils ros_typedb ros_typedb_tools
 ```
+
+## Schema and Rule Diagram Tools
+
+The `ros_typedb_tools` package provides:
+
+- `typedb_schema_diagram`
+- `typedb_rule_diagram`
+
+Examples:
+
+```bash
+ros2 run ros_typedb_tools typedb_schema_diagram \
+  --input /absolute/path/schema.tql \
+  --format dot \
+  --output /tmp/schema.dot
+
+ros2 run ros_typedb_tools typedb_rule_diagram \
+  --input /absolute/path/functions.tql \
+  --output /tmp/functions.svg
+```
+
+`typedb_rule_diagram` now renders TypeDB 3 `fun` dependency/read graphs rather than TypeDB 2 rule graphs.
+See `ros_typedb_tools/README.md` for the full CLI reference.
 
 ## Acknowledgments
 

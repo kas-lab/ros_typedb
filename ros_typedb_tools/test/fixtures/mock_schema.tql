@@ -1,0 +1,30 @@
+define
+
+name sub attribute,
+    value string;
+
+enabled sub attribute,
+    value boolean;
+
+connection sub relation,
+    relates source,
+    relates target as sink;
+
+server sub entity,
+    owns name @key,
+    owns enabled,
+    plays connection:source;
+
+client sub server,
+    plays connection:target;
+
+fun active_server_name($s: server) -> string:
+  match
+    $s has enabled true;
+    $s has name $name;
+  return first $name;
+
+fun connected_clients($s: server) -> { client }:
+  match
+    connection (source: $s, target: $client);
+  return { $client };

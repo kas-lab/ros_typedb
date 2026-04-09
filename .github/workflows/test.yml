@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: build and test ros_typedb pkg
+    name: build and test ros_typedb packages
     runs-on: ubuntu-latest
     container:
       image: rostooling/setup-ros-docker:ubuntu-jammy-latest
@@ -23,5 +23,5 @@ jobs:
           required-ros-distributions: humble
       - uses: ros-tooling/action-ros-ci@0.4.3
         with:
-          package-name: ros_typedb_msgs ros_typedb
+          package-name: typedb_utils ros_typedb_msgs ros_typedb ros_typedb_tools
           target-ros2-distro: humble

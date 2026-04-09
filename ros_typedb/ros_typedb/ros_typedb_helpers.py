@@ -21,9 +21,6 @@ import rcl_interfaces
 from rcl_interfaces.msg import ParameterType
 from rcl_interfaces.msg import ParameterValue
 
-from ros_typedb.typedb_helpers import convert_query_type_to_py_type
-from ros_typedb.typedb_interface import MatchResultDict
-
 import ros_typedb_msgs
 
 from ros_typedb_msgs.msg import Attribute
@@ -32,8 +29,9 @@ from ros_typedb_msgs.msg import QueryResult
 from ros_typedb_msgs.msg import ResultTree
 from ros_typedb_msgs.msg import Thing
 from ros_typedb_msgs.srv import Query
-
 from typedb.common.datetime import Datetime as TypeDBDatetime
+from typedb_utils.typedb_helpers import convert_query_type_to_py_type
+from typedb_utils.typedb_interface import MatchResultDict
 
 _PARAM_TYPE_MAP = {
     'boolean': (ParameterType.PARAMETER_BOOL, 'bool_value'),

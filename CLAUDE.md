@@ -5,18 +5,18 @@ Claude-specific guidance for this repository.
 ## Read first
 
 - `AGENTS.md`
-- `agents-doc/agent-notes.md`
 
 ## Scope
 
-- Use agent docs in `agents-doc/` for implementation workflow.
 - `doc/` and `docs/` are for project/user documentation and are ignored by default.
 
 ## Package
 
 - ROS 2 package providing a TypeDB 3 client interface for robot knowledge bases.
-- Main entry point: `ros_typedb/typedb_interface.py`
+- Main entry point: `typedb_utils/typedb_interface.py` for the reusable Python layer and `ros_typedb/ros_typedb_interface.py` for ROS integration.
 - Uses TypeDB 3 — do not use TypeDB 2 syntax (rules, `isa!`, old driver API).
+- `ros_typedb_tools` is a sibling ament-python package for schema/function diagram generation.
+- Prefer the local TypeDB skills in `.claude/skills/new-typedb-fun/` and `.claude/skills/typedb/` when editing `.tql` logic.
 
 ## Completion rule
 

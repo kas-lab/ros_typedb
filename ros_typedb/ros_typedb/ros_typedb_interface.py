@@ -20,14 +20,14 @@ from rclpy.lifecycle import State
 from rclpy.lifecycle import TransitionCallbackReturn
 
 from ros_typedb.ros_typedb_helpers import query_result_to_ros_msg
-from ros_typedb.typedb_interface import TypeDBInterface
-from ros_typedb.typedb_interface import TypeDBQueryError
 
 from ros_typedb_msgs.srv import Query
 
 from std_msgs.msg import String
 
 from std_srvs.srv import Empty
+from typedb_utils.typedb_interface import TypeDBInterface
+from typedb_utils.typedb_interface import TypeDBQueryError
 
 _READ_QUERY_TYPES = {
     Query.Request.FETCH,
