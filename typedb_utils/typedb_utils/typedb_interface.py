@@ -21,18 +21,19 @@ from typing import Any
 from typing import Literal
 from typing import TypedDict
 
-from typedb_utils.typedb_helpers import AttributePair
-from typedb_utils.typedb_helpers import RelatedThingsDict
-from typedb_utils.typedb_helpers import convert_py_type_to_query_type
-from typedb_utils.typedb_helpers import convert_query_type_to_py_type
-from typedb_utils.typedb_helpers import create_match_query
-from typedb_utils.typedb_helpers import create_relationship_query
-
 from typedb.common.datetime import Datetime as TypeDBDatetime
 from typedb.driver import Credentials
 from typedb.driver import DriverOptions
 from typedb.driver import TransactionType
 from typedb.driver import TypeDB
+from typedb_utils.typedb_helpers import (
+    AttributePair,
+    convert_py_type_to_query_type,
+    convert_query_type_to_py_type,
+    create_match_query,
+    create_relationship_query,
+    RelatedThingsDict,
+)
 
 
 class TypeDBQueryError(Exception):

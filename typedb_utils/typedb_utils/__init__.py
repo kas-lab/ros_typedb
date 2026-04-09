@@ -13,16 +13,18 @@
 # limitations under the License.
 """Reusable TypeDB 3 Python utilities."""
 
-from typedb_utils.typedb_helpers import AttributePair
-from typedb_utils.typedb_helpers import RelatedThingsDict
-from typedb_utils.typedb_helpers import RelatedVariablesDict
-from typedb_utils.typedb_helpers import ThingMatchTuple
-from typedb_utils.typedb_helpers import attribute_dict_to_query
-from typedb_utils.typedb_helpers import convert_py_type_to_query_type
-from typedb_utils.typedb_helpers import convert_query_type_to_py_type
-from typedb_utils.typedb_helpers import create_match_query
-from typedb_utils.typedb_helpers import create_relationship_query
-from typedb_utils.typedb_helpers import dict_to_query
+from typedb_utils.typedb_helpers import (
+    attribute_dict_to_query,
+    AttributePair,
+    convert_py_type_to_query_type,
+    convert_query_type_to_py_type,
+    create_match_query,
+    create_relationship_query,
+    dict_to_query,
+    RelatedThingsDict,
+    RelatedVariablesDict,
+    ThingMatchTuple,
+)
 from typedb_utils.typedb_interface import MatchResultDict
 from typedb_utils.typedb_interface import TypeDBInterface
 from typedb_utils.typedb_interface import TypeDBQueryError

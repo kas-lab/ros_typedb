@@ -11,8 +11,28 @@ permissions:
   id-token: write
 
 jobs:
+  test:
+    name: test typedb_utils publishing candidate
+    runs-on: ubuntu-latest
+    container:
+      image: rostooling/setup-ros-docker:ubuntu-jammy-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install typedb
+        run: .github/workflows/install_typedb.sh
+      - name: run typedb
+        run: sudo typedb server&
+      - uses: ros-tooling/setup-ros@0.7.1
+        with:
+          required-ros-distributions: humble
+      - uses: ros-tooling/action-ros-ci@0.4.3
+        with:
+          package-name: typedb_utils ros_typedb_msgs ros_typedb ros_typedb_tools
+          target-ros2-distro: humble
+
   build:
     name: build typedb_utils distribution
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
