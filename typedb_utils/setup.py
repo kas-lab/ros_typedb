@@ -6,7 +6,13 @@ from setuptools import setup
 
 package_name = 'typedb_utils'
 root = Path(__file__).parent
-readme = (root / 'README.md').read_text(encoding='utf-8')
+readme_path = root / 'README.md'
+if readme_path.exists():
+    readme = readme_path.read_text(encoding='utf-8')
+else:
+    # ament_python may invoke a copied setup.py from the build tree, where the
+    # project README is not present alongside the generated script.
+    readme = 'Reusable TypeDB 3 Python utilities and interface layer'
 
 setup(
     name=package_name,
