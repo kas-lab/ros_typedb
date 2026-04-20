@@ -1,0 +1,6 @@
+typedb\_utils.typedb\_interface.TypeDBQueryError
+================================================
+
+.. currentmodule:: typedb_utils.typedb_interface
+
+.. autoexception:: TypeDBQueryError

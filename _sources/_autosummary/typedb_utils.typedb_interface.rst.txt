@@ -1,0 +1,38 @@
+﻿typedb\_utils.typedb\_interface
+===============================
+
+.. automodule:: typedb_utils.typedb_interface
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+   
+      MatchResultDict
+      TypeDBInterface
+   
+   
+
+   
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+      :toctree:
+   
+      TypeDBQueryError
+   
+   
+
+
+

@@ -1,0 +1,26 @@
+MatchResultDict
+===============
+
+.. currentmodule:: typedb_utils.typedb_interface
+
+.. autoclass:: MatchResultDict
+  :members:
+  :undoc-members:
+  :special-members: __init__
+
+  
+  .. rubric:: Methods
+
+  .. autosummary::
+  
+  
+
+  
+  .. rubric:: Attributes
+
+  .. autosummary::
+  
+     ~MatchResultDict.type_
+     ~MatchResultDict.value_type
+     ~MatchResultDict.value
+  

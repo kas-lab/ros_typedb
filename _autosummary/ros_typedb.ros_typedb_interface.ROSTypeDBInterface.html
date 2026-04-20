@@ -1,0 +1,332 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ROSTypeDBInterface &mdash; ros_typedb 0.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7026087e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="ros_typedb.ros_typedb_interface" href="ros_typedb.ros_typedb_interface.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ros_typedb
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Home</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="typedb_utils.typedb_interface.html">typedb_utils.typedb_interface</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="ros_typedb.ros_typedb_interface.html">ros_typedb.ros_typedb_interface</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ROSTypeDBInterface</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface"><code class="docutils literal notranslate"><span class="pre">ROSTypeDBInterface</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ros_typedb</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../api.html">API</a></li>
+          <li class="breadcrumb-item"><a href="ros_typedb.ros_typedb_interface.html">ros_typedb.ros_typedb_interface</a></li>
+      <li class="breadcrumb-item active">ROSTypeDBInterface</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/ros_typedb.ros_typedb_interface.ROSTypeDBInterface.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="rostypedbinterface">
+<h1>ROSTypeDBInterface<a class="headerlink" href="#rostypedbinterface" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ros_typedb.ros_typedb_interface.ROSTypeDBInterface">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ros_typedb.ros_typedb_interface.</span></span><span class="sig-name descname"><span class="pre">ROSTypeDBInterface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_name</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface" title="Link to this definition"></a></dt>
+<dd><p>ROS lifecycle node to interact with typedb.</p>
+<p>Initialize the lifecycle node and declare runtime parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node_name</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – ROS node name.</p></li>
+<li><p><strong>kwargs</strong> – Extra keyword arguments passed to <code class="docutils literal notranslate"><span class="pre">Node</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.__init__" title="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(node_name, **kwargs)</p></td>
+<td><p>Initialize the lifecycle node and declare runtime parameters.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.delete_data_event" title="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.delete_data_event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_data_event</span></code></a>()</p></td>
+<td><p>Publish a delete event in the <code class="docutils literal notranslate"><span class="pre">/event</span></code> topic.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.delete_db_cb" title="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.delete_db_cb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete_db_cb</span></code></a>(_req, response)</p></td>
+<td><p>Handle callback for ~/delete_database service.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.init_typedb_interface" title="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.init_typedb_interface"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_typedb_interface</span></code></a>(address, database_name)</p></td>
+<td><p>Initialize self.typedb_interface.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.insert_data_event" title="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.insert_data_event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert_data_event</span></code></a>()</p></td>
+<td><p>Publish an insert event in the <code class="docutils literal notranslate"><span class="pre">/event</span></code> topic.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.on_cleanup" title="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.on_cleanup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">on_cleanup</span></code></a>(_state)</p></td>
+<td><p>Cleanup ROSTypeDBInterface when the cleanup transition is called.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.on_configure" title="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.on_configure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">on_configure</span></code></a>(_state)</p></td>
+<td><p>Configure ROSTypeDBInterface when the configure transition is called.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.publish_data_event" title="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.publish_data_event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">publish_data_event</span></code></a>(event_type)</p></td>
+<td><p>Publish message in the <cite>/event</cite> topic.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.query_service_cb" title="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.query_service_cb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">query_service_cb</span></code></a>(req, response)</p></td>
+<td><p>Handle callback for ~/query service.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_name</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the lifecycle node and declare runtime parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node_name</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – ROS node name.</p></li>
+<li><p><strong>kwargs</strong> – Extra keyword arguments passed to <code class="docutils literal notranslate"><span class="pre">Node</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.delete_data_event">
+<span class="sig-name descname"><span class="pre">delete_data_event</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.delete_data_event" title="Link to this definition"></a></dt>
+<dd><p>Publish a delete event in the <code class="docutils literal notranslate"><span class="pre">/event</span></code> topic.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.delete_db_cb">
+<span class="sig-name descname"><span class="pre">delete_db_cb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_req</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.delete_db_cb" title="Link to this definition"></a></dt>
+<dd><p>Handle callback for ~/delete_database service.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>_req</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Empty_Request</span></code></span>) – Empty request payload (unused).</p></li>
+<li><p><strong>response</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Empty_Response</span></code></span>) – Empty service response.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Empty_Response</span></code></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Response after deleting the configured database.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.init_typedb_interface">
+<span class="sig-name descname"><span class="pre">init_typedb_interface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_database</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.init_typedb_interface" title="Link to this definition"></a></dt>
+<dd><p>Initialize self.typedb_interface.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>address</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – TypeDB server address.</p></li>
+<li><p><strong>database_name</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – database name.</p></li>
+<li><p><strong>schema_path</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</span>) – list with paths to schema files (.tql).</p></li>
+<li><p><strong>data_path</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a>]</span>) – list with paths to data files (.tql).</p></li>
+<li><p><strong>force_database</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></span>) – if database should override an existing database</p></li>
+<li><p><strong>force_data</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></span>) – if the database data should be overridden.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.insert_data_event">
+<span class="sig-name descname"><span class="pre">insert_data_event</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.insert_data_event" title="Link to this definition"></a></dt>
+<dd><p>Publish an insert event in the <code class="docutils literal notranslate"><span class="pre">/event</span></code> topic.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.on_cleanup">
+<span class="sig-name descname"><span class="pre">on_cleanup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_state</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.on_cleanup" title="Link to this definition"></a></dt>
+<dd><p>Cleanup ROSTypeDBInterface when the cleanup transition is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>_state</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">LifecycleState</span></code></span>) – Lifecycle transition state (unused).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">TransitionCallbackReturnType</span></code></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Transition callback status.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.on_configure">
+<span class="sig-name descname"><span class="pre">on_configure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_state</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.on_configure" title="Link to this definition"></a></dt>
+<dd><p>Configure ROSTypeDBInterface when the configure transition is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>_state</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">LifecycleState</span></code></span>) – Lifecycle transition state (unused).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">TransitionCallbackReturnType</span></code></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Transition callback status.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.publish_data_event">
+<span class="sig-name descname"><span class="pre">publish_data_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.publish_data_event" title="Link to this definition"></a></dt>
+<dd><p>Publish message in the <cite>/event</cite> topic.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>event_type</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>) – event to be published, e.g., ‘insert’ or ‘delete’.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ros_typedb.ros_typedb_interface.ROSTypeDBInterface.query_service_cb">
+<span class="sig-name descname"><span class="pre">query_service_cb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">req</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ros_typedb.ros_typedb_interface.ROSTypeDBInterface.query_service_cb" title="Link to this definition"></a></dt>
+<dd><p>Handle callback for ~/query service.</p>
+<p>Perform the query requested with the ~/query service.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>req</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Query_Request</span></code></span>) – Incoming service request with query type and TypeQL text.</p></li>
+<li><p><strong>response</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Query_Response</span></code></span>) – Pre-allocated ROS service response.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Query_Response</span></code></span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Filled response with success flag and optional payload.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ros_typedb.ros_typedb_interface.html" class="btn btn-neutral float-left" title="ros_typedb.ros_typedb_interface" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Gustavo Rezende.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
