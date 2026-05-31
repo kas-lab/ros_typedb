@@ -34,6 +34,12 @@ def typedb_interface():
     typedb_interface.delete_database()
 
 
+def test_load_bad_data_raises(typedb_interface):
+    """Regression: load_data must raise on invalid TypeQL, not silently pass."""
+    with pytest.raises(Exception):
+        typedb_interface.load_data('test/typedb_test_data/bad_data.tql')
+
+
 def test_create_and_delete_database():
     typedb_interface = TypeDBInterface(
         'localhost:1729',

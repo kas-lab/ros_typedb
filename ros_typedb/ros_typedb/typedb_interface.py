@@ -359,14 +359,11 @@ class TypeDBInterface:
         :param force: if database should be overwritten.
         """
         if data_path is not None and data_path != '':
-            try:
-                self.write_database_file(
-                    SessionType.DATA,
-                    'insert',
-                    data_path
-                )
-            except Exception as err:
-                print('Error in load_data method. Exception msg: ', err)
+            self.write_database_file(
+                SessionType.DATA,
+                'insert',
+                data_path
+            )
 
     # Events begining
     def insert_data_event(self):
