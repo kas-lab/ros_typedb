@@ -116,6 +116,37 @@ def test_node():
         node.destroy_node()
 
 
+@launch_pytest.fixture
+def generate_test_description_bad_data():
+    path_to_test = Path(__file__).parents[1]
+    path_tql = path_to_test / 'test' / 'typedb_test_data'
+
+    ros_typedb_node = launch_ros.actions.Node(
+        executable=sys.executable,
+        arguments=[
+            str(path_to_test / 'ros_typedb' / 'ros_typedb_node.py')],
+        additional_env={'PYTHONUNBUFFERED': '1'},
+        name='ros_typedb',
+        output='screen',
+        parameters=[{
+            'schema_path': [str(path_tql / 'schema.tql')],
+            'data_path': [str(path_tql / 'bad_data.tql')],
+            'database_name': 'ros_typedb_bad_data_test',
+        }]
+    )
+
+    return launch.LaunchDescription([
+        ros_typedb_node,
+    ])
+
+
+@pytest.mark.launch(fixture=generate_test_description_bad_data)
+def test_ros_typedb_configure_bad_data(test_node):
+    """Regression: configure must fail when data_path contains invalid TypeQL."""
+    configure_res = test_node.change_ros_typedb_state(1)
+    assert configure_res.success is False
+
+
 @pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_lc_states(test_node):
     configure_res = test_node.change_ros_typedb_state(1)
