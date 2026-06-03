@@ -242,8 +242,10 @@ class TypeDBInterface:
 
         self.database_name = database_name
         if self.driver.databases.contains(database_name):
-            print('The database with the name ', database_name,
-                  ' already exists. Ignoring create_database request.')
+            self.logger.warning(
+                'The database with the name ',
+                database_name,
+                ' already exists. Ignoring create_database request.')
             return
 
         self.driver.databases.create(database_name)
@@ -368,7 +370,7 @@ class TypeDBInterface:
     # Events begining
     def insert_data_event(self):
         """Insert data event."""
-        print('Data has been inserted!')
+        self.logger.warning('Data has been inserted!')
 
     def insert_data_event_(func):
         """Generate insert data event."""
@@ -381,7 +383,7 @@ class TypeDBInterface:
 
     def delete_data_event(self):
         """Delete data event."""
-        print('Data has been deleted!')
+        self.logger.warning('Data has been deleted!')
 
     def delete_data_event_(func):
         """Generate delete data event."""
@@ -406,7 +408,7 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'insert', query)
         except Exception as err:
-            print('Error with insert query! Exception retrieved: ', err)
+            self.logger.warning('Error with insert query! Exception retrieved: ', err)
         return result
 
     def update_database(self, query: str) -> Iterator[ConceptMap] | None:
@@ -421,7 +423,7 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'update', query)
         except Exception as err:
-            print('Error with update query! Exception retrieved: ', err)
+            self.logger.warning('Error with update query! Exception retrieved: ', err)
         return result
 
     # @delete_data_event_
@@ -437,7 +439,7 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'delete', query)
         except Exception as err:
-            print('Error with delete query! Exception retrieved: ', err)
+            self.logger.warning('Error with delete query! Exception retrieved: ', err)
         return result
 
     def fetch_database(
@@ -466,7 +468,7 @@ class TypeDBInterface:
             if should_sort:
                 result = recursively_sort_dict(result)
         except Exception as err:
-            print('Error with match query! Exception retrieved: ', err)
+            self.logger.warning('Error with match query! Exception retrieved: ', err)
             return []
         return result
 
@@ -508,7 +510,7 @@ class TypeDBInterface:
                 query,
                 options)
         except Exception as err:
-            print(
+            self.logger.warning(
                 'Error with get query! Exception retrieved: ', err)
         return result
 
@@ -530,7 +532,7 @@ class TypeDBInterface:
                 query,
                 options)
         except Exception as err:
-            print(
+            self.logger.warning(
                 'Error with get_aggregate query! Exception retrieved: ', err)
         return result
     # Read/write database end
