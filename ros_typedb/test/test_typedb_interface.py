@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 from datetime import datetime
 
 import pytest
@@ -38,6 +39,26 @@ def test_load_bad_data_raises(typedb_interface):
     """Regression: load_data must raise on invalid TypeQL, not silently pass."""
     with pytest.raises(Exception):
         typedb_interface.load_data('test/typedb_test_data/bad_data.tql')
+
+
+def test_driver_connection_timeout(monkeypatch):
+    def slow_core_driver(address):
+        time.sleep(1.0)
+
+    monkeypatch.setattr(
+        'ros_typedb.typedb_interface.TypeDB.core_driver',
+        slow_core_driver
+    )
+
+    start_time = time.monotonic()
+    with pytest.raises(TimeoutError):
+        TypeDBInterface(
+            'localhost:1729',
+            'test_database',
+            driver_timeout_s=0.01
+        )
+
+    assert time.monotonic() - start_time < 0.5
 
 
 def test_create_and_delete_database():

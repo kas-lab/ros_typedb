@@ -312,6 +312,7 @@ class ROSTypeDBInterface(Node):
         self.declare_parameter('force_database', True)
         self.declare_parameter('force_data', True)
         self.declare_parameter('infer', True)
+        self.declare_parameter('driver_timeout_s', 10.0)
 
         self.default_schema_path = ''
         self.declare_parameter('schema_path', [''])
@@ -332,7 +333,8 @@ class ROSTypeDBInterface(Node):
             force_database: Optional[bool] = False,
             force_data: Optional[bool] = False,
             infer: Optional[bool] = False,
-            sort_fetch_results: Optional[bool] = False) -> None:
+            sort_fetch_results: Optional[bool] = False,
+            driver_timeout_s: Optional[float] = 10.0) -> None:
         """
         Initialize self.typedb_interface.
 
@@ -343,7 +345,10 @@ class ROSTypeDBInterface(Node):
         :param force_database: if database should override an existing database
         :param force_data: if the database data should be overriden.
         :param infer: if inference engine should be used.
-        :param sort_fetch_results: if fetch query results should be recursively sorted.
+        :param sort_fetch_results: if fetch query results should be
+            recursively sorted.
+        :param driver_timeout_s: seconds to wait for driver connection before
+            timing out.
         """
         self.typedb_interface = self.typedb_interface_class(
             address,
@@ -353,7 +358,8 @@ class ROSTypeDBInterface(Node):
             force_database,
             force_data,
             infer,
-            sort_fetch_results
+            sort_fetch_results,
+            driver_timeout_s
         )
 
         self.typedb_interface.insert_data_event = self.insert_data_event
@@ -391,7 +397,8 @@ class ROSTypeDBInterface(Node):
             force_database=self.get_parameter('force_database').value,
             force_data=self.get_parameter('force_data').value,
             infer=self.get_parameter('infer').value,
-            sort_fetch_results=self.get_parameter('sort_fetch_results').value
+            sort_fetch_results=self.get_parameter('sort_fetch_results').value,
+            driver_timeout_s=self.get_parameter('driver_timeout_s').value
         )
 
         self.event_pub = self.create_lifecycle_publisher(

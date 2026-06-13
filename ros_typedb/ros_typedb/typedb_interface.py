@@ -13,9 +13,11 @@
 # limitations under the License.
 """typedb_interface - python interface to interact with typedb."""
 
-from datetime import datetime
 import functools
 import logging
+import queue
+import threading
+from datetime import datetime
 from types import MethodType
 from typing import Iterator
 from typing import Literal
@@ -148,7 +150,8 @@ class TypeDBInterface:
             force_database: Optional[bool] = False,
             force_data: Optional[bool] = False,
             infer: Optional[bool] = False,
-            sort_fetch_results: Optional[bool] = False) -> None:
+            sort_fetch_results: Optional[bool] = False,
+            driver_timeout_s: Optional[float] = 10.0) -> None:
         """
         Connect to a typeDB server and interacts with it.
 
@@ -163,12 +166,16 @@ class TypeDBInterface:
         :param force_database: if database should override an existing database
         :param force_data: if the database data should be overriden.
         :param infer: if inference engine should be used.
-        :param sort_fetch_results: if fetch query results should be recursively sorted.
+        :param sort_fetch_results: if fetch query results should be
+            recursively sorted.
+        :param driver_timeout_s: seconds to wait for driver connection before
+            timing out.
+            Set to None or a non-positive value to wait without a timeout.
         """
         self.logger = logging.getLogger()
         self._infer = infer
         self._sort_fetch_results = bool(sort_fetch_results)
-        self.connect_driver(address)
+        self.connect_driver(address, timeout_s=driver_timeout_s)
         self.create_database(database_name, force=force_database)
         if isinstance(schema_path, str):
             schema_path = string_to_string_array(schema_path)
@@ -210,13 +217,56 @@ class TypeDBInterface:
         """
         setattr(self, name, MethodType(func, self))
 
-    def connect_driver(self, address: str) -> None:
+    def connect_driver(
+            self,
+            address: str,
+            timeout_s: Optional[float] = 10.0) -> None:
         """
         Connect to typedb server.
 
         :param address: typedb server address.
+        :param timeout_s: seconds to wait for driver connection before
+            timing out.
+            Set to None or a non-positive value to wait without a timeout.
         """
-        self.driver = TypeDB.core_driver(address=address)
+        if timeout_s is None:
+            self.driver = TypeDB.core_driver(address=address)
+            return
+
+        try:
+            timeout_s = float(timeout_s)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                'driver_timeout_s must be a number, None, or non-positive'
+            ) from exc
+
+        if timeout_s <= 0:
+            self.driver = TypeDB.core_driver(address=address)
+            return
+
+        result_queue = queue.Queue(maxsize=1)
+
+        def connect_driver_thread():
+            try:
+                result_queue.put((True, TypeDB.core_driver(address=address)))
+            except BaseException as exc:  # noqa: B902
+                result_queue.put((False, exc))
+
+        thread = threading.Thread(target=connect_driver_thread, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout_s)
+
+        if thread.is_alive():
+            raise TimeoutError(
+                f'Timed out connecting to TypeDB at {address} after '
+                f'{timeout_s:g} seconds'
+            )
+
+        succeeded, result = result_queue.get_nowait()
+        if succeeded:
+            self.driver = result
+        else:
+            raise result
 
     def delete_database(self, database_name: str = None) -> None:
         """
