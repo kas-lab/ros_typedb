@@ -16,6 +16,7 @@
 from datetime import datetime
 import functools
 import logging
+from threading import Lock
 from types import MethodType
 from typing import Iterator
 from typing import Literal
@@ -166,6 +167,7 @@ class TypeDBInterface:
         :param sort_fetch_results: if fetch query results should be recursively sorted.
         """
         self.logger = logging.getLogger()
+        self._database_query_lock = Lock()
         self._infer = infer
         self._sort_fetch_results = bool(sort_fetch_results)
         self.connect_driver(address)
@@ -291,27 +293,30 @@ class TypeDBInterface:
         :param options: TypeDB options.
         :return: Query result, type depends on the query_type.
         """
-        with self.create_session(self.database_name, session_type) as session:
-            options.infer = self._infer
-            options.parallel = True
-            with session.transaction(transaction_type, options) as transaction:
-                transaction_query_function = getattr(
-                    transaction.query, query_type)
-                query_answer = transaction_query_function(query)
-                if transaction_type == TransactionType.WRITE:
-                    transaction.commit()
-                    if query_type == 'delete' or query_type == 'define':
-                        return True  # delete always return None
-                    return query_answer
-                elif transaction_type == TransactionType.READ:
-                    if query_type == 'get_aggregate':
-                        answer = query_answer.resolve()
-                        if answer.is_long():
-                            return answer.as_long()
-                        if answer.is_float():
-                            return answer.as_float()
-                        return None
-                    return list(query_answer)
+        with self._database_query_lock:
+            with self.create_session(
+                    self.database_name, session_type) as session:
+                options.infer = self._infer
+                options.parallel = True
+                with session.transaction(
+                        transaction_type, options) as transaction:
+                    transaction_query_function = getattr(
+                        transaction.query, query_type)
+                    query_answer = transaction_query_function(query)
+                    if transaction_type == TransactionType.WRITE:
+                        transaction.commit()
+                        if query_type == 'delete' or query_type == 'define':
+                            return True  # delete always return None
+                        return query_answer
+                    elif transaction_type == TransactionType.READ:
+                        if query_type == 'get_aggregate':
+                            answer = query_answer.resolve()
+                            if answer.is_long():
+                                return answer.as_long()
+                            if answer.is_float():
+                                return answer.as_float()
+                            return None
+                        return list(query_answer)
 
     def write_database_file(
             self,
