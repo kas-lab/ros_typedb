@@ -24,9 +24,12 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     gpg \
     openjdk-11-jre \
+    flake8 \
+    python3-flake8-* \
+    python3-ament-flake8 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN rosdep init 
+RUN rosdep init
 
 ## Install TypeDB
 RUN gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-key 17507562824cfdcc
@@ -34,10 +37,10 @@ RUN gpg --export 17507562824cfdcc | sudo tee /etc/apt/trusted.gpg.d/vaticle.gpg 
 RUN echo "deb https://repo.typedb.com/public/public-release/deb/ubuntu trusty main" | tee /etc/apt/sources.list.d/vaticle.list > /dev/null
 
 RUN apt-get update && apt-get install -y \
-    typedb=2.28.3 \
+    typedb=2.29.1 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install typedb-driver==2.28.0
+RUN pip3 install typedb-driver==2.29.7
 
 ## Install TypeDB studio
 RUN sudo mkdir /usr/share/desktop-directories/

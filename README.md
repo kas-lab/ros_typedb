@@ -36,8 +36,8 @@ echo "deb https://repo.typedb.com/public/public-release/deb/ubuntu trusty main" 
 
 sudo apt update
 sudo apt install -y openjdk-11-jre
-sudo apt install -y typedb=2.28.3
-pip3 install typedb-driver==2.28.0
+sudo apt install -y typedb=2.29.1
+pip3 install typedb-driver==2.29.7
 ```
 
 #### Install ros_typedb package
@@ -101,7 +101,7 @@ Start container in the background with typedb server running:
 docker run -d --name ros_typedb ros_typedb typedb server
 ```
 
-Start container in the background with typedb server running:
+Start container in the background with typedb server running, nvidia, display, and ros_typedb mounted:
 ```Bash
 docker run -d --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -v /dev/dri:/dev/dri -v /tmp/.X11-unix:/tmp/.X11-unix -v /etc/localtime:/etc/localtime:ro -v "$PWD:/home/ubuntu-user/typedb_ws/src/ros_typedb" ros_typedb typedb server
 ```
