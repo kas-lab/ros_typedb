@@ -493,7 +493,6 @@ def test_fetch_result_to_ros_result_tree():
 
     assert expected_tree == result_tree
 
-
     json_test = {
         'company_var': {
             'address': [
@@ -774,7 +773,6 @@ def test_fetch_result_to_ros_result_tree():
 
 
 @pytest.mark.launch(fixture=generate_test_description)
-
 def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
     test_node.activate_ros_typedb()
 
