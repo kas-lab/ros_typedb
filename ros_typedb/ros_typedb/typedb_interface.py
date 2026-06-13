@@ -295,9 +295,9 @@ class TypeDBInterface:
         self.database_name = database_name
         if self.driver.databases.contains(database_name):
             self.logger.warning(
-                'The database with the name ',
-                database_name,
-                ' already exists. Ignoring create_database request.')
+                'The database with the name %s already exists. '
+                'Ignoring create_database request.',
+                database_name)
             return
 
         self.driver.databases.create(database_name)
@@ -463,7 +463,8 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'insert', query)
         except Exception as err:
-            self.logger.warning('Error with insert query! Exception retrieved: ', err)
+            self.logger.warning(
+                'Error with insert query! Exception retrieved: %s', err)
         return result
 
     def update_database(self, query: str) -> Iterator[ConceptMap] | None:
@@ -478,7 +479,8 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'update', query)
         except Exception as err:
-            self.logger.warning('Error with update query! Exception retrieved: ', err)
+            self.logger.warning(
+                'Error with update query! Exception retrieved: %s', err)
         return result
 
     # @delete_data_event_
@@ -494,7 +496,8 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'delete', query)
         except Exception as err:
-            self.logger.warning('Error with delete query! Exception retrieved: ', err)
+            self.logger.warning(
+                'Error with delete query! Exception retrieved: %s', err)
         return result
 
     def fetch_database(
@@ -566,7 +569,7 @@ class TypeDBInterface:
                 options)
         except Exception as err:
             self.logger.warning(
-                'Error with get query! Exception retrieved: ', err)
+                'Error with get query! Exception retrieved: %s', err)
         return result
 
     def get_aggregate_database(self, query: str) -> int | float | None:
@@ -588,7 +591,7 @@ class TypeDBInterface:
                 options)
         except Exception as err:
             self.logger.warning(
-                'Error with get_aggregate query! Exception retrieved: ', err)
+                'Error with get_aggregate query! Exception retrieved: %s', err)
         return result
     # Read/write database end
 
