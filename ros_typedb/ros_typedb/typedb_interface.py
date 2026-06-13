@@ -254,11 +254,18 @@ class TypeDBInterface:
             except BaseException as exc:  # noqa: B902
                 result_queue.put((False, exc))
 
+        def close_late_driver():
+            thread.join()
+            succeeded, result = result_queue.get()
+            if succeeded:
+                result.close()
+
         thread = threading.Thread(target=connect_driver_thread, daemon=True)
         thread.start()
         thread.join(timeout=timeout_s)
 
         if thread.is_alive():
+            threading.Thread(target=close_late_driver, daemon=True).start()
             raise TimeoutError(
                 f'Timed out connecting to TypeDB at {address} after '
                 f'{timeout_s:g} seconds'
