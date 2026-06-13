@@ -13,6 +13,8 @@
 # limitations under the License.
 """ros_typedb_interface - python interface to interact with typedb via ROS."""
 
+import traceback
+
 from typing import Any
 from typing import Dict
 from typing import List
@@ -389,35 +391,44 @@ class ROSTypeDBInterface(Node):
         """
         self.get_logger().info(self.get_name() + ': on_configure() is called.')
 
-        self.init_typedb_interface(
-            address=self.get_parameter('address').value,
-            database_name=self.get_parameter('database_name').value,
-            schema_path=self.get_parameter('schema_path').value,
-            data_path=self.get_parameter('data_path').value,
-            force_database=self.get_parameter('force_database').value,
-            force_data=self.get_parameter('force_data').value,
-            infer=self.get_parameter('infer').value,
-            sort_fetch_results=self.get_parameter('sort_fetch_results').value,
-            driver_timeout_s=self.get_parameter('driver_timeout_s').value
-        )
+        try:
+            self.get_logger().info(
+                self.get_name() + ': initializing TypeDB interface.')
+            self.init_typedb_interface(
+                address=self.get_parameter('address').value,
+                database_name=self.get_parameter('database_name').value,
+                schema_path=self.get_parameter('schema_path').value,
+                data_path=self.get_parameter('data_path').value,
+                force_database=self.get_parameter('force_database').value,
+                force_data=self.get_parameter('force_data').value,
+                infer=self.get_parameter('infer').value,
+                sort_fetch_results=(
+                    self.get_parameter('sort_fetch_results').value),
+                driver_timeout_s=self.get_parameter('driver_timeout_s').value
+            )
 
-        self.event_pub = self.create_lifecycle_publisher(
-            String,
-            self.get_name() + '/events',
-            10,
-            callback_group=ReentrantCallbackGroup())
+            self.event_pub = self.create_lifecycle_publisher(
+                String,
+                self.get_name() + '/events',
+                10,
+                callback_group=ReentrantCallbackGroup())
 
-        self.query_service = self.create_service(
-            Query,
-            self.get_name() + '/query',
-            self.query_service_cb,
-            callback_group=self.query_cb_group)
+            self.query_service = self.create_service(
+                Query,
+                self.get_name() + '/query',
+                self.query_service_cb,
+                callback_group=self.query_cb_group)
 
-        self.delete_db_service = self.create_service(
-            Empty,
-            self.get_name() + '/delete_database',
-            self.delete_db_cb,
-            callback_group=self.query_cb_group)
+            self.delete_db_service = self.create_service(
+                Empty,
+                self.get_name() + '/delete_database',
+                self.delete_db_cb,
+                callback_group=self.query_cb_group)
+        except Exception as exc:
+            self.get_logger().error(
+                self.get_name() + ': on_configure() failed: ' + str(exc) +
+                '\n' + traceback.format_exc())
+            return TransitionCallbackReturn.FAILURE
 
         self.get_logger().info(self.get_name() + ':on_configure() completed.')
         return TransitionCallbackReturn.SUCCESS
