@@ -34,7 +34,7 @@ RUN gpg --export 17507562824cfdcc | sudo tee /etc/apt/trusted.gpg.d/vaticle.gpg 
 RUN echo "deb https://repo.typedb.com/public/public-release/deb/ubuntu trusty main" | tee /etc/apt/sources.list.d/vaticle.list > /dev/null
 
 RUN apt-get update && apt-get install -y \
-    typedb=2.28.3 \
+    typedb=2.29.1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install typedb-driver==2.29.7
