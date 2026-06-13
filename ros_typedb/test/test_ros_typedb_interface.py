@@ -147,6 +147,29 @@ def test_ros_typedb_configure_bad_data(test_node):
     assert configure_res.success is False
 
 
+def test_fetch_result_to_ros_result_tree_accepts_more_than_uint8_indices():
+    json_test = {
+        f'attr_{index}': {
+            'value': index,
+            'type': {
+                'label': 'age',
+                'root': 'attribute',
+                'value_type': 'long'}}
+        for index in range(260)
+    }
+
+    result_tree, tree_index = fetch_result_to_ros_result_tree(json_test)
+
+    assert len(result_tree.results) == 260
+    assert tree_index == 260
+    assert result_tree.results[255].result_index == 255
+    assert result_tree.results[256].result_index == 256
+
+    index_list = IndexList()
+    index_list.index = list(range(260))
+    assert index_list.index[256] == 256
+
+
 @pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_lc_states(test_node):
     configure_res = test_node.change_ros_typedb_state(1)
@@ -470,6 +493,7 @@ def test_fetch_result_to_ros_result_tree():
 
     assert expected_tree == result_tree
 
+
     json_test = {
         'company_var': {
             'address': [
@@ -750,6 +774,7 @@ def test_fetch_result_to_ros_result_tree():
 
 
 @pytest.mark.launch(fixture=generate_test_description)
+
 def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
     test_node.activate_ros_typedb()
 
