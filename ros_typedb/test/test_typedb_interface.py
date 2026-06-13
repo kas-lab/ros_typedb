@@ -63,6 +63,7 @@ def test_driver_connection_timeout(monkeypatch):
 
 def test_driver_connection_timeout_closes_late_driver(monkeypatch):
     class LateDriver:
+
         def __init__(self):
             self.closed = False
 
