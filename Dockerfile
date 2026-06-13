@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y \
     openjdk-11-jre \
     && rm -rf /var/lib/apt/lists/*
 
-RUN rosdep init 
+RUN rosdep init
 
 ## Install TypeDB
 RUN gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-key 17507562824cfdcc
@@ -37,7 +37,7 @@ RUN apt-get update && apt-get install -y \
     typedb=2.28.3 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install typedb-driver==2.28.0
+RUN pip3 install typedb-driver==2.29.7
 
 ## Install TypeDB studio
 RUN sudo mkdir /usr/share/desktop-directories/

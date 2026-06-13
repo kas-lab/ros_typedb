@@ -101,7 +101,7 @@ Start container in the background with typedb server running:
 docker run -d --name ros_typedb ros_typedb typedb server
 ```
 
-Start container in the background with typedb server running:
+Start container in the background with typedb server running, nvidia, display, and ros_typedb mounted:
 ```Bash
 docker run -d --rm --name ros_typedb -e DISPLAY=$DISPLAY -e QT_X11_NO_MITSHM=1 -v /dev/dri:/dev/dri -v /tmp/.X11-unix:/tmp/.X11-unix -v /etc/localtime:/etc/localtime:ro -v "$PWD:/home/ubuntu-user/typedb_ws/src/ros_typedb" ros_typedb typedb server
 ```
