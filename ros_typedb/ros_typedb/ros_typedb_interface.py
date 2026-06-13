@@ -367,6 +367,15 @@ class ROSTypeDBInterface(Node):
         self.typedb_interface.insert_data_event = self.insert_data_event
         self.typedb_interface.delete_data_event = self.delete_data_event
 
+    def close_typedb_interface(self) -> None:
+        """Close the TypeDB driver if the interface was initialized."""
+        typedb_interface = getattr(self, 'typedb_interface', None)
+        driver = getattr(typedb_interface, 'driver', None)
+        if driver is not None:
+            driver.close()
+        if typedb_interface is not None:
+            self.typedb_interface = None
+
     def publish_data_event(self, event_type: str) -> None:
         """
         Publish message in the `/event` topic.
@@ -425,6 +434,13 @@ class ROSTypeDBInterface(Node):
                 self.delete_db_cb,
                 callback_group=self.query_cb_group)
         except Exception as exc:
+            try:
+                self.close_typedb_interface()
+            except Exception:
+                self.get_logger().error(
+                    self.get_name() +
+                    ': failed to close TypeDB interface after configure '
+                    'failure:\n' + traceback.format_exc())
             self.get_logger().error(
                 self.get_name() + ': on_configure() failed: ' + str(exc) +
                 '\n' + traceback.format_exc())
