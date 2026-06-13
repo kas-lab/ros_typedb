@@ -16,6 +16,8 @@ from pathlib import Path
 import sys
 from threading import Event
 from threading import Thread
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import launch
 import launch_pytest
@@ -28,10 +30,12 @@ import pytest
 
 from rcl_interfaces.msg import ParameterType
 import rclpy
+from rclpy.lifecycle import TransitionCallbackReturn
 from rclpy.node import Node
 
 from ros_typedb.ros_typedb_interface import convert_attribute_dict_to_ros_msg
 from ros_typedb.ros_typedb_interface import fetch_result_to_ros_result_tree
+from ros_typedb.ros_typedb_interface import ROSTypeDBInterface
 
 from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import IndexList
@@ -242,6 +246,40 @@ def test_ros_typedb_wrong_query(test_node, insert_query):
     insert_query_req.query_type = 100
     query_res = test_node.call_service(test_node.query_cli, insert_query_req)
     assert query_res.success is False
+
+
+def test_on_cleanup_destroys_ros_entities_and_closes_typedb_driver():
+    driver = MagicMock()
+    typedb_interface = SimpleNamespace(driver=driver)
+
+    event_pub = MagicMock()
+    query_service = MagicMock()
+    delete_db_service = MagicMock()
+
+    node = SimpleNamespace(
+        event_pub=event_pub,
+        query_service=query_service,
+        delete_db_service=delete_db_service,
+        typedb_interface=typedb_interface,
+        destroy_publisher=MagicMock(return_value=True),
+        destroy_service=MagicMock(return_value=True),
+        get_logger=MagicMock(return_value=MagicMock()),
+        get_name=MagicMock(return_value='ros_typedb'),
+    )
+
+    result = ROSTypeDBInterface.on_cleanup(node, None)
+
+    assert result == TransitionCallbackReturn.SUCCESS
+    node.destroy_publisher.assert_called_once_with(event_pub)
+    node.destroy_service.assert_any_call(query_service)
+    node.destroy_service.assert_any_call(delete_db_service)
+    assert node.destroy_service.call_count == 2
+    driver.close.assert_called_once_with()
+    assert not hasattr(node, 'event_pub')
+    assert not hasattr(node, 'query_service')
+    assert not hasattr(node, 'delete_db_service')
+    assert not hasattr(node, 'typedb_interface')
+    assert not hasattr(typedb_interface, 'driver')
 
 
 def test_convert_attribute_dict_to_ros_msg():
