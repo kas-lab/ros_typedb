@@ -24,6 +24,9 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     gpg \
     openjdk-11-jre \
+    flake8 \
+    python3-flake8-* \
+    python3-ament-flake8 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rosdep init
