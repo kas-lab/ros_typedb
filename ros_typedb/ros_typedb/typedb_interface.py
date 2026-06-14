@@ -182,6 +182,7 @@ class TypeDBInterface:
         """
         self.logger = logging.getLogger()
         self._database_query_lock = Lock()
+        self.last_error: str = ''
         self._address = address
         self._driver_timeout_s = driver_timeout_s
         self._infer = infer
@@ -518,6 +519,7 @@ class TypeDBInterface:
         :param query: Query to be performed.
         :return: Query result, if query fails return None.
         """
+        self.last_error = ''
         result = None
         try:
             result = self.database_query(
@@ -525,6 +527,7 @@ class TypeDBInterface:
         except Exception as err:
             self.logger.warning(
                 'Error with insert query! Exception retrieved: %s', err)
+            self.last_error = str(err)
         return result
 
     def update_database(self, query: str) -> Iterator[ConceptMap] | None:
@@ -534,6 +537,7 @@ class TypeDBInterface:
         :param query: Query to be performed.
         :return: Query result, if query fails return None.
         """
+        self.last_error = ''
         result = None
         try:
             result = self.database_query(
@@ -541,6 +545,7 @@ class TypeDBInterface:
         except Exception as err:
             self.logger.warning(
                 'Error with update query! Exception retrieved: %s', err)
+            self.last_error = str(err)
         return result
 
     # @delete_data_event_
@@ -551,6 +556,7 @@ class TypeDBInterface:
         :param query: Query to be performed.
         :return: Query result, if query fails return None.
         """
+        self.last_error = ''
         result = None
         try:
             result = self.database_query(
@@ -558,16 +564,19 @@ class TypeDBInterface:
         except Exception as err:
             self.logger.warning(
                 'Error with delete query! Exception retrieved: %s', err)
+            self.last_error = str(err)
         return result
 
     def define_database(self, query: str) -> Literal[True] | None:
         """Perform define query."""
+        self.last_error = ''
         result = None
         try:
             result = self.database_query(
                 SessionType.SCHEMA, TransactionType.WRITE, 'define', query)
         except Exception as err:
             self.logger.warning('Error with define query! Exception retrieved: %s', err)
+            self.last_error = str(err)
         return result
 
     def fetch_database(
@@ -582,6 +591,7 @@ class TypeDBInterface:
             If None, uses the interface default policy.
         :return: Query result, if query fails return None.
         """
+        self.last_error = ''
         result = None
         try:
             options = TypeDBOptions()
@@ -597,6 +607,7 @@ class TypeDBInterface:
                 result = recursively_sort_dict(result)
         except Exception as err:
             self.logger.warning('Error with match query! Exception retrieved: %s', err)
+            self.last_error = str(err)
         return result
 
     def fetch_database_unordered(
@@ -626,6 +637,7 @@ class TypeDBInterface:
         :param query: Query to be performed.
         :return: Query result.
         """
+        self.last_error = ''
         result = None
         try:
             options = TypeDBOptions()
@@ -639,6 +651,7 @@ class TypeDBInterface:
         except Exception as err:
             self.logger.warning(
                 'Error with get query! Exception retrieved: %s', err)
+            self.last_error = str(err)
         return result
 
     def get_aggregate_database(self, query: str) -> int | float | None:
@@ -648,6 +661,7 @@ class TypeDBInterface:
         :param query: Query to be performed.
         :return: Query result.
         """
+        self.last_error = ''
         result = None
         try:
             options = TypeDBOptions()
@@ -661,6 +675,7 @@ class TypeDBInterface:
         except Exception as err:
             self.logger.warning(
                 'Error with get_aggregate query! Exception retrieved: %s', err)
+            self.last_error = str(err)
         return result
     # Read/write database end
 

@@ -11,4 +11,5 @@ uint8 query_type
 string query
 ---
 bool success
+string error_message
 ros_typedb_msgs/ResultTree[] results
