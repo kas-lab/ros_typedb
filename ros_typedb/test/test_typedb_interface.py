@@ -17,8 +17,6 @@ import time
 
 import pytest
 
-from typedb.driver import SessionType
-
 from ros_typedb.typedb_interface import TypeDBInterface
 
 
@@ -523,11 +521,15 @@ def test_register_method(typedb_interface):
 
 def test_database_query_reconnects_after_failed_health_check(monkeypatch):
     class FakeDatabases:
-        def __init__(self, fail_contains=False):
-            self.fail_contains = fail_contains
+        """Fake database collection with controllable health checks."""
+
+        def __init__(self, fail_after_first_contains=False):
+            self.fail_after_first_contains = fail_after_first_contains
+            self.contains_count = 0
 
         def contains(self, database_name):
-            if self.fail_contains:
+            self.contains_count += 1
+            if self.fail_after_first_contains and self.contains_count > 1:
                 raise RuntimeError('server unavailable')
             return True
 
@@ -535,8 +537,10 @@ def test_database_query_reconnects_after_failed_health_check(monkeypatch):
             raise AssertionError('database should already exist')
 
     class FakeDriver:
-        def __init__(self, fail_contains=False):
-            self.databases = FakeDatabases(fail_contains)
+        """Fake TypeDB driver."""
+
+        def __init__(self, fail_after_first_contains=False):
+            self.databases = FakeDatabases(fail_after_first_contains)
             self.closed = False
             self.session_count = 0
 
@@ -548,6 +552,8 @@ def test_database_query_reconnects_after_failed_health_check(monkeypatch):
             self.closed = True
 
     class FakeSession:
+        """Fake TypeDB session context manager."""
+
         def __enter__(self):
             return self
 
@@ -558,10 +564,14 @@ def test_database_query_reconnects_after_failed_health_check(monkeypatch):
             return FakeTransaction()
 
     class FakeQuery:
+        """Fake TypeDB query API."""
+
         def fetch(self, query):
             return [{'person': {'type': {'root': 'entity', 'label': 'person'}}}]
 
     class FakeTransaction:
+        """Fake TypeDB transaction context manager."""
+
         query = FakeQuery()
 
         def __enter__(self):
@@ -570,7 +580,7 @@ def test_database_query_reconnects_after_failed_health_check(monkeypatch):
         def __exit__(self, exc_type, exc, traceback):
             return False
 
-    drivers = [FakeDriver(fail_contains=True), FakeDriver()]
+    drivers = [FakeDriver(fail_after_first_contains=True), FakeDriver()]
     monkeypatch.setattr(
         'ros_typedb.typedb_interface.TypeDB.core_driver',
         lambda address: drivers.pop(0)
@@ -589,6 +599,8 @@ def test_database_query_reconnects_after_failed_health_check(monkeypatch):
 
 def test_ensure_server_alive_creates_missing_database(monkeypatch):
     class FakeDatabases:
+        """Fake database collection tracking database creation."""
+
         def __init__(self):
             self.created_database = None
 
@@ -599,6 +611,8 @@ def test_ensure_server_alive_creates_missing_database(monkeypatch):
             self.created_database = database_name
 
     class FakeDriver:
+        """Fake TypeDB driver."""
+
         def __init__(self):
             self.databases = FakeDatabases()
 
