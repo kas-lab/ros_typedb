@@ -13,6 +13,7 @@
 # limitations under the License.
 """typedb_interface - python interface to interact with typedb."""
 
+import ast
 from datetime import datetime
 import functools
 import logging
@@ -99,10 +100,25 @@ def string_to_string_array(string: str) -> list[str]:
     """
     Convert string to string array.
 
+    Single string values are returned as a one-item list so valid Linux paths
+    containing commas are not split into invalid paths. Strings that use a
+    Python/ROS-style list representation are parsed as lists.
+
     :param string: string to be converted
     :return: converted string
     """
-    return [s.strip(" '") for s in string.strip('[]').split(',')]
+    stripped_string = string.strip()
+    if stripped_string.startswith('[') and stripped_string.endswith(']'):
+        try:
+            parsed_string = ast.literal_eval(stripped_string)
+        except (SyntaxError, ValueError):
+            return [
+                s.strip(" '")
+                for s in stripped_string.strip('[]').split(',')
+            ]
+        if isinstance(parsed_string, list):
+            return [str(value) for value in parsed_string]
+    return [string]
 
 
 def recursively_sort_dict(obj):

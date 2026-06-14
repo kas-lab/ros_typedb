@@ -18,7 +18,26 @@ import time
 import pytest
 
 from ros_typedb.typedb_interface import convert_py_type_to_query_type
+from ros_typedb.typedb_interface import string_to_string_array
 from ros_typedb.typedb_interface import TypeDBInterface
+
+
+def test_string_to_string_array_preserves_raw_path_with_comma():
+    path = '/tmp/schema,with-comma.tql'
+
+    assert string_to_string_array(path) == [path]
+
+
+def test_string_to_string_array_parses_quoted_list_with_comma_in_path():
+    assert string_to_string_array(
+        "['/tmp/schema,with-comma.tql', '/tmp/data.tql']"
+    ) == ['/tmp/schema,with-comma.tql', '/tmp/data.tql']
+
+
+def test_string_to_string_array_keeps_unbracketed_strings_as_single_values():
+    assert string_to_string_array('/tmp/schema.tql,/tmp/data.tql') == [
+        '/tmp/schema.tql,/tmp/data.tql'
+    ]
 
 
 @pytest.fixture
