@@ -61,6 +61,40 @@ def test_driver_connection_timeout(monkeypatch):
     assert time.monotonic() - start_time < 0.5
 
 
+def test_driver_connection_timeout_closes_late_driver(monkeypatch):
+    class LateDriver:
+
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    late_driver = LateDriver()
+
+    def slow_core_driver(address):
+        time.sleep(0.05)
+        return late_driver
+
+    monkeypatch.setattr(
+        'ros_typedb.typedb_interface.TypeDB.core_driver',
+        slow_core_driver
+    )
+
+    with pytest.raises(TimeoutError):
+        TypeDBInterface(
+            'localhost:1729',
+            'test_database',
+            driver_timeout_s=0.01
+        )
+
+    deadline = time.monotonic() + 0.5
+    while not late_driver.closed and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert late_driver.closed
+
+
 def test_create_and_delete_database():
     typedb_interface = TypeDBInterface(
         'localhost:1729',
