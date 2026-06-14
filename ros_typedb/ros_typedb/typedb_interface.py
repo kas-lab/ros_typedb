@@ -510,7 +510,7 @@ class TypeDBInterface:
     def fetch_database(
             self,
             query: str,
-            sort_result: Optional[bool] = None) -> list[dict[str, MatchResultDict]]:
+            sort_result: Optional[bool] = None) -> list[dict[str, MatchResultDict]] | None:
         """
         Perform match query.
 
@@ -537,7 +537,7 @@ class TypeDBInterface:
         return result
 
     def fetch_database_unordered(
-            self, query: str) -> list[dict[str, MatchResultDict]]:
+            self, query: str) -> list[dict[str, MatchResultDict]] | None:
         """
         Perform fetch query with unordered result keys.
 
@@ -547,7 +547,7 @@ class TypeDBInterface:
         return self.fetch_database(query, sort_result=False)
 
     def fetch_database_ordered(
-            self, query: str) -> list[dict[str, MatchResultDict]]:
+            self, query: str) -> list[dict[str, MatchResultDict]] | None:
         """
         Perform fetch query with recursively sorted result keys.
 
