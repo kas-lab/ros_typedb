@@ -252,7 +252,7 @@ def get_query_result_to_ros_msg(
                     typedb_attr.get_value(),
                     str(typedb_attr.get_type().get_value_type()))
                 query_result_ros.attribute = attr
-            result_tree.results.append(query_result_ros)
+                result_tree.results.append(query_result_ros)
         response.results.append(result_tree)
     response.success = True
     return response
