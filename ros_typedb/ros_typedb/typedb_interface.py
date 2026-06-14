@@ -80,7 +80,14 @@ def convert_py_type_to_query_type(
     """
     if isinstance(data, str):
         if len(data) > 0 and data[0] != '$':
-            return "'{}'".format(data)
+            escaped_data = (
+                data.replace('\\', '\\\\')
+                .replace("'", "\\'")
+                .replace('\n', '\\n')
+                .replace('\r', '\\r')
+                .replace('\t', '\\t')
+            )
+            return "'{}'".format(escaped_data)
     elif isinstance(data, datetime):
         return data.isoformat(timespec='milliseconds')
     elif isinstance(data, bool):
@@ -976,8 +983,9 @@ class TypeDBInterface:
         :param key_value: attribute value to identify the individual.
         :return: True.
         """
+        key_value = convert_py_type_to_query_type(key_value)
         query = f"""
-            match $thing isa {thing}, has {key} "{key_value}";
+            match $thing isa {thing}, has {key} {key_value};
             delete $thing isa {thing};
         """
         return self.delete_from_database(query)
