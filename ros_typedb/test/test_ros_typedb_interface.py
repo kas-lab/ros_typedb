@@ -16,6 +16,8 @@ from pathlib import Path
 import sys
 from threading import Event
 from threading import Thread
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import launch
 import launch_pytest
@@ -28,10 +30,12 @@ import pytest
 
 from rcl_interfaces.msg import ParameterType
 import rclpy
+from rclpy.lifecycle import TransitionCallbackReturn
 from rclpy.node import Node
 
 from ros_typedb.ros_typedb_interface import convert_attribute_dict_to_ros_msg
 from ros_typedb.ros_typedb_interface import fetch_result_to_ros_result_tree
+from ros_typedb.ros_typedb_interface import ROSTypeDBInterface
 
 from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import IndexList
@@ -116,6 +120,32 @@ def test_node():
         node.destroy_node()
 
 
+class MockTypeDBDriver:
+
+    def __init__(self):
+        self.closed = False
+
+    def close(self):
+        self.closed = True
+
+
+class MockTypeDBInterface:
+
+    def __init__(self):
+        self.driver = MockTypeDBDriver()
+
+
+def test_close_typedb_interface_closes_driver_and_clears_reference():
+    ros_typedb_interface = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    typedb_interface = MockTypeDBInterface()
+    ros_typedb_interface.typedb_interface = typedb_interface
+
+    ros_typedb_interface.close_typedb_interface()
+
+    assert typedb_interface.driver.closed is True
+    assert ros_typedb_interface.typedb_interface is None
+
+
 @launch_pytest.fixture
 def generate_test_description_bad_data():
     path_to_test = Path(__file__).parents[1]
@@ -145,6 +175,29 @@ def test_ros_typedb_configure_bad_data(test_node):
     """Regression: configure must fail when data_path contains invalid TypeQL."""
     configure_res = test_node.change_ros_typedb_state(1)
     assert configure_res.success is False
+
+
+def test_fetch_result_to_ros_result_tree_accepts_more_than_uint8_indices():
+    json_test = {
+        f'attr_{index}': {
+            'value': index,
+            'type': {
+                'label': 'age',
+                'root': 'attribute',
+                'value_type': 'long'}}
+        for index in range(260)
+    }
+
+    result_tree, tree_index = fetch_result_to_ros_result_tree(json_test)
+
+    assert len(result_tree.results) == 260
+    assert tree_index == 260
+    assert result_tree.results[255].result_index == 255
+    assert result_tree.results[256].result_index == 256
+
+    index_list = IndexList()
+    index_list.index = list(range(260))
+    assert index_list.index[256] == 256
 
 
 @pytest.mark.launch(fixture=generate_test_description)
@@ -242,6 +295,53 @@ def test_ros_typedb_wrong_query(test_node, insert_query):
     insert_query_req.query_type = 100
     query_res = test_node.call_service(test_node.query_cli, insert_query_req)
     assert query_res.success is False
+
+
+def test_close_typedb_interface_closes_driver_and_clears_interface():
+    driver = MagicMock()
+    node = SimpleNamespace(typedb_interface=SimpleNamespace(driver=driver))
+
+    ROSTypeDBInterface.close_typedb_interface(node)
+
+    driver.close.assert_called_once_with()
+    assert node.typedb_interface is None
+
+
+def test_on_cleanup_destroys_ros_entities_and_closes_typedb_driver():
+    driver = MagicMock()
+    typedb_interface = SimpleNamespace(driver=driver)
+
+    event_pub = MagicMock()
+    query_service = MagicMock()
+    delete_db_service = MagicMock()
+
+    node = SimpleNamespace(
+        event_pub=event_pub,
+        query_service=query_service,
+        delete_db_service=delete_db_service,
+        typedb_interface=typedb_interface,
+        destroy_publisher=MagicMock(return_value=True),
+        destroy_service=MagicMock(return_value=True),
+        get_logger=MagicMock(return_value=MagicMock()),
+        get_name=MagicMock(return_value='ros_typedb'),
+        close_typedb_interface=MagicMock(
+            side_effect=lambda: ROSTypeDBInterface.close_typedb_interface(node)
+        )
+    )
+
+    result = ROSTypeDBInterface.on_cleanup(node, None)
+
+    assert result == TransitionCallbackReturn.SUCCESS
+    node.destroy_publisher.assert_called_once_with(event_pub)
+    node.destroy_service.assert_any_call(query_service)
+    node.destroy_service.assert_any_call(delete_db_service)
+    assert node.destroy_service.call_count == 2
+    assert node.close_typedb_interface.call_count == 1
+    driver.close.assert_called_once_with()
+    assert not hasattr(node, 'event_pub')
+    assert not hasattr(node, 'query_service')
+    assert not hasattr(node, 'delete_db_service')
+    assert node.typedb_interface is None
 
 
 def test_convert_attribute_dict_to_ros_msg():

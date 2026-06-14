@@ -80,7 +80,14 @@ def convert_py_type_to_query_type(
     """
     if isinstance(data, str):
         if len(data) > 0 and data[0] != '$':
-            return "'{}'".format(data)
+            escaped_data = (
+                data.replace('\\', '\\\\')
+                .replace("'", "\\'")
+                .replace('\n', '\\n')
+                .replace('\r', '\\r')
+                .replace('\t', '\\t')
+            )
+            return "'{}'".format(escaped_data)
     elif isinstance(data, datetime):
         return data.isoformat(timespec='milliseconds')
     elif isinstance(data, bool):
@@ -175,6 +182,8 @@ class TypeDBInterface:
         """
         self.logger = logging.getLogger()
         self._database_query_lock = Lock()
+        self._address = address
+        self._driver_timeout_s = driver_timeout_s
         self._infer = infer
         self._sort_fetch_results = bool(sort_fetch_results)
         self.connect_driver(address, timeout_s=driver_timeout_s)
@@ -254,11 +263,18 @@ class TypeDBInterface:
             except BaseException as exc:  # noqa: B902
                 result_queue.put((False, exc))
 
+        def close_late_driver():
+            thread.join()
+            succeeded, result = result_queue.get()
+            if succeeded and result is not None:
+                result.close()
+
         thread = threading.Thread(target=connect_driver_thread, daemon=True)
         thread.start()
         thread.join(timeout=timeout_s)
 
         if thread.is_alive():
+            threading.Thread(target=close_late_driver, daemon=True).start()
             raise TimeoutError(
                 f'Timed out connecting to TypeDB at {address} after '
                 f'{timeout_s:g} seconds'
@@ -295,12 +311,51 @@ class TypeDBInterface:
         self.database_name = database_name
         if self.driver.databases.contains(database_name):
             self.logger.warning(
-                'The database with the name ',
-                database_name,
-                ' already exists. Ignoring create_database request.')
+                'The database with the name %s already exists. '
+                'Ignoring create_database request.',
+                database_name)
             return
 
         self.driver.databases.create(database_name)
+
+    def is_server_alive(self) -> bool:
+        """Return True if the current driver can reach the TypeDB server."""
+        try:
+            self.driver.databases.contains(self.database_name)
+            return True
+        except Exception as exc:
+            self.logger.warning(
+                'TypeDB server health check failed. Exception retrieved: %s',
+                exc)
+            return False
+
+    def ensure_database_exists(self) -> None:
+        """Create the configured database if it is missing."""
+        if not self.driver.databases.contains(self.database_name):
+            self.logger.warning(
+                'Database %s was not found; creating it.',
+                self.database_name)
+            self.driver.databases.create(self.database_name)
+
+    def reconnect_driver(self) -> None:
+        """Reconnect the TypeDB driver after a lost server connection."""
+        old_driver = getattr(self, 'driver', None)
+        self.logger.warning('Reconnecting TypeDB driver to %s', self._address)
+        self.connect_driver(self._address, timeout_s=self._driver_timeout_s)
+        if old_driver is not None:
+            try:
+                old_driver.close()
+            except Exception as exc:
+                self.logger.debug(
+                    'Ignoring error while closing stale TypeDB driver: %s', exc)
+        self.ensure_database_exists()
+
+    def ensure_server_alive(self) -> None:
+        """Reconnect the driver if the TypeDB server health check fails."""
+        if not self.is_server_alive():
+            self.reconnect_driver()
+        else:
+            self.ensure_database_exists()
 
     def create_session(
         self,
@@ -344,6 +399,7 @@ class TypeDBInterface:
         :return: Query result, type depends on the query_type.
         """
         with self._database_query_lock:
+            self.ensure_server_alive()
             with self.create_session(
                     self.database_name, session_type) as session:
                 options.infer = self._infer
@@ -354,9 +410,13 @@ class TypeDBInterface:
                         transaction.query, query_type)
                     query_answer = transaction_query_function(query)
                     if transaction_type == TransactionType.WRITE:
+                        if query_type == 'insert':
+                            query_answer = list(query_answer)
                         transaction.commit()
+
                         if query_type == 'delete' or query_type == 'define':
-                            return True  # delete always return None
+                            return True  # delete and define always return None
+
                         return query_answer
                     elif transaction_type == TransactionType.READ:
                         if query_type == 'get_aggregate':
@@ -463,7 +523,8 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'insert', query)
         except Exception as err:
-            self.logger.warning('Error with insert query! Exception retrieved: ', err)
+            self.logger.warning(
+                'Error with insert query! Exception retrieved: %s', err)
         return result
 
     def update_database(self, query: str) -> Iterator[ConceptMap] | None:
@@ -478,7 +539,8 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'update', query)
         except Exception as err:
-            self.logger.warning('Error with update query! Exception retrieved: ', err)
+            self.logger.warning(
+                'Error with update query! Exception retrieved: %s', err)
         return result
 
     # @delete_data_event_
@@ -494,7 +556,8 @@ class TypeDBInterface:
             result = self.database_query(
                 SessionType.DATA, TransactionType.WRITE, 'delete', query)
         except Exception as err:
-            self.logger.warning('Error with delete query! Exception retrieved: ', err)
+            self.logger.warning(
+                'Error with delete query! Exception retrieved: %s', err)
         return result
 
     def define_database(self, query: str) -> Literal[True] | None:
@@ -510,7 +573,7 @@ class TypeDBInterface:
     def fetch_database(
             self,
             query: str,
-            sort_result: Optional[bool] = None) -> list[dict[str, MatchResultDict]]:
+            sort_result: Optional[bool] = None) -> list[dict[str, MatchResultDict]] | None:
         """
         Perform match query.
 
@@ -534,11 +597,10 @@ class TypeDBInterface:
                 result = recursively_sort_dict(result)
         except Exception as err:
             self.logger.warning('Error with match query! Exception retrieved: %s', err)
-            return None
         return result
 
     def fetch_database_unordered(
-            self, query: str) -> list[dict[str, MatchResultDict]]:
+            self, query: str) -> list[dict[str, MatchResultDict]] | None:
         """
         Perform fetch query with unordered result keys.
 
@@ -548,7 +610,7 @@ class TypeDBInterface:
         return self.fetch_database(query, sort_result=False)
 
     def fetch_database_ordered(
-            self, query: str) -> list[dict[str, MatchResultDict]]:
+            self, query: str) -> list[dict[str, MatchResultDict]] | None:
         """
         Perform fetch query with recursively sorted result keys.
 
@@ -576,7 +638,7 @@ class TypeDBInterface:
                 options)
         except Exception as err:
             self.logger.warning(
-                'Error with get query! Exception retrieved: ', err)
+                'Error with get query! Exception retrieved: %s', err)
         return result
 
     def get_aggregate_database(self, query: str) -> int | float | None:
@@ -598,7 +660,7 @@ class TypeDBInterface:
                 options)
         except Exception as err:
             self.logger.warning(
-                'Error with get_aggregate query! Exception retrieved: ', err)
+                'Error with get_aggregate query! Exception retrieved: %s', err)
         return result
     # Read/write database end
 
