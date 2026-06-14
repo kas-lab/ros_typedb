@@ -497,6 +497,16 @@ class TypeDBInterface:
             self.logger.warning('Error with delete query! Exception retrieved: ', err)
         return result
 
+    def define_database(self, query: str) -> Literal[True] | None:
+        """Perform define query."""
+        result = None
+        try:
+            result = self.database_query(
+                SessionType.SCHEMA, TransactionType.WRITE, 'define', query)
+        except Exception as err:
+            self.logger.warning('Error with define query! Exception retrieved: %s', err)
+        return result
+
     def fetch_database(
             self,
             query: str,
@@ -524,7 +534,7 @@ class TypeDBInterface:
                 result = recursively_sort_dict(result)
         except Exception as err:
             self.logger.warning('Error with match query! Exception retrieved: %s', err)
-            return []
+            return None
         return result
 
     def fetch_database_unordered(
@@ -1087,7 +1097,7 @@ class TypeDBInterface:
             , has {attr} $attribute;
             fetch $attribute;
         """
-        return self.fetch_database(query)
+        return self.fetch_database(query) or []
 
     def fetch_attribute_from_thing(
             self,

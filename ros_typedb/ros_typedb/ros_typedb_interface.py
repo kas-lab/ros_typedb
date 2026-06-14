@@ -471,6 +471,8 @@ class ROSTypeDBInterface(Node):
             query_func = self.typedb_interface.get_aggregate_database
         elif req.query_type == Query.Request.UPDATE:
             query_func = self.typedb_interface.update_database
+        elif req.query_type == Query.Request.DEFINE:
+            query_func = self.typedb_interface.define_database
         else:
             self.get_logger().warning(
                 'Query type {} not recognized'.format(req.query_type))
