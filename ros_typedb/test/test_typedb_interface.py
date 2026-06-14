@@ -17,6 +17,7 @@ import time
 
 import pytest
 
+from ros_typedb.typedb_interface import convert_py_type_to_query_type
 from ros_typedb.typedb_interface import TypeDBInterface
 
 
@@ -33,6 +34,29 @@ def typedb_interface():
     )
     yield typedb_interface
     typedb_interface.delete_database()
+
+
+def test_convert_py_type_to_query_type_escapes_strings():
+    assert convert_py_type_to_query_type("O'Brien") == "'O\\'Brien'"
+    assert convert_py_type_to_query_type(r'C:\\tmp') == r"'C:\\\\tmp'"
+    assert convert_py_type_to_query_type('$person') == '$person'
+
+
+def test_delete_thing_uses_query_type_conversion(monkeypatch):
+    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
+    captured_query = None
+
+    def fake_delete_from_database(query):
+        nonlocal captured_query
+        captured_query = query
+        return True
+
+    monkeypatch.setattr(
+        typedb_interface, 'delete_from_database', fake_delete_from_database)
+
+    assert typedb_interface.delete_thing('person', 'name', "O'Brien") is True
+    assert "has name 'O\\'Brien'" in captured_query
+    assert 'has name "O\'Brien"' not in captured_query
 
 
 def test_load_bad_data_raises(typedb_interface):
@@ -59,6 +83,40 @@ def test_driver_connection_timeout(monkeypatch):
         )
 
     assert time.monotonic() - start_time < 0.5
+
+
+def test_driver_connection_timeout_closes_late_driver(monkeypatch):
+    class LateDriver:
+
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    late_driver = LateDriver()
+
+    def slow_core_driver(address):
+        time.sleep(0.05)
+        return late_driver
+
+    monkeypatch.setattr(
+        'ros_typedb.typedb_interface.TypeDB.core_driver',
+        slow_core_driver
+    )
+
+    with pytest.raises(TimeoutError):
+        TypeDBInterface(
+            'localhost:1729',
+            'test_database',
+            driver_timeout_s=0.01
+        )
+
+    deadline = time.monotonic() + 0.5
+    while not late_driver.closed and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert late_driver.closed
 
 
 def test_create_and_delete_database():
