@@ -460,8 +460,17 @@ class ROSTypeDBInterface(Node):
 
         :return: transition result
         """
-        self.destroy_publisher(self.event_pub)
-        self.destroy_service(self.insert_query_service)
+        for service_name in ('query_service', 'delete_db_service'):
+            service = getattr(self, service_name, None)
+            if service is not None:
+                self.destroy_service(service)
+                delattr(self, service_name)
+
+        if getattr(self, 'event_pub', None) is not None:
+            self.destroy_publisher(self.event_pub)
+            del self.event_pub
+
+        self.close_typedb_interface()
 
         self.get_logger().info(self.get_name() + ' :on_cleanup() is called.')
         return TransitionCallbackReturn.SUCCESS
