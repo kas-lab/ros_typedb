@@ -17,8 +17,8 @@ import time
 
 import pytest
 
-from ros_typedb.typedb_interface import string_to_string_array
 from ros_typedb.typedb_interface import convert_py_type_to_query_type
+from ros_typedb.typedb_interface import string_to_string_array
 from ros_typedb.typedb_interface import TypeDBInterface
 
 
