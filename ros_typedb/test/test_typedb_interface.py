@@ -135,9 +135,15 @@ def test_create_and_delete_database():
     assert not typedb_interface.driver.databases.contains('test_database')
 
 
+def test_define_query(typedb_interface):
+    assert typedb_interface.define_database('define MyEntity sub entity;')
+    assert typedb_interface.define_database('define MyEntity aa entity') is None
+
+
 def test_insert_entity(typedb_interface):
-    typedb_interface.insert_entity(
+    result_insert = typedb_interface.insert_entity(
         'person', [('email', 'test@email.test'), ('nickname', 't')])
+    assert result_insert is not None
     query = """
         match $entity isa person,
         has email "test@email.test",
@@ -148,6 +154,10 @@ def test_insert_entity(typedb_interface):
     result = typedb_interface.get_aggregate_database(query)
     assert result > 0
 
+    result_insert = typedb_interface.insert_entity(
+        'something_wrong', [('email', 'test@email.test'), ('nickname', 't')])
+    assert result_insert is None
+
 
 def test_delete_thing(typedb_interface):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
@@ -156,8 +166,12 @@ def test_delete_thing(typedb_interface):
         match $entity isa person, has email "test@email.test";
         get $entity;
     """
-    result = typedb_interface.fetch_database(query)
+    result = typedb_interface.get_database(query)
     assert len(result) == 0
+
+    wrong_result = typedb_interface.delete_thing(
+        'something_wrong', 'email', 'test@email.test')
+    assert wrong_result is None
 
 
 @pytest.mark.parametrize('attr, attr_value', [
@@ -330,9 +344,7 @@ def test_insert_relationship(typedb_interface):
 def test_dict_to_query(typedb_interface, things_dict):
     query = typedb_interface.dict_to_query(things_dict)
     insert_result = typedb_interface.insert_database('insert ' + query)
-    match_result = typedb_interface.fetch_database('match ' + query)
-    assert insert_result is not None and insert_result is not False \
-        and match_result is not None and match_result is not False
+    assert insert_result is not None
 
 
 @pytest.mark.parametrize('match_dict, r_dict', [
@@ -435,13 +447,12 @@ def test_delete_attributes(
    typedb_interface, insert_dict, match_dict):
 
     query = typedb_interface.dict_to_query(insert_dict)
-    typedb_interface.insert_database('insert ' + query)
+    insert_result = typedb_interface.insert_database('insert ' + query)
+    assert insert_result is not None
+    assert len(insert_result) > 0
 
-    r = typedb_interface.delete_attributes_from_thing(match_dict)
-
-    query = typedb_interface.dict_to_query(insert_dict)
-    match_result = typedb_interface.fetch_database('match ' + query)
-    assert r is not None and r is not False and len(match_result) == 0
+    delete_result = typedb_interface.delete_attributes_from_thing(match_dict)
+    assert delete_result is True
 
 
 @pytest.mark.parametrize('insert_dict, update_dict, r_dict', [

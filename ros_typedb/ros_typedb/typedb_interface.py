@@ -410,9 +410,13 @@ class TypeDBInterface:
                         transaction.query, query_type)
                     query_answer = transaction_query_function(query)
                     if transaction_type == TransactionType.WRITE:
+                        if query_type == 'insert':
+                            query_answer = list(query_answer)
                         transaction.commit()
+
                         if query_type == 'delete' or query_type == 'define':
-                            return True  # delete always return None
+                            return True  # delete and define always return None
+
                         return query_answer
                     elif transaction_type == TransactionType.READ:
                         if query_type == 'get_aggregate':
@@ -556,10 +560,20 @@ class TypeDBInterface:
                 'Error with delete query! Exception retrieved: %s', err)
         return result
 
+    def define_database(self, query: str) -> Literal[True] | None:
+        """Perform define query."""
+        result = None
+        try:
+            result = self.database_query(
+                SessionType.SCHEMA, TransactionType.WRITE, 'define', query)
+        except Exception as err:
+            self.logger.warning('Error with define query! Exception retrieved: %s', err)
+        return result
+
     def fetch_database(
             self,
             query: str,
-            sort_result: Optional[bool] = None) -> list[dict[str, MatchResultDict]]:
+            sort_result: Optional[bool] = None) -> list[dict[str, MatchResultDict]] | None:
         """
         Perform match query.
 
@@ -583,11 +597,10 @@ class TypeDBInterface:
                 result = recursively_sort_dict(result)
         except Exception as err:
             self.logger.warning('Error with match query! Exception retrieved: %s', err)
-            return []
         return result
 
     def fetch_database_unordered(
-            self, query: str) -> list[dict[str, MatchResultDict]]:
+            self, query: str) -> list[dict[str, MatchResultDict]] | None:
         """
         Perform fetch query with unordered result keys.
 
@@ -597,7 +610,7 @@ class TypeDBInterface:
         return self.fetch_database(query, sort_result=False)
 
     def fetch_database_ordered(
-            self, query: str) -> list[dict[str, MatchResultDict]]:
+            self, query: str) -> list[dict[str, MatchResultDict]] | None:
         """
         Perform fetch query with recursively sorted result keys.
 
@@ -1147,7 +1160,7 @@ class TypeDBInterface:
             , has {attr} $attribute;
             fetch $attribute;
         """
-        return self.fetch_database(query)
+        return self.fetch_database(query) or []
 
     def fetch_attribute_from_thing(
             self,
