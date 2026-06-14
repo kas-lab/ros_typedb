@@ -268,6 +268,10 @@ def get_aggregate_query_result_to_ros_msg(
     :return: converted query response.
     """
     response = Query.Response()
+
+    if query_result is None:
+        return response
+
     attr = Attribute()
     attr.value = set_query_result_value(
         query_result,
@@ -279,6 +283,7 @@ def get_aggregate_query_result_to_ros_msg(
     result_tree = ResultTree()
     result_tree.results.append(query_result_ros_msg)
     response.results.append(result_tree)
+    response.success = True
     return response
 
 
