@@ -102,6 +102,28 @@ def test_delete_thing(typedb_interface):
     assert len(result) == 0
 
 
+@pytest.mark.parametrize('key_value, expected_query_value', [
+    ('test@email.test', "'test@email.test'"),
+    (33, '33'),
+    (3.237, '3.237'),
+    (True, 'true'),
+    (datetime.fromisoformat('2026-06-14T12:34:56.789'),
+     '2026-06-14T12:34:56.789'),
+])
+def test_delete_thing_formats_key_value_for_type(key_value, expected_query_value):
+    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
+    queries = []
+
+    def capture_delete(query):
+        queries.append(query)
+        return True
+
+    typedb_interface.delete_from_database = capture_delete
+
+    assert typedb_interface.delete_thing('person', 'email', key_value) is True
+    assert f'has email {expected_query_value};' in queries[0]
+
+
 @pytest.mark.parametrize('attr, attr_value', [
     ('nickname', 't'),
     ('alive', True),
