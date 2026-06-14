@@ -324,6 +324,9 @@ def test_on_cleanup_destroys_ros_entities_and_closes_typedb_driver():
         destroy_service=MagicMock(return_value=True),
         get_logger=MagicMock(return_value=MagicMock()),
         get_name=MagicMock(return_value='ros_typedb'),
+        close_typedb_interface=MagicMock(
+            side_effect=lambda: ROSTypeDBInterface.close_typedb_interface(node)
+        )
     )
 
     result = ROSTypeDBInterface.on_cleanup(node, None)
@@ -333,6 +336,7 @@ def test_on_cleanup_destroys_ros_entities_and_closes_typedb_driver():
     node.destroy_service.assert_any_call(query_service)
     node.destroy_service.assert_any_call(delete_db_service)
     assert node.destroy_service.call_count == 2
+    assert node.close_typedb_interface.call_count == 1
     driver.close.assert_called_once_with()
     assert not hasattr(node, 'event_pub')
     assert not hasattr(node, 'query_service')
