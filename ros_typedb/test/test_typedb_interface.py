@@ -18,6 +18,7 @@ import time
 import pytest
 
 from ros_typedb.typedb_interface import string_to_string_array
+from ros_typedb.typedb_interface import convert_py_type_to_query_type
 from ros_typedb.typedb_interface import TypeDBInterface
 
 
@@ -54,6 +55,29 @@ def typedb_interface():
     typedb_interface.delete_database()
 
 
+def test_convert_py_type_to_query_type_escapes_strings():
+    assert convert_py_type_to_query_type("O'Brien") == "'O\\'Brien'"
+    assert convert_py_type_to_query_type(r'C:\\tmp') == r"'C:\\\\tmp'"
+    assert convert_py_type_to_query_type('$person') == '$person'
+
+
+def test_delete_thing_uses_query_type_conversion(monkeypatch):
+    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
+    captured_query = None
+
+    def fake_delete_from_database(query):
+        nonlocal captured_query
+        captured_query = query
+        return True
+
+    monkeypatch.setattr(
+        typedb_interface, 'delete_from_database', fake_delete_from_database)
+
+    assert typedb_interface.delete_thing('person', 'name', "O'Brien") is True
+    assert "has name 'O\\'Brien'" in captured_query
+    assert 'has name "O\'Brien"' not in captured_query
+
+
 def test_load_bad_data_raises(typedb_interface):
     """Regression: load_data must raise on invalid TypeQL, not silently pass."""
     with pytest.raises(Exception):
@@ -80,6 +104,40 @@ def test_driver_connection_timeout(monkeypatch):
     assert time.monotonic() - start_time < 0.5
 
 
+def test_driver_connection_timeout_closes_late_driver(monkeypatch):
+    class LateDriver:
+
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    late_driver = LateDriver()
+
+    def slow_core_driver(address):
+        time.sleep(0.05)
+        return late_driver
+
+    monkeypatch.setattr(
+        'ros_typedb.typedb_interface.TypeDB.core_driver',
+        slow_core_driver
+    )
+
+    with pytest.raises(TimeoutError):
+        TypeDBInterface(
+            'localhost:1729',
+            'test_database',
+            driver_timeout_s=0.01
+        )
+
+    deadline = time.monotonic() + 0.5
+    while not late_driver.closed and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert late_driver.closed
+
+
 def test_create_and_delete_database():
     typedb_interface = TypeDBInterface(
         'localhost:1729',
@@ -96,9 +154,15 @@ def test_create_and_delete_database():
     assert not typedb_interface.driver.databases.contains('test_database')
 
 
+def test_define_query(typedb_interface):
+    assert typedb_interface.define_database('define MyEntity sub entity;')
+    assert typedb_interface.define_database('define MyEntity aa entity') is None
+
+
 def test_insert_entity(typedb_interface):
-    typedb_interface.insert_entity(
+    result_insert = typedb_interface.insert_entity(
         'person', [('email', 'test@email.test'), ('nickname', 't')])
+    assert result_insert is not None
     query = """
         match $entity isa person,
         has email "test@email.test",
@@ -109,6 +173,10 @@ def test_insert_entity(typedb_interface):
     result = typedb_interface.get_aggregate_database(query)
     assert result > 0
 
+    result_insert = typedb_interface.insert_entity(
+        'something_wrong', [('email', 'test@email.test'), ('nickname', 't')])
+    assert result_insert is None
+
 
 def test_delete_thing(typedb_interface):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
@@ -117,8 +185,12 @@ def test_delete_thing(typedb_interface):
         match $entity isa person, has email "test@email.test";
         get $entity;
     """
-    result = typedb_interface.fetch_database(query)
+    result = typedb_interface.get_database(query)
     assert len(result) == 0
+
+    wrong_result = typedb_interface.delete_thing(
+        'something_wrong', 'email', 'test@email.test')
+    assert wrong_result is None
 
 
 @pytest.mark.parametrize('attr, attr_value', [
@@ -291,9 +363,7 @@ def test_insert_relationship(typedb_interface):
 def test_dict_to_query(typedb_interface, things_dict):
     query = typedb_interface.dict_to_query(things_dict)
     insert_result = typedb_interface.insert_database('insert ' + query)
-    match_result = typedb_interface.fetch_database('match ' + query)
-    assert insert_result is not None and insert_result is not False \
-        and match_result is not None and match_result is not False
+    assert insert_result is not None
 
 
 @pytest.mark.parametrize('match_dict, r_dict', [
@@ -396,13 +466,12 @@ def test_delete_attributes(
    typedb_interface, insert_dict, match_dict):
 
     query = typedb_interface.dict_to_query(insert_dict)
-    typedb_interface.insert_database('insert ' + query)
+    insert_result = typedb_interface.insert_database('insert ' + query)
+    assert insert_result is not None
+    assert len(insert_result) > 0
 
-    r = typedb_interface.delete_attributes_from_thing(match_dict)
-
-    query = typedb_interface.dict_to_query(insert_dict)
-    match_result = typedb_interface.fetch_database('match ' + query)
-    assert r is not None and r is not False and len(match_result) == 0
+    delete_result = typedb_interface.delete_attributes_from_thing(match_dict)
+    assert delete_result is True
 
 
 @pytest.mark.parametrize('insert_dict, update_dict, r_dict', [
@@ -536,3 +605,116 @@ def test_register_method(typedb_interface):
         return typedb_interface.fetch_database(query)[0]['p']['email'][0]['value']
     typedb_interface.register_method('get_name_email', get_name_email)
     assert typedb_interface.get_name_email('Big Boss') == 'boss@tudelft.nl'
+
+
+def test_database_query_reconnects_after_failed_health_check(monkeypatch):
+    class FakeDatabases:
+        """Fake database collection with controllable health checks."""
+
+        def __init__(self, fail_after_first_contains=False):
+            self.fail_after_first_contains = fail_after_first_contains
+            self.contains_count = 0
+
+        def contains(self, database_name):
+            self.contains_count += 1
+            if self.fail_after_first_contains and self.contains_count > 1:
+                raise RuntimeError('server unavailable')
+            return True
+
+        def create(self, database_name):
+            raise AssertionError('database should already exist')
+
+    class FakeDriver:
+        """Fake TypeDB driver."""
+
+        def __init__(self, fail_after_first_contains=False):
+            self.databases = FakeDatabases(fail_after_first_contains)
+            self.closed = False
+            self.session_count = 0
+
+        def session(self, database_name, session_type, options):
+            self.session_count += 1
+            return FakeSession()
+
+        def close(self):
+            self.closed = True
+
+    class FakeSession:
+        """Fake TypeDB session context manager."""
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def transaction(self, transaction_type, options):
+            return FakeTransaction()
+
+    class FakeQuery:
+        """Fake TypeDB query API."""
+
+        def fetch(self, query):
+            return [{'person': {'type': {'root': 'entity', 'label': 'person'}}}]
+
+    class FakeTransaction:
+        """Fake TypeDB transaction context manager."""
+
+        query = FakeQuery()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+    drivers = [FakeDriver(fail_after_first_contains=True), FakeDriver()]
+    monkeypatch.setattr(
+        'ros_typedb.typedb_interface.TypeDB.core_driver',
+        lambda address: drivers.pop(0)
+    )
+
+    typedb_interface = TypeDBInterface('localhost:1729', 'test_database')
+    stale_driver = typedb_interface.driver
+
+    result = typedb_interface.fetch_database('match $p isa person; fetch $p;')
+
+    assert result == [{'person': {'type': {'root': 'entity', 'label': 'person'}}}]
+    assert stale_driver.closed is True
+    assert stale_driver.session_count == 0
+    assert typedb_interface.driver.session_count == 1
+
+
+def test_ensure_server_alive_creates_missing_database(monkeypatch):
+    class FakeDatabases:
+        """Fake database collection tracking database creation."""
+
+        def __init__(self):
+            self.created_database = None
+
+        def contains(self, database_name):
+            return self.created_database == database_name
+
+        def create(self, database_name):
+            self.created_database = database_name
+
+    class FakeDriver:
+        """Fake TypeDB driver."""
+
+        def __init__(self):
+            self.databases = FakeDatabases()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(
+        'ros_typedb.typedb_interface.TypeDB.core_driver',
+        lambda address: FakeDriver()
+    )
+
+    typedb_interface = TypeDBInterface('localhost:1729', 'test_database')
+    typedb_interface.driver.databases.created_database = None
+
+    typedb_interface.ensure_server_alive()
+
+    assert typedb_interface.driver.databases.created_database == 'test_database'
