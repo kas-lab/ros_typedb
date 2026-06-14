@@ -32,6 +32,7 @@ from rclpy.node import Node
 
 from ros_typedb.ros_typedb_interface import convert_attribute_dict_to_ros_msg
 from ros_typedb.ros_typedb_interface import fetch_result_to_ros_result_tree
+from ros_typedb.ros_typedb_interface import ROSTypeDBInterface
 
 from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import IndexList
@@ -116,6 +117,32 @@ def test_node():
         node.destroy_node()
 
 
+class MockTypeDBDriver:
+
+    def __init__(self):
+        self.closed = False
+
+    def close(self):
+        self.closed = True
+
+
+class MockTypeDBInterface:
+
+    def __init__(self):
+        self.driver = MockTypeDBDriver()
+
+
+def test_close_typedb_interface_closes_driver_and_clears_reference():
+    ros_typedb_interface = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    typedb_interface = MockTypeDBInterface()
+    ros_typedb_interface.typedb_interface = typedb_interface
+
+    ros_typedb_interface.close_typedb_interface()
+
+    assert typedb_interface.driver.closed is True
+    assert ros_typedb_interface.typedb_interface is None
+
+
 @launch_pytest.fixture
 def generate_test_description_bad_data():
     path_to_test = Path(__file__).parents[1]
@@ -145,6 +172,29 @@ def test_ros_typedb_configure_bad_data(test_node):
     """Regression: configure must fail when data_path contains invalid TypeQL."""
     configure_res = test_node.change_ros_typedb_state(1)
     assert configure_res.success is False
+
+
+def test_fetch_result_to_ros_result_tree_accepts_more_than_uint8_indices():
+    json_test = {
+        f'attr_{index}': {
+            'value': index,
+            'type': {
+                'label': 'age',
+                'root': 'attribute',
+                'value_type': 'long'}}
+        for index in range(260)
+    }
+
+    result_tree, tree_index = fetch_result_to_ros_result_tree(json_test)
+
+    assert len(result_tree.results) == 260
+    assert tree_index == 260
+    assert result_tree.results[255].result_index == 255
+    assert result_tree.results[256].result_index == 256
+
+    index_list = IndexList()
+    index_list.index = list(range(260))
+    assert index_list.index[256] == 256
 
 
 @pytest.mark.launch(fixture=generate_test_description)
