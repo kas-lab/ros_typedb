@@ -534,7 +534,6 @@ class TypeDBInterface:
                 result = recursively_sort_dict(result)
         except Exception as err:
             self.logger.warning('Error with match query! Exception retrieved: %s', err)
-            return None
         return result
 
     def fetch_database_unordered(

@@ -98,7 +98,7 @@ def test_delete_thing(typedb_interface):
         match $entity isa person, has email "test@email.test";
         get $entity;
     """
-    result = typedb_interface.fetch_database(query)
+    result = typedb_interface.get_database(query)
     assert len(result) == 0
 
 
