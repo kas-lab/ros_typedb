@@ -17,6 +17,8 @@ import time
 
 import pytest
 
+from typedb.driver import SessionType
+
 from ros_typedb.typedb_interface import TypeDBInterface
 
 
@@ -517,3 +519,100 @@ def test_register_method(typedb_interface):
         return typedb_interface.fetch_database(query)[0]['p']['email'][0]['value']
     typedb_interface.register_method('get_name_email', get_name_email)
     assert typedb_interface.get_name_email('Big Boss') == 'boss@tudelft.nl'
+
+
+def test_database_query_reconnects_after_failed_health_check(monkeypatch):
+    class FakeDatabases:
+        def __init__(self, fail_contains=False):
+            self.fail_contains = fail_contains
+
+        def contains(self, database_name):
+            if self.fail_contains:
+                raise RuntimeError('server unavailable')
+            return True
+
+        def create(self, database_name):
+            raise AssertionError('database should already exist')
+
+    class FakeDriver:
+        def __init__(self, fail_contains=False):
+            self.databases = FakeDatabases(fail_contains)
+            self.closed = False
+            self.session_count = 0
+
+        def session(self, database_name, session_type, options):
+            self.session_count += 1
+            return FakeSession()
+
+        def close(self):
+            self.closed = True
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def transaction(self, transaction_type, options):
+            return FakeTransaction()
+
+    class FakeQuery:
+        def fetch(self, query):
+            return [{'person': {'type': {'root': 'entity', 'label': 'person'}}}]
+
+    class FakeTransaction:
+        query = FakeQuery()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+    drivers = [FakeDriver(fail_contains=True), FakeDriver()]
+    monkeypatch.setattr(
+        'ros_typedb.typedb_interface.TypeDB.core_driver',
+        lambda address: drivers.pop(0)
+    )
+
+    typedb_interface = TypeDBInterface('localhost:1729', 'test_database')
+    stale_driver = typedb_interface.driver
+
+    result = typedb_interface.fetch_database('match $p isa person; fetch $p;')
+
+    assert result == [{'person': {'type': {'root': 'entity', 'label': 'person'}}}]
+    assert stale_driver.closed is True
+    assert stale_driver.session_count == 0
+    assert typedb_interface.driver.session_count == 1
+
+
+def test_ensure_server_alive_creates_missing_database(monkeypatch):
+    class FakeDatabases:
+        def __init__(self):
+            self.created_database = None
+
+        def contains(self, database_name):
+            return self.created_database == database_name
+
+        def create(self, database_name):
+            self.created_database = database_name
+
+    class FakeDriver:
+        def __init__(self):
+            self.databases = FakeDatabases()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(
+        'ros_typedb.typedb_interface.TypeDB.core_driver',
+        lambda address: FakeDriver()
+    )
+
+    typedb_interface = TypeDBInterface('localhost:1729', 'test_database')
+    typedb_interface.driver.databases.created_database = None
+
+    typedb_interface.ensure_server_alive()
+
+    assert typedb_interface.driver.databases.created_database == 'test_database'

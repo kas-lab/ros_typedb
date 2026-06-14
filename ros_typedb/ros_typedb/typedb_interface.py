@@ -175,6 +175,8 @@ class TypeDBInterface:
         """
         self.logger = logging.getLogger()
         self._database_query_lock = Lock()
+        self._address = address
+        self._driver_timeout_s = driver_timeout_s
         self._infer = infer
         self._sort_fetch_results = bool(sort_fetch_results)
         self.connect_driver(address, timeout_s=driver_timeout_s)
@@ -302,6 +304,45 @@ class TypeDBInterface:
 
         self.driver.databases.create(database_name)
 
+    def is_server_alive(self) -> bool:
+        """Return True if the current driver can reach the TypeDB server."""
+        try:
+            self.driver.databases.contains(self.database_name)
+            return True
+        except Exception as exc:
+            self.logger.warning(
+                'TypeDB server health check failed. Exception retrieved: %s',
+                exc)
+            return False
+
+    def ensure_database_exists(self) -> None:
+        """Create the configured database if it is missing."""
+        if not self.driver.databases.contains(self.database_name):
+            self.logger.warning(
+                'Database %s was not found; creating it.',
+                self.database_name)
+            self.driver.databases.create(self.database_name)
+
+    def reconnect_driver(self) -> None:
+        """Reconnect the TypeDB driver after a lost server connection."""
+        old_driver = getattr(self, 'driver', None)
+        self.logger.warning('Reconnecting TypeDB driver to %s', self._address)
+        self.connect_driver(self._address, timeout_s=self._driver_timeout_s)
+        if old_driver is not None:
+            try:
+                old_driver.close()
+            except Exception as exc:
+                self.logger.debug(
+                    'Ignoring error while closing stale TypeDB driver: %s', exc)
+        self.ensure_database_exists()
+
+    def ensure_server_alive(self) -> None:
+        """Reconnect the driver if the TypeDB server health check fails."""
+        if not self.is_server_alive():
+            self.reconnect_driver()
+        else:
+            self.ensure_database_exists()
+
     def create_session(
         self,
         database_name: str,
@@ -344,6 +385,7 @@ class TypeDBInterface:
         :return: Query result, type depends on the query_type.
         """
         with self._database_query_lock:
+            self.ensure_server_alive()
             with self.create_session(
                     self.database_name, session_type) as session:
                 options.infer = self._infer
