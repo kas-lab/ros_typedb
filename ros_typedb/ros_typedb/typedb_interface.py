@@ -510,7 +510,7 @@ class TypeDBInterface:
         return delete_data_event_wrapper
     # Events end
 
-    # @insert_data_event_
+    @insert_data_event_
     def insert_database(self, query: str) -> Iterator[ConceptMap] | None:
         """
         Perform insert query.
@@ -543,7 +543,7 @@ class TypeDBInterface:
                 'Error with update query! Exception retrieved: %s', err)
         return result
 
-    # @delete_data_event_
+    @delete_data_event_
     def delete_from_database(self, query: str) -> Literal[True] | None:
         """
         Perform delete query.

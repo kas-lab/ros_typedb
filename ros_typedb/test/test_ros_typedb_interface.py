@@ -222,8 +222,6 @@ def test_ros_typedb_insert_query(test_node, insert_query):
     assert query_res.success is True
 
 
-@pytest.mark.skip(
-    reason='Events deactivated')
 @pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_insert_event(insert_query):
     node = MakeTestNode()
@@ -266,8 +264,6 @@ def test_ros_typedb_delete_query(test_node, insert_query):
     assert match_query_res.results[0].results[0].attribute.value.integer_value == 0
 
 
-@pytest.mark.skip(
-    reason='Events deactivated')
 @pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_delete_event(test_node, insert_query):
     test_node.activate_ros_typedb()
