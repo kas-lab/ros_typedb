@@ -410,9 +410,13 @@ class TypeDBInterface:
                         transaction.query, query_type)
                     query_answer = transaction_query_function(query)
                     if transaction_type == TransactionType.WRITE:
+                        if query_type == 'insert':
+                            query_answer = list(query_answer)
                         transaction.commit()
+
                         if query_type == 'delete' or query_type == 'define':
-                            return True  # delete always return None
+                            return True  # delete and define always return None
+
                         return query_answer
                     elif transaction_type == TransactionType.READ:
                         if query_type == 'get_aggregate':
