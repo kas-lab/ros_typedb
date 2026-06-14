@@ -37,7 +37,7 @@ def typedb_interface():
 
 
 def test_convert_py_type_to_query_type_escapes_strings():
-    assert convert_py_type_to_query_type('O\'Brien') == "'O\\'Brien'"
+    assert convert_py_type_to_query_type("O'Brien") == "'O\\'Brien'"
     assert convert_py_type_to_query_type(r'C:\\tmp') == r"'C:\\\\tmp'"
     assert convert_py_type_to_query_type('$person') == '$person'
 
