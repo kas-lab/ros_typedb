@@ -367,6 +367,15 @@ class ROSTypeDBInterface(Node):
         self.typedb_interface.insert_data_event = self.insert_data_event
         self.typedb_interface.delete_data_event = self.delete_data_event
 
+    def close_typedb_interface(self) -> None:
+        """Close the TypeDB driver if the interface was initialized."""
+        typedb_interface = getattr(self, 'typedb_interface', None)
+        driver = getattr(typedb_interface, 'driver', None)
+        if driver is not None:
+            driver.close()
+        if typedb_interface is not None:
+            self.typedb_interface = None
+
     def publish_data_event(self, event_type: str) -> None:
         """
         Publish message in the `/event` topic.
@@ -449,13 +458,7 @@ class ROSTypeDBInterface(Node):
             self.destroy_publisher(self.event_pub)
             del self.event_pub
 
-        typedb_interface = getattr(self, 'typedb_interface', None)
-        if typedb_interface is not None:
-            driver = getattr(typedb_interface, 'driver', None)
-            if driver is not None:
-                driver.close()
-                del typedb_interface.driver
-            del self.typedb_interface
+        self.close_typedb_interface()
 
         self.get_logger().info(self.get_name() + ' :on_cleanup() is called.')
         return TransitionCallbackReturn.SUCCESS

@@ -248,6 +248,16 @@ def test_ros_typedb_wrong_query(test_node, insert_query):
     assert query_res.success is False
 
 
+def test_close_typedb_interface_closes_driver_and_clears_interface():
+    driver = MagicMock()
+    node = SimpleNamespace(typedb_interface=SimpleNamespace(driver=driver))
+
+    ROSTypeDBInterface.close_typedb_interface(node)
+
+    driver.close.assert_called_once_with()
+    assert node.typedb_interface is None
+
+
 def test_on_cleanup_destroys_ros_entities_and_closes_typedb_driver():
     driver = MagicMock()
     typedb_interface = SimpleNamespace(driver=driver)
@@ -278,8 +288,7 @@ def test_on_cleanup_destroys_ros_entities_and_closes_typedb_driver():
     assert not hasattr(node, 'event_pub')
     assert not hasattr(node, 'query_service')
     assert not hasattr(node, 'delete_db_service')
-    assert not hasattr(node, 'typedb_interface')
-    assert not hasattr(typedb_interface, 'driver')
+    assert node.typedb_interface is None
 
 
 def test_convert_attribute_dict_to_ros_msg():
