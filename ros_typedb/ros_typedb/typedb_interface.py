@@ -257,7 +257,7 @@ class TypeDBInterface:
         def close_late_driver():
             thread.join()
             succeeded, result = result_queue.get()
-            if succeeded:
+            if succeeded and result is not None:
                 result.close()
 
         thread = threading.Thread(target=connect_driver_thread, daemon=True)
