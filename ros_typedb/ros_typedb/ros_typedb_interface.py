@@ -507,12 +507,14 @@ class ROSTypeDBInterface(Node):
             self.get_logger().warning(
                 'Query type {} not recognized'.format(req.query_type))
             response.success = False
+            response.error_message = f'Unknown query type: {req.query_type}'
             return response
 
         query_result = query_func(req.query)
         response = query_result_to_ros_msg(req.query_type, query_result)
         if query_result is None:
             response.success = False
+            response.error_message = self.typedb_interface.last_error
         else:
             response.success = True
         return response
