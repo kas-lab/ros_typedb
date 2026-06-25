@@ -63,8 +63,7 @@ RUN echo 'alias typedb-studio="/opt/typedb-studio/bin/TypeDB\ Studio"' >> ~/.bas
 
 ## Create, install deps, and build ros_typedb workspace
 RUN mkdir -p typedb_ws/src
-WORKDIR $HOME/typedb_ws/src
-RUN git clone https://github.com/kas-lab/ros_typedb.git
+COPY . $HOME/typedb_ws/src/ros_typedb
 WORKDIR $HOME/typedb_ws/
 
 RUN ["/bin/bash", "-c", "source /opt/ros/humble/setup.bash \
@@ -74,7 +73,7 @@ RUN ["/bin/bash", "-c", "source /opt/ros/humble/setup.bash \
     && sudo rm -rf /var/lib/apt/lists/"]
 
 ## There is a bug with the default setuptools and packaging versions
-RUN USER=ubuntu-user python3 -m pip install setuptools==75.8.2  packaging==24.1 empy==3.3.4 pandas==2.0.2 scipy==1.15.2 numpy==1.26.4
+RUN USER=ubuntu-user python3 -m pip install setuptools==75.8.2  packaging==24.1 empy==3.3.4 pandas==2.0.2 scipy==1.15.2 numpy==1.23.5
 RUN ["/bin/bash", "-c", "source /opt/ros/humble/setup.bash \
     && colcon build --symlink-install \
     && echo 'source ~/typedb_ws/install/setup.bash' >> ~/.bashrc"]
