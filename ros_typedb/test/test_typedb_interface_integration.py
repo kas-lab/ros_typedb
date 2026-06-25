@@ -19,14 +19,18 @@ import pytest
 from ros_typedb.typedb_interface import TypeDBInterface
 
 
+SCHEMA_PATH = 'test/typedb_test_data/schema.tql'
+DATA_PATH = 'test/typedb_test_data/data.tql'
+
+
 @pytest.fixture
 def typedb_interface():
     typedb_interface = TypeDBInterface(
         'localhost:1729',
         'test_database',
         force_database=True,
-        schema_path=['test/typedb_test_data/schema.tql'],
-        data_path=['test/typedb_test_data/data.tql'],
+        schema_path=[SCHEMA_PATH],
+        data_path=[DATA_PATH],
         force_data=True,
         sort_fetch_results=True
     )
@@ -47,6 +51,123 @@ def _fetch_relations(typedb_interface):
 def _fetch_attributes(typedb_interface):
     return typedb_interface.get_aggregate_database(
         'match $a isa attribute; get $a; count;')
+
+
+def _count_person_by_email(typedb_interface, email):
+    return typedb_interface.get_aggregate_database(
+        f'match $p isa person, has email "{email}"; get $p; count;')
+
+
+def _delete_database(database_name):
+    typedb_interface = TypeDBInterface('localhost:1729', database_name)
+    try:
+        typedb_interface.delete_database()
+    finally:
+        typedb_interface.driver.close()
+
+
+def test_reload_schema_false_reuses_existing_database():
+    """reload_schema=False skips schema reload while keeping existing data."""
+    database_name = 'test_reload_schema_false_reuses_existing_database'
+    typedb_interface = None
+    reused_interface = None
+    try:
+        typedb_interface = TypeDBInterface(
+            'localhost:1729',
+            database_name,
+            force_database=True,
+            schema_path=[SCHEMA_PATH],
+            data_path=[DATA_PATH],
+            force_data=True,
+        )
+        assert _count_person_by_email(typedb_interface, 'boss@tudelft.nl') == 1
+        typedb_interface.driver.close()
+
+        reused_interface = TypeDBInterface(
+            'localhost:1729',
+            database_name,
+            force_database=False,
+            force_data=False,
+            reload_schema=False,
+            schema_path=[SCHEMA_PATH],
+        )
+
+        assert _count_person_by_email(reused_interface, 'boss@tudelft.nl') == 1
+    finally:
+        if reused_interface is not None:
+            reused_interface.driver.close()
+        elif typedb_interface is not None:
+            typedb_interface.driver.close()
+        _delete_database(database_name)
+
+
+def test_missing_database_is_recreated_from_configured_files():
+    """A missing configured database is recreated with schema and data files."""
+    database_name = 'test_missing_database_recreate_from_files'
+    typedb_interface = None
+    try:
+        typedb_interface = TypeDBInterface(
+            'localhost:1729',
+            database_name,
+            force_database=True,
+            schema_path=[SCHEMA_PATH],
+            data_path=[DATA_PATH],
+            force_data=True,
+        )
+        assert _count_person_by_email(typedb_interface, 'boss@tudelft.nl') == 1
+
+        typedb_interface.delete_database()
+        assert not typedb_interface.driver.databases.contains(database_name)
+
+        assert _count_person_by_email(typedb_interface, 'boss@tudelft.nl') == 1
+        assert _fetch_entities(typedb_interface) > 0
+    finally:
+        if typedb_interface is not None:
+            typedb_interface.delete_database()
+            typedb_interface.driver.close()
+
+
+def test_force_data_refresh_removes_existing_data_before_loading_fixture():
+    """force_data=True clears old data before loading configured data files."""
+    database_name = 'test_force_data_refresh_removes_existing_data'
+    typedb_interface = None
+    refreshed_interface = None
+    try:
+        typedb_interface = TypeDBInterface(
+            'localhost:1729',
+            database_name,
+            force_database=True,
+            schema_path=[SCHEMA_PATH],
+            data_path=[DATA_PATH],
+            force_data=True,
+        )
+        typedb_interface.insert_entity(
+            'person', [('email', 'extra_person@test.test')])
+        assert _count_person_by_email(
+            typedb_interface, 'extra_person@test.test') == 1
+
+        refreshed_interface = TypeDBInterface(
+            'localhost:1729',
+            database_name,
+            force_database=False,
+            force_data=True,
+            reload_schema=False,
+            schema_path=[SCHEMA_PATH],
+            data_path=[DATA_PATH],
+        )
+
+        assert _count_person_by_email(
+            refreshed_interface, 'extra_person@test.test') == 0
+        assert _count_person_by_email(
+            refreshed_interface, 'boss@tudelft.nl') == 1
+    finally:
+        if refreshed_interface is not None:
+            refreshed_interface.delete_database()
+            refreshed_interface.driver.close()
+            typedb_interface.driver.close()
+        elif typedb_interface is not None:
+            typedb_interface.delete_database()
+            typedb_interface.driver.close()
 
 
 def test_delete_all_data_removes_entities_relations_and_attributes(
@@ -98,8 +219,8 @@ def test_create_and_delete_database():
         'localhost:1729',
         'test_database',
         force_database=True,
-        schema_path=['test/typedb_test_data/schema.tql'],
-        data_path=['test/typedb_test_data/data.tql'],
+        schema_path=[SCHEMA_PATH],
+        data_path=[DATA_PATH],
         force_data=True,
     )
 
