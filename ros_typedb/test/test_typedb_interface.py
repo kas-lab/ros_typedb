@@ -450,6 +450,77 @@ def test_raw_wrapper_catches_timeout_error_and_sets_last_error(
     assert 'timed out' in tdb.last_error.lower()
 
 
+def test_ensure_database_exists_recreates_from_configured_paths(monkeypatch):
+    """Missing database is recreated with configured schema and data files."""
+    class FakeDatabases:
+
+        def __init__(self):
+            self.exists = False
+            self.created = []
+
+        def contains(self, name):
+            return self.exists
+
+        def create(self, name):
+            self.created.append(name)
+            self.exists = True
+
+    fake_databases = FakeDatabases()
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb.database_name = 'test_database'
+    tdb.driver = type('FakeDriver', (), {'databases': fake_databases})()
+    tdb.logger = logging.getLogger()
+    tdb._schema_paths = ['schema.tql']
+    tdb._data_paths = ['data.tql']
+    loaded = []
+
+    monkeypatch.setattr(
+        tdb,
+        '_load_schema_unlocked',
+        lambda path: loaded.append(('schema', path)))
+    monkeypatch.setattr(
+        tdb,
+        '_load_data_unlocked',
+        lambda path: loaded.append(('data', path)))
+    monkeypatch.setattr(
+        tdb,
+        'database_query',
+        lambda *args, **kwargs: pytest.fail(
+            'ensure_database_exists must not call database_query'))
+
+    tdb.ensure_database_exists()
+
+    assert fake_databases.created == ['test_database']
+    assert loaded == [('schema', 'schema.tql'), ('data', 'data.tql')]
+
+
+def test_ensure_database_exists_refuses_empty_recreate():
+    """Missing database without init files must fail instead of going blank."""
+    class FakeDatabases:
+
+        def __init__(self):
+            self.created = []
+
+        def contains(self, name):
+            return False
+
+        def create(self, name):
+            self.created.append(name)
+
+    fake_databases = FakeDatabases()
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb.database_name = 'test_database'
+    tdb.driver = type('FakeDriver', (), {'databases': fake_databases})()
+    tdb.logger = logging.getLogger()
+    tdb._schema_paths = []
+    tdb._data_paths = []
+
+    with pytest.raises(RuntimeError, match='cannot be recreated'):
+        tdb.ensure_database_exists()
+
+    assert fake_databases.created == []
+
+
 @pytest.fixture
 def typedb_interface():
     typedb_interface = TypeDBInterface(
@@ -1119,7 +1190,7 @@ def test_database_query_reconnects_after_failed_health_check(monkeypatch):
     assert typedb_interface.driver.session_count == 1
 
 
-def test_ensure_server_alive_creates_missing_database(monkeypatch):
+def test_ensure_server_alive_refuses_empty_recreate(monkeypatch):
     class FakeDatabases:
         """Fake database collection tracking database creation."""
 
@@ -1149,6 +1220,7 @@ def test_ensure_server_alive_creates_missing_database(monkeypatch):
     typedb_interface = TypeDBInterface('localhost:1729', 'test_database')
     typedb_interface.driver.databases.created_database = None
 
-    typedb_interface.ensure_server_alive()
+    with pytest.raises(RuntimeError, match='cannot be recreated'):
+        typedb_interface.ensure_server_alive()
 
-    assert typedb_interface.driver.databases.created_database == 'test_database'
+    assert typedb_interface.driver.databases.created_database is None

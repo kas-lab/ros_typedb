@@ -121,6 +121,20 @@ def string_to_string_array(string: str) -> list[str]:
     return [string]
 
 
+def normalize_path_list(paths: Optional[list[str] | str]) -> list[str]:
+    """
+    Normalize optional path input to a list of non-empty paths.
+
+    :param paths: path, path list, or None.
+    :return: normalized list of paths.
+    """
+    if isinstance(paths, str):
+        paths = string_to_string_array(paths)
+    if isinstance(paths, list):
+        return [path for path in paths if path != '']
+    return []
+
+
 def recursively_sort_dict(obj):
     """
     Recursively sort dict keys (and nested dicts) in a dict or list.
@@ -209,20 +223,16 @@ class TypeDBInterface:
             else None)
         self._infer = infer
         self._sort_fetch_results = bool(sort_fetch_results)
+        self._schema_paths = normalize_path_list(schema_path)
+        self._data_paths = normalize_path_list(data_path)
         self.connect_driver(address, timeout_s=driver_timeout_s)
         self.create_database(database_name, force=force_database)
-        if isinstance(schema_path, str):
-            schema_path = string_to_string_array(schema_path)
-        if isinstance(schema_path, list):
-            for path in schema_path:
-                self.load_schema(path)
+        for path in self._schema_paths:
+            self.load_schema(path)
         if force_data:
             self.delete_all_data()
-        if isinstance(data_path, str):
-            data_path = string_to_string_array(data_path)
-        if isinstance(data_path, list):
-            for path in data_path:
-                self.load_data(path)
+        for path in self._data_paths:
+            self.load_data(path)
 
     def __del__(self):
         try:
@@ -321,12 +331,34 @@ class TypeDBInterface:
             return False
 
     def ensure_database_exists(self) -> None:
-        """Create the configured database if it is missing."""
-        if not self.driver.databases.contains(self.database_name):
-            self.logger.warning(
-                'Database %s was not found; creating it.',
-                self.database_name)
-            self.driver.databases.create(self.database_name)
+        """Recreate and initialize the configured database if it is missing."""
+        if self.driver.databases.contains(self.database_name):
+            return
+
+        if not self._schema_paths and not self._data_paths:
+            raise RuntimeError(
+                'Database {} is missing and cannot be recreated because no '
+                'schema or data paths are configured.'.format(
+                    self.database_name))
+
+        self.logger.warning(
+            'Database %s was not found; recreating it from configured files.',
+            self.database_name)
+        self.driver.databases.create(self.database_name)
+        try:
+            for path in self._schema_paths:
+                self._load_schema_unlocked(path)
+            for path in self._data_paths:
+                self._load_data_unlocked(path)
+        except Exception:
+            try:
+                self.delete_database()
+            except Exception as exc:
+                self.logger.warning(
+                    'Failed to remove partially initialized database %s: %s',
+                    self.database_name,
+                    exc)
+            raise
 
     def reconnect_driver(self) -> None:
         """Reconnect the TypeDB driver after a lost server connection."""
@@ -395,6 +427,64 @@ class TypeDBInterface:
         """
         return self.driver.session(database_name, session_type, options)
 
+    def _database_query_unlocked(
+            self,
+            session_type: SessionType,
+            transaction_type: TransactionType,
+            query_type: Literal[
+                'define', 'insert', 'delete', 'fetch', 'get',
+                'get_aggregate', 'update'],
+            query: str,
+            options: TypeDBOptions,
+            effective_timeout: Optional[float] = None
+        ) -> Literal[True] | Iterator[ConceptMap] | \
+            list[dict[str, MatchResultDict]] | None | int | float:
+        """
+        Query database without acquiring the database query lock.
+
+        Callers must hold _database_query_lock and must have already ensured
+        the database exists.
+
+        :param session_type: TypeDB session type.
+        :param transaction_type: TypeDB transaction type.
+        :param query_type: TypeDB query type.
+        :param query: Query to be performed.
+        :param options: TypeDB options (modified in-place).
+        :param effective_timeout: resolved timeout in seconds; sets
+            transaction_timeout_millis when positive.
+        :return: Query result, type depends on the query_type.
+        """
+        with self.create_session(
+                self.database_name, session_type) as session:
+            if effective_timeout and effective_timeout > 0:
+                options.transaction_timeout_millis = int(
+                    effective_timeout * 1000)
+            options.infer = self._infer
+            options.parallel = True
+            with session.transaction(
+                    transaction_type, options) as transaction:
+                transaction_query_function = getattr(
+                    transaction.query, query_type)
+                query_answer = transaction_query_function(query)
+                if transaction_type == TransactionType.WRITE:
+                    if query_type == 'insert':
+                        query_answer = list(query_answer)
+                    transaction.commit()
+
+                    if query_type == 'delete' or query_type == 'define':
+                        return True  # delete and define always return None
+
+                    return query_answer
+                elif transaction_type == TransactionType.READ:
+                    if query_type == 'get_aggregate':
+                        answer = query_answer.resolve()
+                        if answer.is_long():
+                            return answer.as_long()
+                        if answer.is_float():
+                            return answer.as_float()
+                        return None
+                    return list(query_answer)
+
     # Read/write database
     # Generic query method
     def _database_query_impl(
@@ -412,8 +502,8 @@ class TypeDBInterface:
         """
         Query database (internal implementation).
 
-        Acquires _database_query_lock and performs the full session/transaction
-        lifecycle; called by database_query() which adds the deadline wrapper.
+        Acquires _database_query_lock, checks server/database health, and
+        performs the session/transaction lifecycle.
 
         :param session_type: TypeDB session type.
         :param transaction_type: TypeDB transaction type.
@@ -426,36 +516,13 @@ class TypeDBInterface:
         """
         with self._database_query_lock:
             self.ensure_server_alive()
-            with self.create_session(
-                    self.database_name, session_type) as session:
-                if effective_timeout and effective_timeout > 0:
-                    options.transaction_timeout_millis = int(
-                        effective_timeout * 1000)
-                options.infer = self._infer
-                options.parallel = True
-                with session.transaction(
-                        transaction_type, options) as transaction:
-                    transaction_query_function = getattr(
-                        transaction.query, query_type)
-                    query_answer = transaction_query_function(query)
-                    if transaction_type == TransactionType.WRITE:
-                        if query_type == 'insert':
-                            query_answer = list(query_answer)
-                        transaction.commit()
-
-                        if query_type == 'delete' or query_type == 'define':
-                            return True  # delete and define always return None
-
-                        return query_answer
-                    elif transaction_type == TransactionType.READ:
-                        if query_type == 'get_aggregate':
-                            answer = query_answer.resolve()
-                            if answer.is_long():
-                                return answer.as_long()
-                            if answer.is_float():
-                                return answer.as_float()
-                            return None
-                        return list(query_answer)
+            return self._database_query_unlocked(
+                session_type,
+                transaction_type,
+                query_type,
+                query,
+                options,
+                effective_timeout)
 
     def database_query(
             self,
@@ -554,6 +621,42 @@ class TypeDBInterface:
         self.database_query(
             session_type, TransactionType.WRITE, query_type, query)
 
+    def _write_database_file_unlocked(
+            self,
+            session_type: SessionType,
+            query_type: Literal['define', 'insert'],
+            file_path: str) -> None:
+        """
+        Write a .tql file while the caller already holds the query lock.
+
+        :param session_type: session type, e.g., schema or data.
+        :param query_type: query type, e.g., 'define' or 'insert'.
+        :param file_path: .tql file path.
+        """
+        with open(file_path, mode='r') as file:
+            query = file.read()
+
+        self._database_query_unlocked(
+            session_type,
+            TransactionType.WRITE,
+            query_type,
+            query,
+            TypeDBOptions(),
+            self._query_timeout_s)
+
+    def _load_schema_unlocked(self, schema_path: str) -> None:
+        """
+        Load a schema file while the caller already holds the query lock.
+
+        :param schema_path: .tql file path.
+        """
+        if schema_path is not None and schema_path != '':
+            return self._write_database_file_unlocked(
+                SessionType.SCHEMA,
+                'define',
+                schema_path
+            )
+
     def load_schema(self, schema_path: str) -> None:
         """
         Load .tql schema file to database.
@@ -585,6 +688,19 @@ class TypeDBInterface:
         """
         if data_path is not None and data_path != '':
             self.write_database_file(
+                SessionType.DATA,
+                'insert',
+                data_path
+            )
+
+    def _load_data_unlocked(self, data_path: str) -> None:
+        """
+        Load a data file while the caller already holds the query lock.
+
+        :param data_path: .tql file path.
+        """
+        if data_path is not None and data_path != '':
+            self._write_database_file_unlocked(
                 SessionType.DATA,
                 'insert',
                 data_path
