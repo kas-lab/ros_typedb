@@ -679,12 +679,16 @@ class TypeDBInterface:
 
     def delete_all_data(self) -> None:
         """Delete all data from database."""
-        self.delete_from_database(
-            'match $e isa entity; delete $e isa entity;')
-        self.delete_from_database(
-            'match $r isa relation; delete $r isa relation;')
-        self.delete_from_database(
-            'match $a isa attribute; delete $a isa attribute;')
+        delete_queries = [
+            'match $e isa entity; delete $e isa entity;',
+            'match $r isa relation; delete $r isa relation;',
+            'match $a isa attribute; delete $a isa attribute;',
+        ]
+        for query in delete_queries:
+            if self.delete_from_database(query) is None:
+                raise RuntimeError(
+                    'Failed to delete all TypeDB data: {}'.format(
+                        self.last_error))
 
     def load_data(self, data_path: str, force: bool = False) -> None:
         """

@@ -588,6 +588,78 @@ def typedb_interface():
     typedb_interface.delete_database()
 
 
+def _fetch_entities(typedb_interface):
+    return typedb_interface.get_aggregate_database(
+        'match $e isa entity; get $e; count;')
+
+
+def _fetch_relations(typedb_interface):
+    return typedb_interface.get_aggregate_database(
+        'match $r isa relation; get $r; count;')
+
+
+def _fetch_attributes(typedb_interface):
+    return typedb_interface.get_aggregate_database(
+        'match $a isa attribute; get $a; count;')
+
+
+def test_delete_all_data_removes_entities_relations_and_attributes(
+        typedb_interface):
+    """delete_all_data removes all live fixture data."""
+    assert _fetch_entities(typedb_interface)
+    assert _fetch_relations(typedb_interface)
+    assert _fetch_attributes(typedb_interface)
+
+    typedb_interface.delete_all_data()
+
+    assert _fetch_entities(typedb_interface) == 0
+    assert _fetch_relations(typedb_interface) == 0
+    assert _fetch_attributes(typedb_interface) == 0
+
+
+def test_delete_all_data_raises_when_delete_step_fails(monkeypatch):
+    """delete_all_data stops instead of loading data over residual data."""
+    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
+    typedb_interface.last_error = 'delete failed'
+    queries = []
+
+    def fake_delete_from_database(query):
+        queries.append(query)
+        return None
+
+    monkeypatch.setattr(
+        typedb_interface, 'delete_from_database', fake_delete_from_database)
+
+    with pytest.raises(RuntimeError, match='delete failed'):
+        typedb_interface.delete_all_data()
+
+    assert queries == ['match $e isa entity; delete $e isa entity;']
+
+
+def test_delete_entities_before_relations_leaves_no_residual_data(
+        typedb_interface):
+    """Document TypeDB behavior for the current delete_all_data order."""
+    assert _fetch_relations(typedb_interface)
+
+    typedb_interface.delete_from_database(
+        'match $e isa entity; delete $e isa entity;')
+    after_entity_delete_error = typedb_interface.last_error
+    entities_after_entity_delete = _fetch_entities(typedb_interface)
+    relations_after_entity_delete = _fetch_relations(typedb_interface)
+
+    typedb_interface.delete_from_database(
+        'match $r isa relation; delete $r isa relation;')
+    typedb_interface.delete_from_database(
+        'match $a isa attribute; delete $a isa attribute;')
+
+    assert after_entity_delete_error == ''
+    assert entities_after_entity_delete == 0
+    assert relations_after_entity_delete == 0
+    assert _fetch_entities(typedb_interface) == 0
+    assert _fetch_relations(typedb_interface) == 0
+    assert _fetch_attributes(typedb_interface) == 0
+
+
 def test_convert_py_type_to_query_type_escapes_strings():
     assert convert_py_type_to_query_type("O'Brien") == "'O\\'Brien'"
     assert convert_py_type_to_query_type(r'C:\\tmp') == r"'C:\\\\tmp'"
