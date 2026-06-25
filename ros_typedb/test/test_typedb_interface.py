@@ -521,6 +521,58 @@ def test_ensure_database_exists_refuses_empty_recreate():
     assert fake_databases.created == []
 
 
+def test_init_skips_schema_reload_when_database_is_reused(monkeypatch):
+    """reload_schema=False skips define queries for an existing database."""
+    loaded_schema_paths = []
+
+    monkeypatch.setattr(
+        TypeDBInterface, 'connect_driver', lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(
+        TypeDBInterface, 'create_database',
+        lambda self, *args, **kwargs: False)
+    monkeypatch.setattr(
+        TypeDBInterface, 'load_schema',
+        lambda self, path: loaded_schema_paths.append(path))
+    monkeypatch.setattr(
+        TypeDBInterface, 'delete_all_data', lambda self: None)
+    monkeypatch.setattr(
+        TypeDBInterface, 'load_data', lambda self, path: None)
+
+    TypeDBInterface(
+        'localhost:1729',
+        'test_database',
+        schema_path=['schema.tql'],
+        reload_schema=False)
+
+    assert loaded_schema_paths == []
+
+
+def test_init_loads_schema_for_new_database_when_reload_disabled(monkeypatch):
+    """Fresh databases still get schema even when reload_schema=False."""
+    loaded_schema_paths = []
+
+    monkeypatch.setattr(
+        TypeDBInterface, 'connect_driver', lambda self, *args, **kwargs: None)
+    monkeypatch.setattr(
+        TypeDBInterface, 'create_database',
+        lambda self, *args, **kwargs: True)
+    monkeypatch.setattr(
+        TypeDBInterface, 'load_schema',
+        lambda self, path: loaded_schema_paths.append(path))
+    monkeypatch.setattr(
+        TypeDBInterface, 'delete_all_data', lambda self: None)
+    monkeypatch.setattr(
+        TypeDBInterface, 'load_data', lambda self, path: None)
+
+    TypeDBInterface(
+        'localhost:1729',
+        'test_database',
+        schema_path=['schema.tql'],
+        reload_schema=False)
+
+    assert loaded_schema_paths == ['schema.tql']
+
+
 @pytest.fixture
 def typedb_interface():
     typedb_interface = TypeDBInterface(

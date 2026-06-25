@@ -103,6 +103,27 @@ def test_init_typedb_interface_accepts_query_timeout_s():
     assert captured.get('query_timeout_s') == 15.0
 
 
+def test_init_typedb_interface_accepts_reload_schema():
+    """init_typedb_interface passes reload_schema to TypeDBInterface."""
+    captured = {}
+
+    class FakeTypeDBInterface:
+
+        def __init__(self, *args, **kwargs):
+            captured.update(kwargs)
+            self.insert_data_event = None
+            self.delete_data_event = None
+
+    node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    node.typedb_interface_class = FakeTypeDBInterface
+    node.init_typedb_interface(
+        address='localhost:1729',
+        database_name='test',
+        reload_schema=False)
+
+    assert captured.get('reload_schema') is False
+
+
 def test_query_service_cb_passes_timeout_to_wrapper():
     """query_service_cb extracts req.timeout_s and passes it as timeout= to the wrapper."""
     captured = {}

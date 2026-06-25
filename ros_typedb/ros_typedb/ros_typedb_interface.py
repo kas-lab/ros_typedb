@@ -318,6 +318,7 @@ class ROSTypeDBInterface(Node):
         self.declare_parameter('database_name', 'ros_typedb')
         self.declare_parameter('force_database', True)
         self.declare_parameter('force_data', True)
+        self.declare_parameter('reload_schema', True)
         self.declare_parameter('infer', True)
         self.declare_parameter('driver_timeout_s', 10.0)
         self.declare_parameter('query_timeout_s', 0.0)
@@ -340,6 +341,7 @@ class ROSTypeDBInterface(Node):
             data_path: Optional[list[str] | str] = None,
             force_database: Optional[bool] = False,
             force_data: Optional[bool] = False,
+            reload_schema: Optional[bool] = True,
             infer: Optional[bool] = False,
             sort_fetch_results: Optional[bool] = False,
             driver_timeout_s: Optional[float] = 10.0,
@@ -353,6 +355,8 @@ class ROSTypeDBInterface(Node):
         :param data_path: list with paths to data files (.tql).
         :param force_database: if database should override an existing database
         :param force_data: if the database data should be overriden.
+        :param reload_schema: if schema files should be reapplied when the
+            database already exists.
         :param infer: if inference engine should be used.
         :param sort_fetch_results: if fetch query results should be
             recursively sorted.
@@ -371,7 +375,8 @@ class ROSTypeDBInterface(Node):
             infer,
             sort_fetch_results,
             driver_timeout_s,
-            query_timeout_s=query_timeout_s
+            query_timeout_s=query_timeout_s,
+            reload_schema=reload_schema
         )
 
         self.typedb_interface.insert_data_event = self.insert_data_event
@@ -420,6 +425,7 @@ class ROSTypeDBInterface(Node):
                 data_path=self.get_parameter('data_path').value,
                 force_database=self.get_parameter('force_database').value,
                 force_data=self.get_parameter('force_data').value,
+                reload_schema=self.get_parameter('reload_schema').value,
                 infer=self.get_parameter('infer').value,
                 sort_fetch_results=(
                     self.get_parameter('sort_fetch_results').value),

@@ -190,7 +190,8 @@ class TypeDBInterface:
             infer: Optional[bool] = False,
             sort_fetch_results: Optional[bool] = False,
             driver_timeout_s: Optional[float] = 10.0,
-            query_timeout_s: Optional[float] = None) -> None:
+            query_timeout_s: Optional[float] = None,
+            reload_schema: Optional[bool] = True) -> None:
         """
         Connect to a typeDB server and interacts with it.
 
@@ -212,6 +213,8 @@ class TypeDBInterface:
             Set to None or a non-positive value to wait without a timeout.
         :param query_timeout_s: default per-query timeout in seconds.
             Set to None or a non-positive value to wait without a timeout.
+        :param reload_schema: if schema files should be reapplied when the
+            database already exists.
         """
         self.logger = logging.getLogger()
         self._database_query_lock = Lock()
@@ -226,9 +229,11 @@ class TypeDBInterface:
         self._schema_paths = normalize_path_list(schema_path)
         self._data_paths = normalize_path_list(data_path)
         self.connect_driver(address, timeout_s=driver_timeout_s)
-        self.create_database(database_name, force=force_database)
-        for path in self._schema_paths:
-            self.load_schema(path)
+        database_created = self.create_database(
+            database_name, force=force_database)
+        if reload_schema or database_created:
+            for path in self._schema_paths:
+                self.load_schema(path)
         if force_data:
             self.delete_all_data()
         for path in self._data_paths:
@@ -392,12 +397,13 @@ class TypeDBInterface:
             self.driver.databases.get(database_name).delete()
 
     def create_database(
-            self, database_name: str, force: Optional[bool] = False) -> None:
+            self, database_name: str, force: Optional[bool] = False) -> bool:
         """
         Create database.
 
         :param database_name: database name.
         :param force: if database should override an existing database
+        :return: True if a database was created.
         """
         if force:
             self.delete_database(database_name)
@@ -408,9 +414,10 @@ class TypeDBInterface:
                 'The database with the name %s already exists. '
                 'Ignoring create_database request.',
                 database_name)
-            return
+            return False
 
         self.driver.databases.create(database_name)
+        return True
 
     def create_session(
         self,
