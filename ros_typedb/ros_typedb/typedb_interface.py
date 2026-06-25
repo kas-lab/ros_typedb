@@ -357,14 +357,14 @@ class TypeDBInterface:
     def reconnect_driver(self) -> None:
         """Reconnect the TypeDB driver after a lost server connection."""
         old_driver = getattr(self, 'driver', None)
-        self.logger.warning('Reconnecting TypeDB driver to %s', self._address)
-        self.connect_driver(self._address, timeout_s=self._driver_timeout_s)
         if old_driver is not None:
             try:
                 old_driver.close()
             except Exception as exc:
                 self.logger.debug(
                     'Ignoring error while closing stale TypeDB driver: %s', exc)
+        self.logger.warning('Reconnecting TypeDB driver to %s', self._address)
+        self.connect_driver(self._address, timeout_s=self._driver_timeout_s)
         self.ensure_database_exists()
 
     def ensure_server_alive(self) -> None:
