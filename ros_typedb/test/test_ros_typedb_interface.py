@@ -75,6 +75,84 @@ def insert_query():
     return query_req
 
 
+def test_query_srv_has_timeout_s_field():
+    """Query.Request must have a timeout_s field defaulting to 0.0."""
+    req = Query.Request()
+    assert hasattr(req, 'timeout_s')
+    assert req.timeout_s == 0.0
+
+
+def test_init_typedb_interface_accepts_query_timeout_s():
+    """init_typedb_interface passes query_timeout_s to TypeDBInterface constructor."""
+    captured = {}
+
+    class FakeTypeDBInterface:
+
+        def __init__(self, *args, **kwargs):
+            captured.update(kwargs)
+            self.insert_data_event = None
+            self.delete_data_event = None
+
+    node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    node.typedb_interface_class = FakeTypeDBInterface
+    node.init_typedb_interface(
+        address='localhost:1729',
+        database_name='test',
+        query_timeout_s=15.0)
+
+    assert captured.get('query_timeout_s') == 15.0
+
+
+def test_query_service_cb_passes_timeout_to_wrapper():
+    """query_service_cb extracts req.timeout_s and passes it as timeout= to the wrapper."""
+    captured = {}
+
+    class FakeTypeDBInterface:
+        last_error = ''
+
+        def fetch_database(self, query, timeout=None):
+            captured['timeout'] = timeout
+            return []
+
+    node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    node.typedb_interface = FakeTypeDBInterface()
+
+    req = Query.Request()
+    req.query_type = Query.Request.FETCH
+    req.query = 'match $x isa thing; fetch $x;'
+    req.timeout_s = 5.0
+
+    response = Query.Response()
+    node.query_service_cb(req, response)
+
+    assert captured.get('timeout') == 5.0
+
+
+def test_query_service_cb_passes_none_when_timeout_s_is_zero():
+    """query_service_cb converts timeout_s=0.0 to timeout=None (use node default)."""
+    captured = {}
+
+    class FakeTypeDBInterface:
+        last_error = ''
+
+        def fetch_database(self, query, timeout=None):
+            captured['timeout'] = timeout
+            return []
+
+    node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    node.typedb_interface = FakeTypeDBInterface()
+
+    req = Query.Request()
+    req.query_type = Query.Request.FETCH
+    req.query = 'match $x isa thing; fetch $x;'
+    req.timeout_s = 0.0
+
+    response = Query.Response()
+    node.query_service_cb(req, response)
+
+    assert captured.get('timeout') is None
+
+
 @launch_pytest.fixture
 def generate_test_description():
     path_to_test = Path(__file__).parents[1]

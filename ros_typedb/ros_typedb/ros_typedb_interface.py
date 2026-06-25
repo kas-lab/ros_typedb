@@ -320,6 +320,7 @@ class ROSTypeDBInterface(Node):
         self.declare_parameter('force_data', True)
         self.declare_parameter('infer', True)
         self.declare_parameter('driver_timeout_s', 10.0)
+        self.declare_parameter('query_timeout_s', 0.0)
 
         self.default_schema_path = ''
         self.declare_parameter('schema_path', [''])
@@ -341,7 +342,8 @@ class ROSTypeDBInterface(Node):
             force_data: Optional[bool] = False,
             infer: Optional[bool] = False,
             sort_fetch_results: Optional[bool] = False,
-            driver_timeout_s: Optional[float] = 10.0) -> None:
+            driver_timeout_s: Optional[float] = 10.0,
+            query_timeout_s: Optional[float] = None) -> None:
         """
         Initialize self.typedb_interface.
 
@@ -356,6 +358,8 @@ class ROSTypeDBInterface(Node):
             recursively sorted.
         :param driver_timeout_s: seconds to wait for driver connection before
             timing out.
+        :param query_timeout_s: default per-query timeout in seconds.
+            None means no limit.
         """
         self.typedb_interface = self.typedb_interface_class(
             address,
@@ -366,7 +370,8 @@ class ROSTypeDBInterface(Node):
             force_data,
             infer,
             sort_fetch_results,
-            driver_timeout_s
+            driver_timeout_s,
+            query_timeout_s=query_timeout_s
         )
 
         self.typedb_interface.insert_data_event = self.insert_data_event
@@ -418,7 +423,9 @@ class ROSTypeDBInterface(Node):
                 infer=self.get_parameter('infer').value,
                 sort_fetch_results=(
                     self.get_parameter('sort_fetch_results').value),
-                driver_timeout_s=self.get_parameter('driver_timeout_s').value
+                driver_timeout_s=self.get_parameter('driver_timeout_s').value,
+                query_timeout_s=(
+                    self.get_parameter('query_timeout_s').value or None)
             )
 
             self.event_pub = self.create_lifecycle_publisher(
@@ -510,7 +517,8 @@ class ROSTypeDBInterface(Node):
             response.error_message = f'Unknown query type: {req.query_type}'
             return response
 
-        query_result = query_func(req.query)
+        per_call_timeout = req.timeout_s if req.timeout_s > 0 else None
+        query_result = query_func(req.query, timeout=per_call_timeout)
         response = query_result_to_ros_msg(req.query_type, query_result)
         if query_result is None:
             response.success = False

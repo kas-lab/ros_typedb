@@ -9,6 +9,7 @@ uint8 UPDATE=6
 
 uint8 query_type
 string query
+float64 timeout_s
 ---
 bool success
 string error_message

@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from datetime import datetime
+import logging
+import threading
+from threading import Lock
 import time
 
 import pytest
@@ -20,6 +23,353 @@ import pytest
 from ros_typedb.typedb_interface import convert_py_type_to_query_type
 from ros_typedb.typedb_interface import string_to_string_array
 from ros_typedb.typedb_interface import TypeDBInterface
+
+from typedb.driver import SessionType
+from typedb.driver import TransactionType
+
+
+# ---------------------------------------------------------------------------
+# Helpers shared by timeout tests
+# ---------------------------------------------------------------------------
+
+def _make_hung_tdb(query_timeout_s):
+    """
+    Fake TypeDBInterface (no __init__) with an unresponsive server.
+
+    FakeDriver.close() unblocks the hung session so the daemon thread can exit.
+    _query_timeout_s is set so the FIXED code can apply its timeout; the
+    current (unfixed) database_query ignores the attribute and hangs forever.
+    """
+    blocked = threading.Event()
+
+    class HungTransaction:
+
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+
+        class query:
+
+            @staticmethod
+            def fetch(q):
+                blocked.wait(timeout=10)
+                return []
+
+        def commit(self): pass
+
+    class HungSession:
+
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def transaction(self, *args, **kwargs): return HungTransaction()
+
+    class FakeDriver:
+
+        class databases:
+
+            @staticmethod
+            def contains(name): return True
+
+        def session(self, *args, **kwargs): return HungSession()
+        def close(self): blocked.set()
+
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb._database_query_lock = Lock()
+    tdb._infer = False
+    tdb._sort_fetch_results = False
+    tdb.database_name = 'test_database'
+    tdb.last_error = ''
+    tdb._address = 'localhost:1729'
+    tdb._driver_timeout_s = 10.0
+    tdb.logger = logging.getLogger()
+    tdb.driver = FakeDriver()
+    tdb._query_timeout_s = query_timeout_s
+    return tdb
+
+
+def _call_in_thread(fn, wall_clock_s=1.5):
+    """
+    Run fn() in a daemon thread, returning (thread, exc_box).
+
+    Joins for wall_clock_s.  Caller checks thread.is_alive() to detect a hang.
+    """
+    exc_box = [None]
+
+    def run():
+        try:
+            fn()
+        except Exception as e:  # noqa: B902
+            exc_box[0] = e
+
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    t.join(timeout=wall_clock_s)
+    return t, exc_box
+
+
+def test_database_query_raises_timeout_error_on_stalled_server():
+    """
+    database_query raises TimeoutError when the server stops responding.
+
+    When _query_timeout_s is set and the TypeDB server stalls mid-query,
+    database_query must raise TimeoutError within the deadline instead of
+    blocking the caller indefinitely.
+    """
+    tdb = _make_hung_tdb(query_timeout_s=0.05)
+
+    thread, exc_box = _call_in_thread(
+        lambda: tdb.database_query(
+            SessionType.DATA, TransactionType.READ, 'fetch',
+            'match $x isa thing; fetch $x;'),
+        wall_clock_s=1.5)
+
+    if thread.is_alive():
+        pytest.fail(
+            'database_query blocked for 1.5 s on a stalled server — '
+            'timeout mechanism is not working; _query_timeout_s was 0.05 s.')
+
+    assert isinstance(exc_box[0], TimeoutError), (
+        f'Expected TimeoutError, got {exc_box[0]!r}')
+
+
+def test_database_query_releases_lock_after_timeout_on_stalled_server():
+    """
+    Lock is released after timeout so subsequent callers are not blocked.
+
+    When a query times out because the server stopped responding, closing the
+    stale driver must unblock the worker thread so it can exit the lock
+    context. If the lock is never released, all subsequent database_query
+    calls pile up indefinitely.
+    """
+    tdb = _make_hung_tdb(query_timeout_s=0.05)
+
+    thread, _ = _call_in_thread(
+        lambda: tdb.database_query(
+            SessionType.DATA, TransactionType.READ, 'fetch',
+            'match $x isa thing; fetch $x;'),
+        wall_clock_s=1.5)
+
+    if thread.is_alive():
+        pytest.fail(
+            'database_query blocked for 1.5 s on a stalled server — '
+            'cannot verify lock release because the call never returned.')
+
+    acquired = tdb._database_query_lock.acquire(timeout=2.0)
+    assert acquired, (
+        '_database_query_lock not released after TimeoutError; '
+        'subsequent callers would block indefinitely.')
+    tdb._database_query_lock.release()
+
+
+def test_fetch_database_returns_none_on_stalled_server():
+    """
+    fetch_database returns None and sets last_error when the server stalls.
+
+    fetch_database wraps database_query and must catch TimeoutError, populate
+    last_error, and return None — it must not propagate the exception or block.
+    """
+    tdb = _make_hung_tdb(query_timeout_s=0.05)
+
+    result_box = [None]
+    thread, exc_box = _call_in_thread(
+        lambda: result_box.__setitem__(0, tdb.fetch_database(
+            'match $x isa thing; fetch $x;')),
+        wall_clock_s=1.5)
+
+    if thread.is_alive():
+        pytest.fail(
+            'fetch_database blocked for 1.5 s on a stalled server — '
+            'did not return within the query timeout.')
+
+    assert result_box[0] is None, (
+        f'fetch_database should return None on timeout, got {result_box[0]!r}')
+    assert exc_box[0] is None, (
+        f'fetch_database should not propagate exceptions, got {exc_box[0]!r}')
+    assert tdb.last_error, 'last_error should be populated after a timeout'
+
+
+def _make_tdb_with_slow_driver(timeout_s):
+    """Fake TypeDBInterface whose driver blocks until closed."""
+    blocked = threading.Event()
+
+    class SlowTransaction:
+
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+
+        class query:
+
+            @staticmethod
+            def fetch(q):
+                blocked.wait(timeout=5)
+                return []
+
+        def commit(self): pass
+
+    class SlowSession:
+
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def transaction(self, *args, **kwargs): return SlowTransaction()
+
+    class FakeDriver:
+
+        class databases:
+
+            @staticmethod
+            def contains(name): return True
+
+        def session(self, *args, **kwargs): return SlowSession()
+        def close(self): blocked.set()
+
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb._query_timeout_s = timeout_s
+    tdb._database_query_lock = Lock()
+    tdb._infer = False
+    tdb._sort_fetch_results = False
+    tdb.database_name = 'test_database'
+    tdb.last_error = ''
+    tdb._address = 'localhost:1729'
+    tdb._driver_timeout_s = 10.0
+    tdb.logger = logging.getLogger()
+    tdb.driver = FakeDriver()
+    return tdb
+
+
+def test_database_query_raises_timeout_error():
+    """database_query raises TimeoutError when query hangs past timeout."""
+    tdb = _make_tdb_with_slow_driver(timeout_s=0.05)
+
+    start = time.monotonic()
+    with pytest.raises(TimeoutError):
+        tdb.database_query(
+            SessionType.DATA, TransactionType.READ, 'fetch',
+            'match $x isa thing; fetch $x;')
+    assert time.monotonic() - start < 1.0
+
+
+def test_database_query_lock_released_after_timeout():
+    """After a timeout, lock is released so the next call can proceed."""
+    tdb = _make_tdb_with_slow_driver(timeout_s=0.05)
+
+    with pytest.raises(TimeoutError):
+        tdb.database_query(
+            SessionType.DATA, TransactionType.READ, 'fetch',
+            'match $x isa thing; fetch $x;')
+
+    acquired = tdb._database_query_lock.acquire(timeout=2.0)
+    assert acquired, 'lock was not released within 2 seconds after timeout'
+    tdb._database_query_lock.release()
+
+
+def test_database_query_no_timeout_when_query_timeout_s_is_none():
+    """Query runs without deadline when no timeout is configured."""
+    calls = []
+
+    class FastTransaction:
+
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+
+        class query:
+
+            @staticmethod
+            def fetch(q):
+                calls.append(q)
+                return []
+
+        def commit(self): pass
+
+    class FastSession:
+
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def transaction(self, *args, **kwargs): return FastTransaction()
+
+    class FakeDriver:
+
+        class databases:
+
+            @staticmethod
+            def contains(name): return True
+
+        def session(self, *args, **kwargs): return FastSession()
+
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb._query_timeout_s = None
+    tdb._database_query_lock = Lock()
+    tdb._infer = False
+    tdb.database_name = 'test_database'
+    tdb.last_error = ''
+    tdb.logger = logging.getLogger()
+    tdb.driver = FakeDriver()
+
+    result = tdb.database_query(
+        SessionType.DATA, TransactionType.READ, 'fetch',
+        'match $x isa thing; fetch $x;')
+    assert result == []
+    assert calls == ['match $x isa thing; fetch $x;']
+
+
+def test_database_query_per_call_timeout_overrides_default():
+    """A per-call timeout takes precedence over _query_timeout_s=None."""
+    tdb = _make_tdb_with_slow_driver(timeout_s=None)
+
+    with pytest.raises(TimeoutError):
+        tdb.database_query(
+            SessionType.DATA, TransactionType.READ, 'fetch',
+            'match $x isa thing; fetch $x;',
+            timeout=0.05)
+
+
+def test_database_query_sets_transaction_timeout_millis():
+    """transaction_timeout_millis is set to effective_timeout * 1000."""
+    captured_options = []
+
+    class CapturingTransaction:
+
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+
+        class query:
+
+            @staticmethod
+            def fetch(q): return []
+
+        def commit(self): pass
+
+    class CapturingSession:
+
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+
+        def transaction(self, txn_type, options):
+            captured_options.append(options)
+            return CapturingTransaction()
+
+    class FakeDriver:
+
+        class databases:
+
+            @staticmethod
+            def contains(name): return True
+
+        def session(self, *args, **kwargs): return CapturingSession()
+
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb._query_timeout_s = None
+    tdb._database_query_lock = Lock()
+    tdb._infer = False
+    tdb.database_name = 'test_database'
+    tdb.last_error = ''
+    tdb.logger = logging.getLogger()
+    tdb.driver = FakeDriver()
+
+    tdb.database_query(
+        SessionType.DATA, TransactionType.READ, 'fetch',
+        'match $x isa thing; fetch $x;',
+        timeout=2.5)
+
+    assert captured_options[0].transaction_timeout_millis == 2500
 
 
 def test_string_to_string_array_preserves_raw_path_with_comma():
@@ -38,6 +388,66 @@ def test_string_to_string_array_keeps_unbracketed_strings_as_single_values():
     assert string_to_string_array('/tmp/schema.tql,/tmp/data.tql') == [
         '/tmp/schema.tql,/tmp/data.tql'
     ]
+
+
+@pytest.mark.parametrize('method_name,extra_kwargs', [
+    ('insert_database', {}),
+    ('update_database', {}),
+    ('delete_from_database', {}),
+    ('define_database', {}),
+    ('fetch_database', {}),
+    ('get_database', {}),
+    ('get_aggregate_database', {}),
+])
+def test_raw_wrapper_passes_timeout_to_database_query(
+        monkeypatch, method_name, extra_kwargs):
+    """Each raw wrapper forwards timeout= to database_query."""
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb.last_error = ''
+    tdb._sort_fetch_results = False
+    tdb._infer = False
+    tdb.logger = logging.getLogger()
+
+    captured = {}
+
+    def fake_database_query(*args, **kwargs):
+        captured['timeout'] = kwargs.get('timeout')
+        return (
+            [] if method_name in ('fetch_database', 'get_database')
+            else True)
+
+    monkeypatch.setattr(tdb, 'database_query', fake_database_query)
+    getattr(tdb, method_name)('match $x isa thing; fetch $x;', timeout=7.0)
+
+    assert captured.get('timeout') == 7.0
+
+
+@pytest.mark.parametrize('method_name', [
+    'insert_database',
+    'update_database',
+    'delete_from_database',
+    'define_database',
+    'fetch_database',
+    'get_database',
+    'get_aggregate_database',
+])
+def test_raw_wrapper_catches_timeout_error_and_sets_last_error(
+        monkeypatch, method_name):
+    """Each wrapper catches TimeoutError, sets last_error, and returns None."""
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb.last_error = ''
+    tdb._sort_fetch_results = False
+    tdb._infer = False
+    tdb.logger = logging.getLogger()
+
+    def raise_timeout(*args, **kwargs):
+        raise TimeoutError('Query timed out after 0.05s')
+
+    monkeypatch.setattr(tdb, 'database_query', raise_timeout)
+    result = getattr(tdb, method_name)('match $x isa thing; fetch $x;')
+
+    assert result is None
+    assert 'timed out' in tdb.last_error.lower()
 
 
 @pytest.fixture
@@ -156,7 +566,8 @@ def test_create_and_delete_database():
 
 def test_define_query(typedb_interface):
     assert typedb_interface.define_database('define MyEntity sub entity;')
-    assert typedb_interface.define_database('define MyEntity aa entity') is None
+    assert typedb_interface.define_database(
+        'define MyEntity aa entity') is None
 
 
 def test_insert_entity(typedb_interface):
@@ -485,7 +896,7 @@ def test_insert_attributes(typedb_interface, match_dict, r_dict):
     )
 ])
 def test_delete_attributes(
-   typedb_interface, insert_dict, match_dict):
+        typedb_interface, insert_dict, match_dict):
 
     query = typedb_interface.dict_to_query(insert_dict)
     insert_result = typedb_interface.insert_database('insert ' + query)
@@ -701,7 +1112,8 @@ def test_database_query_reconnects_after_failed_health_check(monkeypatch):
 
     result = typedb_interface.fetch_database('match $p isa person; fetch $p;')
 
-    assert result == [{'person': {'type': {'root': 'entity', 'label': 'person'}}}]
+    assert result == [
+        {'person': {'type': {'root': 'entity', 'label': 'person'}}}]
     assert stale_driver.closed is True
     assert stale_driver.session_count == 0
     assert typedb_interface.driver.session_count == 1
