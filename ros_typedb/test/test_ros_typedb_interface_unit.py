@@ -387,6 +387,72 @@ def test_convert_attribute_dict_to_ros_msg():
     assert expected_nick_attr == nick_attr
 
 
+def test_fetch_result_to_ros_result_tree_groups_wildcard_attributes():
+    """Wildcard attribute fetches group values by concrete attribute label."""
+    json_test = {
+        'entity': {
+            'attribute': [
+                {'value': 'test@test.com',
+                 'type': {'label': 'email',
+                          'root': 'attribute',
+                          'value_type': 'string'}},
+                {'value': 'test',
+                 'type': {'label': 'nickname',
+                          'root': 'attribute',
+                          'value_type': 'string'}},
+                {'value': 33,
+                 'type': {'label': 'age',
+                          'root': 'attribute',
+                          'value_type': 'long'}},
+                {'value': True,
+                 'type': {'label': 'alive',
+                          'root': 'attribute',
+                          'value_type': 'boolean'}},
+                {'value': '1990-06-01T00:00:00.000',
+                 'type': {'label': 'birth-date',
+                          'root': 'attribute',
+                          'value_type': 'datetime'}},
+                {'value': 'alias',
+                 'type': {'label': 'nickname',
+                          'root': 'attribute',
+                          'value_type': 'string'}},
+            ],
+            'type': {'label': 'person', 'root': 'entity'}
+        }
+    }
+
+    result_tree, _ = fetch_result_to_ros_result_tree(json_test)
+
+    assert len(result_tree.results) == 1
+    thing = result_tree.results[0].thing
+    attributes_by_label = {
+        attr.label: attr
+        for attr in thing.attributes
+    }
+
+    assert thing.variable_name == 'entity'
+    assert thing.type_name == 'person'
+    assert sorted(attributes_by_label) == [
+        'age', 'alive', 'birth-date', 'email', 'nickname'
+    ]
+    assert attributes_by_label['email'].variable_name == 'email'
+    assert attributes_by_label['email'].value.string_array_value == [
+        'test@test.com'
+    ]
+    assert attributes_by_label['nickname'].variable_name == 'nickname'
+    assert attributes_by_label['nickname'].value.string_array_value == [
+        'test', 'alias'
+    ]
+    assert attributes_by_label['age'].variable_name == 'age'
+    assert list(attributes_by_label['age'].value.integer_array_value) == [33]
+    assert attributes_by_label['alive'].variable_name == 'alive'
+    assert list(attributes_by_label['alive'].value.bool_array_value) == [True]
+    assert attributes_by_label['birth-date'].variable_name == 'birth-date'
+    assert attributes_by_label['birth-date'].value.string_array_value == [
+        '1990-06-01T00:00:00.000'
+    ]
+
+
 def test_fetch_result_to_ros_result_tree():
     json_test = {
         'age': {

@@ -579,6 +579,150 @@ def test_ros_typedb_fetch_query_attribute(test_node, insert_query):
 
 
 @pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_fetch_query_wildcard_attributes(test_node, insert_query):
+    """Fetch all owned attributes without crashing on mixed attribute types."""
+    test_node.activate_ros_typedb()
+
+    test_node.call_service(test_node.query_cli, insert_query)
+
+    query_req = Query.Request()
+    query_req.query_type = query_req.FETCH
+    query_req.query = """
+        match $entity isa person, has email 'test@test.com';
+        fetch $entity: attribute;
+    """
+    query_res = test_node.call_service(test_node.query_cli, query_req)
+
+    assert query_res.success is True
+    assert len(query_res.results) == 1
+    assert len(query_res.results[0].results) == 1
+
+    thing = query_res.results[0].results[0].thing
+    attributes_by_label = {
+        attr.label: attr
+        for attr in thing.attributes
+    }
+
+    assert thing.variable_name == 'entity'
+    assert thing.type_name == 'person'
+
+    email_attr = attributes_by_label['email']
+    assert email_attr.variable_name == 'email'
+    assert email_attr.value.type == ParameterType.PARAMETER_STRING_ARRAY
+    assert email_attr.value.string_array_value == ['test@test.com']
+
+    age_attr = attributes_by_label['age']
+    assert age_attr.variable_name == 'age'
+    assert age_attr.value.type == ParameterType.PARAMETER_INTEGER_ARRAY
+    assert list(age_attr.value.integer_array_value) == [33]
+
+    alive_attr = attributes_by_label['alive']
+    assert alive_attr.variable_name == 'alive'
+    assert alive_attr.value.type == ParameterType.PARAMETER_BOOL_ARRAY
+    assert list(alive_attr.value.bool_array_value) == [True]
+
+    birth_date_attr = attributes_by_label['birth-date']
+    assert birth_date_attr.variable_name == 'birth-date'
+    assert birth_date_attr.value.type == ParameterType.PARAMETER_STRING_ARRAY
+    assert birth_date_attr.value.string_array_value == [
+        '1990-06-01T00:00:00.000'
+    ]
+
+    height_attr = attributes_by_label['height']
+    assert height_attr.variable_name == 'height'
+    assert height_attr.value.type == ParameterType.PARAMETER_DOUBLE_ARRAY
+    assert list(height_attr.value.double_array_value) == [1.0]
+
+    nickname_attr = attributes_by_label['nickname']
+    assert nickname_attr.variable_name == 'nickname'
+    assert nickname_attr.value.type == ParameterType.PARAMETER_STRING_ARRAY
+    assert nickname_attr.value.string_array_value == ['test']
+
+
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_fetch_query_service_survives_wildcard_fetch(
+        test_node, insert_query):
+    """Regression: wildcard fetch conversion must not kill future service use."""
+    test_node.activate_ros_typedb()
+
+    test_node.call_service(test_node.query_cli, insert_query)
+
+    query_req = Query.Request()
+    query_req.query_type = query_req.FETCH
+    query_req.query = """
+        match $entity isa person, has email 'test@test.com';
+        fetch $entity: attribute;
+    """
+    query_res = test_node.call_service(test_node.query_cli, query_req)
+
+    followup_req = Query.Request()
+    followup_req.query_type = followup_req.GET_AGGREGATE
+    followup_req.query = """
+        match $entity isa person, has email 'test@test.com';
+        get $entity;
+        count;
+    """
+    followup_res = test_node.call_service(test_node.query_cli, followup_req)
+
+    assert query_res.success is True
+    assert followup_res.success is True
+    count_value = followup_res.results[0].results[0].attribute.value
+    assert count_value.integer_value == 1
+
+
+@pytest.mark.launch(fixture=generate_test_description)
+def test_ros_typedb_fetch_query_nested_attribute_wildcard(
+        test_node, insert_query):
+    """Fetch nested wildcard attributes without mixing concrete labels."""
+    test_node.activate_ros_typedb()
+
+    test_node.call_service(test_node.query_cli, insert_query)
+
+    query_req = Query.Request()
+    query_req.query_type = query_req.FETCH
+    query_req.query = """
+        match
+            $company_var isa company, has name 'TU Delft';
+        fetch
+            $company_var: attribute;
+            employee_data: {
+                match
+                    $employment_var (employer: $company_var,
+                        employee: $employee_var) isa employment;
+                    $employee_var has email 'phd@tudelft.nl';
+                fetch
+                    $employee_var: attribute;
+                    $employment_var: attribute;
+            };
+    """
+    query_res = test_node.call_service(test_node.query_cli, query_req)
+
+    assert query_res.success is True
+    assert len(query_res.results) == 1
+
+    results = query_res.results[0].results
+    company = results[0].thing
+    assert company.variable_name == 'company_var'
+    assert sorted(attr.label for attr in company.attributes) == [
+        'address', 'name'
+    ]
+
+    child_things = [
+        result.thing
+        for result in results
+        if result.type == QueryResult.THING
+        and result.thing.variable_name in ('employee_var', 'employment_var')
+    ]
+    labels_by_variable = {
+        thing.variable_name: sorted(attr.label for attr in thing.attributes)
+        for thing in child_things
+    }
+
+    assert labels_by_variable['employee_var'] == ['email', 'full-name']
+    assert labels_by_variable['employment_var'] == ['role-name', 'salary']
+
+
+@pytest.mark.launch(fixture=generate_test_description)
 def test_ros_typedb_get_query(test_node, insert_query):
     test_node.activate_ros_typedb()
 
