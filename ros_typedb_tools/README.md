@@ -4,10 +4,11 @@ Reusable TypeDB 2 helper scripts for generating schema and rule diagrams.
 
 ## Overview
 
-This package currently provides two console scripts:
+This package currently provides three console scripts:
 
 - `typedb_schema_diagram`: generate a diagram for one schema file or a merged diagram for multiple schema files.
 - `typedb_rule_diagram`: generate a rule dependency/read-write diagram for one or more schema files that contain rules.
+- `ros_typedb_stress_experiment`: send repeated requests to the real `ros_typedb` query service and report request metrics.
 
 Both tools can write `.svg` or `.dot` output.
 
@@ -96,19 +97,34 @@ Useful options:
 - `--orientation`: `vertical` or `horizontal`
 - `--no-rule-dependencies`: suppress rule-to-rule dependency edges
 
-## Running Without ros2 run
+## ros_typedb_stress_experiment
 
-If needed, you can also invoke the modules directly from the workspace root:
+Runs a fixed-count stress experiment against the real
+`/ros_typedb_interface/query` service.
+
+Prerequisites:
+
+- TypeDB is running.
+- `ros_typedb_interface` is running.
+- The lifecycle node has been configured so the query service exists.
+
+Example:
 
 ```bash
-PYTHONPATH=src/ros_typedb/ros_typedb_tools python3 -m ros_typedb_tools.typedb_schema_diagram --help
-PYTHONPATH=src/ros_typedb/ros_typedb_tools python3 -m ros_typedb_tools.typedb_rule_diagram --help
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --query 'match $p isa Plan; (plan: $p, action: $a) isa has_action; fetch $a: action_name;' \
+  --query-type fetch \
+  --requests 2000 \
+  --timeout-s 5 \
+  --output ~/results/ros_typedb_stress_results.json
 ```
 
-## Installed README Location
+Useful options:
 
-After rebuilding the package, this README is installed to:
-
-```text
-install/ros_typedb_tools/share/ros_typedb_tools/README.md
-```
+- `--service-name`: query service name. Defaults to `/ros_typedb_interface/query`
+- `--query`: TypeDB query to send on each request
+- `--query-type`: one of `define`, `delete`, `fetch`, `get`,
+  `get_aggregate`, `insert`, or `update`
+- `--requests`: number of requests to send
+- `--timeout-s`: per-request client and server timeout
+- `--output`: optional JSON results path

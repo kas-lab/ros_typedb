@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'typedb_schema_diagram = ros_typedb_tools.typedb_schema_diagram:main',
             'typedb_rule_diagram = ros_typedb_tools.typedb_rule_diagram:main',
+            'ros_typedb_stress_experiment = ros_typedb_tools.ros_typedb_stress_experiment:main',
         ],
     },
 )
