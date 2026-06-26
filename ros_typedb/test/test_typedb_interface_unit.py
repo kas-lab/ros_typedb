@@ -28,6 +28,7 @@ from ros_typedb.typedb_interface import TypeDBInterface
 
 from typedb.driver import SessionType
 from typedb.driver import TransactionType
+from typedb.driver import TypeDBOptions
 
 
 # ---------------------------------------------------------------------------
@@ -372,6 +373,30 @@ def test_database_query_sets_transaction_timeout_millis():
         timeout=2.5)
 
     assert captured_options[0].transaction_timeout_millis == 2500
+
+
+def test_create_session_uses_fresh_default_options():
+    """create_session creates a fresh TypeDBOptions when none is provided."""
+    captured_options = []
+
+    class FakeDriver:
+
+        def session(self, database_name, session_type, options):
+            captured_options.append(options)
+            return 'session'
+
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb.driver = FakeDriver()
+
+    first_session = tdb.create_session('test_database', SessionType.DATA)
+    second_session = tdb.create_session('test_database', SessionType.DATA)
+
+    assert first_session == 'session'
+    assert second_session == 'session'
+    assert len(captured_options) == 2
+    assert isinstance(captured_options[0], TypeDBOptions)
+    assert isinstance(captured_options[1], TypeDBOptions)
+    assert captured_options[0] is not captured_options[1]
 
 
 def test_database_query_batch_uses_one_transaction():

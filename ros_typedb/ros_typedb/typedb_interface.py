@@ -514,7 +514,7 @@ class TypeDBInterface:
         self,
         database_name: str,
         session_type: SessionType,
-        options: Optional[TypeDBOptions] = TypeDBOptions()
+        options: Optional[TypeDBOptions] = None
     ) -> TypeDBSession:
         """
         Create session with the database.
@@ -523,6 +523,8 @@ class TypeDBInterface:
         :param session_type: session type, e.g., schema or data.
         :param options: typedb options.
         """
+        if options is None:
+            options = TypeDBOptions()
         return self.driver.session(database_name, session_type, options)
 
     def _database_query_unlocked(
