@@ -20,6 +20,7 @@ from unittest.mock import MagicMock
 from rcl_interfaces.msg import ParameterType
 from rclpy.lifecycle import TransitionCallbackReturn
 
+import ros_typedb.ros_typedb_interface as ros_typedb_interface
 from ros_typedb.ros_typedb_interface import convert_attribute_dict_to_ros_msg
 from ros_typedb.ros_typedb_interface import fetch_result_to_ros_result_tree
 from ros_typedb.ros_typedb_interface import ROSTypeDBInterface
@@ -129,6 +130,39 @@ def test_query_service_cb_passes_none_when_timeout_s_is_zero():
     node.query_service_cb(req, response)
 
     assert captured.get('timeout') is None
+
+
+def test_query_service_cb_catches_query_result_conversion_error(monkeypatch):
+    """query_service_cb returns an error response when conversion fails."""
+
+    class FakeTypeDBInterface:
+        last_error = ''
+
+        def fetch_database(self, query, timeout=None):
+            return [{'unexpected': 'shape'}]
+
+    def raise_conversion_error(query_type, query_result):
+        raise ValueError('conversion failed')
+
+    node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    node.typedb_interface = FakeTypeDBInterface()
+    logger = MagicMock()
+    node.get_logger = MagicMock(return_value=logger)
+    monkeypatch.setattr(
+        ros_typedb_interface,
+        'query_result_to_ros_msg',
+        raise_conversion_error)
+
+    req = Query.Request()
+    req.query_type = Query.Request.FETCH
+    req.query = 'match $x isa thing; fetch $x: attribute;'
+
+    response = Query.Response()
+    result = node.query_service_cb(req, response)
+
+    assert result.success is False
+    assert result.error_message == 'conversion failed'
+    logger.error.assert_called_once()
 
 
 class MockTypeDBDriver:

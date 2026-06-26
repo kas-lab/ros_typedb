@@ -733,14 +733,26 @@ class ROSTypeDBInterface(Node):
                 return response
 
             per_call_timeout = req.timeout_s if req.timeout_s > 0 else None
-            query_result = query_func(req.query, timeout=per_call_timeout)
-            response = query_result_to_ros_msg(req.query_type, query_result)
-            if query_result is None:
+            try:
+                query_result = query_func(req.query, timeout=per_call_timeout)
+                response = query_result_to_ros_msg(
+                    req.query_type, query_result)
+                if query_result is None:
+                    response.success = False
+                    response.error_message = self.typedb_interface.last_error
+                else:
+                    response.success = True
+                return response
+            except Exception as exc:
+                try:
+                    self.get_logger().error(
+                        'Query service failed: {}\n{}'.format(
+                            exc, traceback.format_exc()))
+                except Exception:
+                    pass
                 response.success = False
-                response.error_message = self.typedb_interface.last_error
-            else:
-                response.success = True
-            return response
+                response.error_message = str(exc)
+                return response
 
     def delete_db_cb(
         self,
