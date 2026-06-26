@@ -17,10 +17,12 @@ import logging
 import threading
 from threading import Lock
 import time
+from typing import cast
 
 import pytest
 
 from ros_typedb.typedb_interface import convert_py_type_to_query_type
+from ros_typedb.typedb_interface import DatabaseQueryType
 from ros_typedb.typedb_interface import string_to_string_array
 from ros_typedb.typedb_interface import TypeDBInterface
 
@@ -372,6 +374,190 @@ def test_database_query_sets_transaction_timeout_millis():
     assert captured_options[0].transaction_timeout_millis == 2500
 
 
+def test_database_query_batch_uses_one_transaction():
+    """database_query can run an ordered query batch in one transaction."""
+    calls = []
+
+    class CapturingQuery:
+
+        @staticmethod
+        def delete(query):
+            calls.append(('delete', query))
+
+        @staticmethod
+        def insert(query):
+            calls.append(('insert', query))
+            return iter(['inserted'])
+
+    class CapturingTransaction:
+
+        query = CapturingQuery()
+
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def commit(self): calls.append(('commit', None))
+
+    class CapturingSession:
+
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+
+        def transaction(self, txn_type, options):
+            calls.append(('transaction', txn_type))
+            return CapturingTransaction()
+
+    class FakeDriver:
+
+        class databases:
+
+            @staticmethod
+            def contains(name): return True
+
+        def session(self, *args, **kwargs): return CapturingSession()
+
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb._query_timeout_s = None
+    tdb._database_query_lock = Lock()
+    tdb._infer = False
+    tdb.database_name = 'test_database'
+    tdb.last_error = ''
+    tdb.logger = logging.getLogger()
+    tdb.driver = FakeDriver()
+
+    result = tdb.database_query(
+        SessionType.DATA,
+        TransactionType.WRITE,
+        ['delete', 'insert'],
+        ['delete query', 'insert query'])
+
+    assert result == [True, ['inserted']]
+    assert calls == [
+        ('transaction', TransactionType.WRITE),
+        ('delete', 'delete query'),
+        ('insert', 'insert query'),
+        ('commit', None),
+    ]
+
+
+def test_database_query_batch_rejects_mismatched_query_lists():
+    """database_query rejects batches with unmatched query types and queries."""
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb._query_timeout_s = None
+    tdb._database_query_lock = Lock()
+    tdb._infer = False
+    tdb.database_name = 'test_database'
+    tdb.last_error = ''
+    tdb.logger = logging.getLogger()
+
+    class FakeDriver:
+
+        class databases:
+
+            @staticmethod
+            def contains(name): return True
+
+    tdb.driver = FakeDriver()
+
+    with pytest.raises(ValueError, match='same length'):
+        tdb.database_query(
+            SessionType.DATA,
+            TransactionType.WRITE,
+            ['delete', 'insert'],
+            ['delete query'])
+
+
+def _make_validation_tdb():
+    """Create a TypeDBInterface that fails if validation opens a session."""
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb._query_timeout_s = None
+    tdb._database_query_lock = Lock()
+    tdb._infer = False
+    tdb.database_name = 'test_database'
+    tdb.last_error = ''
+    tdb.logger = logging.getLogger()
+
+    class FakeDriver:
+
+        class databases:
+
+            @staticmethod
+            def contains(name): return True
+
+        def session(self, *args, **kwargs):
+            raise AssertionError('validation should fail before session open')
+
+    tdb.driver = FakeDriver()
+    return tdb
+
+
+def test_database_query_rejects_unsupported_query_type():
+    """database_query rejects unknown query types before opening a session."""
+    tdb = _make_validation_tdb()
+    invalid_query_type = cast(DatabaseQueryType, 'bad_query')
+
+    with pytest.raises(ValueError, match='Unsupported TypeDB query type'):
+        tdb.database_query(
+            SessionType.DATA,
+            TransactionType.WRITE,
+            invalid_query_type,
+            'insert $x isa thing;')
+
+
+def test_database_query_rejects_write_query_in_read_transaction():
+    """database_query rejects write query types in read transactions."""
+    tdb = _make_validation_tdb()
+
+    with pytest.raises(ValueError, match='Read transactions only support'):
+        tdb.database_query(
+            SessionType.DATA,
+            TransactionType.READ,
+            'insert',
+            'insert $x isa thing;')
+
+
+def test_database_query_rejects_read_query_in_write_transaction():
+    """database_query rejects read query types in write transactions."""
+    tdb = _make_validation_tdb()
+
+    with pytest.raises(ValueError, match='only support query types'):
+        tdb.database_query(
+            SessionType.DATA,
+            TransactionType.WRITE,
+            'fetch',
+            'match $x isa thing; fetch $x;')
+
+
+def test_database_query_rejects_define_query_in_data_session():
+    """database_query requires schema write queries to use schema sessions."""
+    tdb = _make_validation_tdb()
+
+    with pytest.raises(ValueError, match='only support query types'):
+        tdb.database_query(
+            SessionType.DATA,
+            TransactionType.WRITE,
+            'define',
+            'define person sub entity;')
+
+
+def test_raw_wrapper_logs_validation_error(caplog, monkeypatch):
+    """Public wrappers catch validation errors and log them."""
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb.last_error = ''
+    tdb.logger = logging.getLogger()
+
+    def raise_validation_error(*args, **kwargs):
+        raise ValueError('Unsupported TypeDB query type: bad_query')
+
+    monkeypatch.setattr(tdb, 'database_query', raise_validation_error)
+
+    with caplog.at_level(logging.WARNING):
+        result = tdb.insert_database('insert $x isa thing;')
+
+    assert result is None
+    assert tdb.last_error == 'Unsupported TypeDB query type: bad_query'
+    assert 'Unsupported TypeDB query type: bad_query' in caplog.text
+
+
 def test_string_to_string_array_preserves_raw_path_with_comma():
     path = '/tmp/schema,with-comma.tql'
 
@@ -573,23 +759,194 @@ def test_init_loads_schema_for_new_database_when_reload_disabled(monkeypatch):
     assert loaded_schema_paths == ['schema.tql']
 
 
-def test_delete_all_data_raises_when_delete_step_fails(monkeypatch):
-    """delete_all_data stops instead of loading data over residual data."""
+def test_delete_all_data_uses_single_atomic_database_query(monkeypatch):
+    """delete_all_data runs all deletes in one write transaction."""
     typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
-    typedb_interface.last_error = 'delete failed'
-    queries = []
+    typedb_interface.last_error = ''
+    typedb_interface.logger = logging.getLogger()
+    captured = {}
 
-    def fake_delete_from_database(query):
-        queries.append(query)
-        return None
+    def fake_database_query(session_type, transaction_type, query_type, query):
+        captured['session_type'] = session_type
+        captured['transaction_type'] = transaction_type
+        captured['query_type'] = query_type
+        captured['query'] = query
+        return True
 
     monkeypatch.setattr(
-        typedb_interface, 'delete_from_database', fake_delete_from_database)
+        typedb_interface,
+        'database_query',
+        fake_database_query)
+    monkeypatch.setattr(
+        typedb_interface,
+        'delete_from_database',
+        lambda query: pytest.fail('delete_all_data must use one batch'))
+
+    typedb_interface.delete_all_data()
+
+    assert captured['session_type'] == SessionType.DATA
+    assert captured['transaction_type'] == TransactionType.WRITE
+    assert captured['query_type'] == ['delete', 'delete', 'delete']
+    assert captured['query'] == [
+        'match $e isa entity; delete $e isa entity;',
+        'match $r isa relation; delete $r isa relation;',
+        'match $a isa attribute; delete $a isa attribute;',
+    ]
+
+
+def test_delete_all_data_raises_when_delete_batch_fails(monkeypatch):
+    """delete_all_data stops instead of loading data over residual data."""
+    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
+    typedb_interface.last_error = ''
+    typedb_interface.logger = logging.getLogger()
+
+    def fake_database_query(*args):
+        raise RuntimeError('delete failed')
+
+    monkeypatch.setattr(
+        typedb_interface,
+        'database_query',
+        fake_database_query)
 
     with pytest.raises(RuntimeError, match='delete failed'):
         typedb_interface.delete_all_data()
 
-    assert queries == ['match $e isa entity; delete $e isa entity;']
+    assert typedb_interface.last_error == 'delete failed'
+
+
+def test_update_attribute_in_thing_uses_atomic_database_query(monkeypatch):
+    """Single-attribute update deletes and inserts in one transaction."""
+    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
+    typedb_interface.last_error = ''
+    typedb_interface.logger = logging.getLogger()
+    captured = {}
+
+    def fake_database_query(session_type, transaction_type, query_type, query):
+        captured['session_type'] = session_type
+        captured['transaction_type'] = transaction_type
+        captured['query_type'] = query_type
+        captured['query'] = query
+        return [True, ['insert result']]
+
+    monkeypatch.setattr(
+        typedb_interface,
+        'database_query',
+        fake_database_query)
+    monkeypatch.setattr(
+        typedb_interface,
+        'delete_attribute_from_thing',
+        lambda *args: pytest.fail('update must not call public delete'))
+    monkeypatch.setattr(
+        typedb_interface,
+        'insert_attribute_in_thing',
+        lambda *args: pytest.fail('update must not call public insert'))
+
+    result = typedb_interface.update_attribute_in_thing(
+        'person', 'email', "o'brien@test.test", 'age', 42)
+
+    assert result == ['insert result']
+    assert captured['session_type'] == SessionType.DATA
+    assert captured['transaction_type'] == TransactionType.WRITE
+    assert captured['query_type'] == ['delete', 'insert']
+    assert "has email 'o\\'brien@test.test'" in captured['query'][0]
+    assert 'has age $attribute' in captured['query'][0]
+    assert 'delete $thing has $attribute;' in captured['query'][0]
+    assert 'insert $thing has age 42;' in captured['query'][1]
+
+
+def test_update_attributes_in_thing_uses_atomic_database_query(monkeypatch):
+    """Multi-attribute update deletes and inserts in one transaction."""
+    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
+    typedb_interface.last_error = ''
+    typedb_interface.logger = logging.getLogger()
+    captured = {}
+
+    def fake_database_query(session_type, transaction_type, query_type, query):
+        captured['session_type'] = session_type
+        captured['transaction_type'] = transaction_type
+        captured['query_type'] = query_type
+        captured['query'] = query
+        return [True, ['insert result']]
+
+    monkeypatch.setattr(
+        typedb_interface,
+        'database_query',
+        fake_database_query)
+    monkeypatch.setattr(
+        typedb_interface,
+        'delete_attributes_from_thing',
+        lambda *args: pytest.fail('update must not call public delete'))
+    monkeypatch.setattr(
+        typedb_interface,
+        'insert_attributes_in_thing',
+        lambda *args: pytest.fail('update must not call public insert'))
+
+    result = typedb_interface.update_attributes_in_thing({
+        'person': [
+            {
+                'prefix': 'p1',
+                'attributes': {'email': 'test@test.test'},
+                'update_attributes': {'height': 1.5, 'age': 17},
+            },
+        ],
+    })
+
+    assert result == ['insert result']
+    assert captured['session_type'] == SessionType.DATA
+    assert captured['transaction_type'] == TransactionType.WRITE
+    assert captured['query_type'] == ['delete', 'insert']
+    assert 'delete $p1 has $p1_height, has $p1_age;' in captured['query'][0]
+    assert 'insert  $p1  isa person,' in captured['query'][1]
+    assert 'has height 1.5, has age 17;' in captured['query'][1]
+
+
+def test_update_attribute_in_thing_returns_none_when_batch_fails(monkeypatch):
+    """Single-attribute update preserves wrapper-style failure behavior."""
+    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
+    typedb_interface.last_error = ''
+    typedb_interface.logger = logging.getLogger()
+
+    def fake_database_query(*args):
+        raise RuntimeError('update failed')
+
+    monkeypatch.setattr(
+        typedb_interface,
+        'database_query',
+        fake_database_query)
+
+    result = typedb_interface.update_attribute_in_thing(
+        'person', 'email', 'test@test.test', 'age', 42)
+
+    assert result is None
+    assert typedb_interface.last_error == 'update failed'
+
+
+def test_update_attributes_in_thing_returns_none_when_batch_fails(monkeypatch):
+    """Multi-attribute update preserves wrapper-style failure behavior."""
+    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
+    typedb_interface.last_error = ''
+    typedb_interface.logger = logging.getLogger()
+
+    def fake_database_query(*args):
+        raise RuntimeError('update failed')
+
+    monkeypatch.setattr(
+        typedb_interface,
+        'database_query',
+        fake_database_query)
+
+    result = typedb_interface.update_attributes_in_thing({
+        'person': [
+            {
+                'prefix': 'p1',
+                'attributes': {'email': 'test@test.test'},
+                'update_attributes': {'age': 42},
+            },
+        ],
+    })
+
+    assert result is None
+    assert typedb_interface.last_error == 'update failed'
 
 
 def test_convert_py_type_to_query_type_escapes_strings():

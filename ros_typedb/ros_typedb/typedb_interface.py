@@ -21,9 +21,11 @@ import queue
 import threading
 from threading import Lock
 from types import MethodType
+from typing import cast
 from typing import Iterator
 from typing import Literal
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 from typing import TypedDict
 
@@ -156,6 +158,95 @@ class MatchResultDict(TypedDict):
     type_: str  #: attribute name, e.g., name, age, height etc
     value_type: str  #: value type, e.g., boolean, long etc
     value: str  #: value
+
+
+DatabaseQueryType = Literal[
+    'define', 'insert', 'delete', 'fetch', 'get', 'get_aggregate', 'update']
+DatabaseQueryResult = Literal[True] | Iterator[ConceptMap] | \
+    list[dict[str, MatchResultDict]] | None | int | float
+NormalizedDatabaseQueryBatch = Tuple[
+    list[DatabaseQueryType], list[str], bool]
+
+_DATABASE_QUERY_TYPES = {
+    'define', 'insert', 'delete', 'fetch', 'get', 'get_aggregate', 'update'}
+_DATA_READ_QUERY_TYPES = {'fetch', 'get', 'get_aggregate'}
+_DATA_WRITE_QUERY_TYPES = {'insert', 'delete', 'update'}
+_SCHEMA_WRITE_QUERY_TYPES = {'define'}
+
+
+def normalize_database_query_batch(
+        query_type: DatabaseQueryType | Sequence[DatabaseQueryType],
+        query: str | Sequence[str]) -> NormalizedDatabaseQueryBatch:
+    """
+    Normalize scalar-or-batch database query inputs.
+
+    :param query_type: query type or query types.
+    :param query: query or queries.
+    :return: normalized query types, normalized queries, single-query flag.
+    """
+    single_query = isinstance(query, str) and isinstance(query_type, str)
+    queries = [query] if isinstance(query, str) else list(query)
+    query_types = (
+        [query_type] * len(queries)
+        if isinstance(query_type, str)
+        else list(query_type))
+    if len(query_types) != len(queries):
+        raise ValueError(
+            'query_type and query lists must have the same length')
+    for query_value in queries:
+        if not isinstance(query_value, str):
+            raise TypeError('query values must be strings')
+    for query_type_value in query_types:
+        if query_type_value not in _DATABASE_QUERY_TYPES:
+            raise ValueError(
+                'Unsupported TypeDB query type: {}'.format(
+                    query_type_value))
+    return cast(list[DatabaseQueryType], query_types), queries, single_query
+
+
+def validate_database_query_batch(
+        session_type: SessionType,
+        transaction_type: TransactionType,
+        query_types: Sequence[DatabaseQueryType]) -> None:
+    """
+    Validate session and transaction compatibility for query types.
+
+    :param session_type: TypeDB session type.
+    :param transaction_type: TypeDB transaction type.
+    :param query_types: normalized query types.
+    """
+    if transaction_type == TransactionType.READ:
+        invalid_query_types = [
+            query_type for query_type in query_types
+            if query_type not in _DATA_READ_QUERY_TYPES]
+        if invalid_query_types:
+            raise ValueError(
+                'Read transactions only support query types: {}'.format(
+                    ', '.join(sorted(_DATA_READ_QUERY_TYPES))))
+        if session_type != SessionType.DATA:
+            raise ValueError('Read queries require a DATA session')
+        return
+
+    if transaction_type == TransactionType.WRITE:
+        if session_type == SessionType.DATA:
+            allowed_query_types = _DATA_WRITE_QUERY_TYPES
+        elif session_type == SessionType.SCHEMA:
+            allowed_query_types = _SCHEMA_WRITE_QUERY_TYPES
+        else:
+            raise ValueError('Unsupported TypeDB session type')
+        invalid_query_types = [
+            query_type for query_type in query_types
+            if query_type not in allowed_query_types]
+        if invalid_query_types:
+            raise ValueError(
+                '{} transactions with {} sessions only support query types: '
+                '{}'.format(
+                    transaction_type,
+                    session_type,
+                    ', '.join(sorted(allowed_query_types))))
+        return
+
+    raise ValueError('Unsupported TypeDB transaction type')
 
 
 class ThingPrefixAttrDict(TypedDict):
@@ -385,13 +476,13 @@ class TypeDBInterface:
         else:
             self.ensure_database_exists()
 
-    def delete_database(self, database_name: str = None) -> None:
+    def delete_database(self, database_name: str = '') -> None:
         """
         Delete database.
 
         :param database_name: database name.
         """
-        if database_name is None:
+        if database_name == '':
             database_name = self.database_name
         if self.driver.databases.contains(database_name):
             self.driver.databases.get(database_name).delete()
@@ -438,14 +529,12 @@ class TypeDBInterface:
             self,
             session_type: SessionType,
             transaction_type: TransactionType,
-            query_type: Literal[
-                'define', 'insert', 'delete', 'fetch', 'get',
-                'get_aggregate', 'update'],
-            query: str,
+            query_type: DatabaseQueryType | Sequence[DatabaseQueryType],
+            query: str | Sequence[str],
             options: TypeDBOptions,
             effective_timeout: Optional[float] = None
-        ) -> Literal[True] | Iterator[ConceptMap] | \
-            list[dict[str, MatchResultDict]] | None | int | float:
+        ) -> DatabaseQueryResult | \
+            list[DatabaseQueryResult]:
         """
         Query database without acquiring the database query lock.
 
@@ -461,6 +550,11 @@ class TypeDBInterface:
             transaction_timeout_millis when positive.
         :return: Query result, type depends on the query_type.
         """
+        query_types, queries, single_query = normalize_database_query_batch(
+            query_type, query)
+        validate_database_query_batch(
+            session_type, transaction_type, query_types)
+        results = []
         with self.create_session(
                 self.database_name, session_type) as session:
             if effective_timeout and effective_timeout > 0:
@@ -470,27 +564,30 @@ class TypeDBInterface:
             options.parallel = True
             with session.transaction(
                     transaction_type, options) as transaction:
-                transaction_query_function = getattr(
-                    transaction.query, query_type)
-                query_answer = transaction_query_function(query)
+                for batch_query_type, batch_query in zip(
+                        query_types, queries):
+                    transaction_query_function = getattr(
+                        transaction.query, batch_query_type)
+                    query_answer = transaction_query_function(batch_query)
+                    if transaction_type == TransactionType.WRITE:
+                        if batch_query_type in ('insert', 'update'):
+                            results.append(list(query_answer))
+                        else:
+                            results.append(True)
+                    elif transaction_type == TransactionType.READ:
+                        if batch_query_type == 'get_aggregate':
+                            answer = query_answer.resolve()
+                            if answer.is_long():
+                                results.append(answer.as_long())
+                            elif answer.is_float():
+                                results.append(answer.as_float())
+                            else:
+                                results.append(None)
+                        else:
+                            results.append(list(query_answer))
                 if transaction_type == TransactionType.WRITE:
-                    if query_type == 'insert':
-                        query_answer = list(query_answer)
                     transaction.commit()
-
-                    if query_type == 'delete' or query_type == 'define':
-                        return True  # delete and define always return None
-
-                    return query_answer
-                elif transaction_type == TransactionType.READ:
-                    if query_type == 'get_aggregate':
-                        answer = query_answer.resolve()
-                        if answer.is_long():
-                            return answer.as_long()
-                        if answer.is_float():
-                            return answer.as_float()
-                        return None
-                    return list(query_answer)
+        return results[0] if single_query else results
 
     # Read/write database
     # Generic query method
@@ -498,14 +595,12 @@ class TypeDBInterface:
             self,
             session_type: SessionType,
             transaction_type: TransactionType,
-            query_type: Literal[
-                'define', 'insert', 'delete', 'fetch', 'get',
-                'get_aggregate', 'update'],
-            query: str,
+            query_type: DatabaseQueryType | Sequence[DatabaseQueryType],
+            query: str | Sequence[str],
             options: TypeDBOptions,
             effective_timeout: Optional[float] = None
-        ) -> Literal[True] | Iterator[ConceptMap] | \
-            list[dict[str, MatchResultDict]] | None | int | float:
+        ) -> DatabaseQueryResult | \
+            list[DatabaseQueryResult]:
         """
         Query database (internal implementation).
 
@@ -535,14 +630,12 @@ class TypeDBInterface:
             self,
             session_type: SessionType,
             transaction_type: TransactionType,
-            query_type: Literal[
-                'define', 'insert', 'delete', 'fetch', 'get',
-                'get_aggregate', 'update'],
-            query: str,
+            query_type: DatabaseQueryType | Sequence[DatabaseQueryType],
+            query: str | Sequence[str],
             options: Optional[TypeDBOptions] = None,
             timeout: Optional[float] = None
-        ) -> Literal[True] | Iterator[ConceptMap] | \
-            list[dict[str, MatchResultDict]] | None | int | float:
+        ) -> DatabaseQueryResult | \
+            list[DatabaseQueryResult]:
         """
         Query database.
 
@@ -553,8 +646,9 @@ class TypeDBInterface:
 
         :param session_type: TypeDB session type.
         :param transaction_type: TypeDB transaction type.
-        :param query_type: TypeDB query type.
-        :param query: Query to be performed.
+        :param query_type: TypeDB query type, or one type per query.
+        :param query: Query to be performed, or queries to run in one
+            transaction.
         :param options: TypeDB options; defaults to a fresh TypeDBOptions().
         :param timeout: per-call timeout in seconds. Falls back to
             self._query_timeout_s. If both are None or non-positive, no
@@ -684,11 +778,23 @@ class TypeDBInterface:
             'match $r isa relation; delete $r isa relation;',
             'match $a isa attribute; delete $a isa attribute;',
         ]
-        for query in delete_queries:
-            if self.delete_from_database(query) is None:
-                raise RuntimeError(
-                    'Failed to delete all TypeDB data: {}'.format(
-                        self.last_error))
+        delete_query_types: list[DatabaseQueryType] = [
+            'delete' for _ in delete_queries]
+        self.last_error = ''
+        try:
+            self.database_query(
+                SessionType.DATA,
+                TransactionType.WRITE,
+                delete_query_types,
+                delete_queries)
+        except Exception as err:
+            self.logger.warning(
+                'Error deleting all TypeDB data! Exception retrieved: %s',
+                err)
+            self.last_error = str(err)
+            raise RuntimeError(
+                'Failed to delete all TypeDB data: {}'.format(
+                    self.last_error)) from err
 
     def load_data(self, data_path: str, force: bool = False) -> None:
         """
@@ -1624,10 +1730,34 @@ class TypeDBInterface:
         :param attr_value: attribute value to be inserted
         :return: Insert query result.
         """
-        self.delete_attribute_from_thing(
-            thing, key, key_value, attr)
-        return self.insert_attribute_in_thing(
-            thing, key, key_value, attr, attr_value)
+        key_value = convert_py_type_to_query_type(key_value)
+        attr_value = convert_py_type_to_query_type(attr_value)
+        delete_query = f"""
+            match $thing isa {thing},
+            has {key} {key_value},
+            has {attr} $attribute;
+            delete $thing has $attribute;
+        """
+        insert_query = f"""
+            match $thing isa {thing},
+            has {key} {key_value};
+            insert $thing has {attr} {attr_value};
+        """
+        query_types: list[DatabaseQueryType] = ['delete', 'insert']
+        self.last_error = ''
+        try:
+            result = self.database_query(
+                SessionType.DATA,
+                TransactionType.WRITE,
+                query_types,
+                [delete_query, insert_query])
+            return result[-1]
+        except Exception as err:
+            self.logger.warning(
+                'Error updating attribute in thing! Exception retrieved: %s',
+                err)
+            self.last_error = str(err)
+            return None
 
     def update_attributes_in_thing(
         self,
@@ -1676,5 +1806,23 @@ class TypeDBInterface:
             insert $p1 isa person, has height 1.50, has age 17;
 
         """
-        self.delete_attributes_from_thing(match_dict, 'update_attributes')
-        return self.insert_attributes_in_thing(match_dict, 'update_attributes')
+        delete_query = 'match ' + self.dict_to_query(
+            match_dict, delete_attribute_str='update_attributes')
+        insert_query = 'match ' + self.dict_to_query(match_dict)
+        insert_query += 'insert ' + self.dict_to_query(
+            match_dict, 'update_attributes')
+        query_types: list[DatabaseQueryType] = ['delete', 'insert']
+        self.last_error = ''
+        try:
+            result = self.database_query(
+                SessionType.DATA,
+                TransactionType.WRITE,
+                query_types,
+                [delete_query, insert_query])
+            return result[-1]
+        except Exception as err:
+            self.logger.warning(
+                'Error updating attributes in thing! Exception retrieved: %s',
+                err)
+            self.last_error = str(err)
+            return None

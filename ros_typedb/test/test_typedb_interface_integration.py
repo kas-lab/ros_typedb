@@ -352,6 +352,19 @@ def test_update_attribute_in_thing(typedb_interface, attr, attr_value, new_v):
     assert result_update is not None and result[0] == new_v
 
 
+def test_update_attribute_in_thing_inserts_when_attribute_absent(
+        typedb_interface):
+    """update_attribute_in_thing preserves existing insert-if-absent behavior."""
+    typedb_interface.insert_entity('person', [('email', 'test@email.test')])
+
+    result_update = typedb_interface.update_attribute_in_thing(
+        'person', 'email', 'test@email.test', 'age', 56)
+    result = typedb_interface.fetch_attribute_from_thing(
+        'person', [('email', 'test@email.test')], 'age')
+
+    assert result_update is not None and result == [56]
+
+
 def test_insert_relationship(typedb_interface):
     typedb_interface.insert_entity('person', [('email', 'test@email.test')])
     typedb_interface.insert_entity('person', [('email', 'test2@email.test')])
