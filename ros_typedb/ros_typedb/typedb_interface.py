@@ -448,7 +448,7 @@ class TypeDBInterface:
                 self._load_data_unlocked(path)
         except Exception:
             try:
-                self.delete_database()
+                self._delete_database_unlocked()
             except Exception as exc:
                 self.logger.warning(
                     'Failed to remove partially initialized database %s: %s',
@@ -479,6 +479,18 @@ class TypeDBInterface:
     def delete_database(self, database_name: str = '') -> None:
         """
         Delete database.
+
+        :param database_name: database name.
+        """
+        with self._database_query_lock:
+            self._delete_database_unlocked(database_name)
+
+    def _delete_database_unlocked(self, database_name: str = '') -> None:
+        """
+        Delete database without acquiring the database query lock.
+
+        Callers must hold _database_query_lock or otherwise know no query can
+        run concurrently.
 
         :param database_name: database name.
         """

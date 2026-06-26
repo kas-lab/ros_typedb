@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import threading
+import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -207,7 +209,9 @@ def test_on_cleanup_destroys_ros_entities_and_closes_typedb_driver():
         get_name=MagicMock(return_value='ros_typedb'),
         close_typedb_interface=MagicMock(
             side_effect=lambda: ROSTypeDBInterface.close_typedb_interface(node)
-        )
+        ),
+        _get_service_callback_lock=(
+            lambda: ROSTypeDBInterface._get_service_callback_lock(node))
     )
 
     result = ROSTypeDBInterface.on_cleanup(node, None)
@@ -222,6 +226,46 @@ def test_on_cleanup_destroys_ros_entities_and_closes_typedb_driver():
     assert not hasattr(node, 'event_pub')
     assert not hasattr(node, 'query_service')
     assert not hasattr(node, 'delete_db_service')
+    assert node.typedb_interface is None
+
+
+def test_on_cleanup_waits_for_active_service_callback_before_closing_driver():
+    driver = MagicMock()
+    typedb_interface = SimpleNamespace(driver=driver)
+    service_callback_lock = threading.Lock()
+    service_callback_lock.acquire()
+
+    node = SimpleNamespace(
+        event_pub=MagicMock(),
+        query_service=MagicMock(),
+        delete_db_service=MagicMock(),
+        typedb_interface=typedb_interface,
+        _service_callback_lock=service_callback_lock,
+        destroy_publisher=MagicMock(return_value=True),
+        destroy_service=MagicMock(return_value=True),
+        get_logger=MagicMock(return_value=MagicMock()),
+        get_name=MagicMock(return_value='ros_typedb'),
+        close_typedb_interface=MagicMock(
+            side_effect=lambda: ROSTypeDBInterface.close_typedb_interface(node)
+        ),
+        _get_service_callback_lock=(
+            lambda: ROSTypeDBInterface._get_service_callback_lock(node))
+    )
+
+    cleanup_thread = threading.Thread(
+        target=ROSTypeDBInterface.on_cleanup,
+        args=(node, None))
+    cleanup_thread.start()
+
+    time.sleep(0.05)
+    driver.close.assert_not_called()
+    assert node.typedb_interface is typedb_interface
+
+    service_callback_lock.release()
+    cleanup_thread.join(timeout=1.0)
+
+    assert not cleanup_thread.is_alive()
+    driver.close.assert_called_once_with()
     assert node.typedb_interface is None
 
 

@@ -399,6 +399,55 @@ def test_create_session_uses_fresh_default_options():
     assert captured_options[0] is not captured_options[1]
 
 
+def test_delete_database_waits_for_database_query_lock():
+    """delete_database does not delete while a query holds the query lock."""
+    calls = []
+
+    class FakeDatabase:
+
+        @staticmethod
+        def delete():
+            calls.append('delete')
+
+    class FakeDatabases:
+
+        @staticmethod
+        def contains(database_name):
+            calls.append(('contains', database_name))
+            return True
+
+        @staticmethod
+        def get(database_name):
+            calls.append(('get', database_name))
+            return FakeDatabase()
+
+    class FakeDriver:
+
+        databases = FakeDatabases()
+
+    tdb = TypeDBInterface.__new__(TypeDBInterface)
+    tdb._database_query_lock = Lock()
+    tdb.database_name = 'test_database'
+    tdb.driver = FakeDriver()
+
+    tdb._database_query_lock.acquire()
+    thread = threading.Thread(target=tdb.delete_database)
+    thread.start()
+
+    time.sleep(0.05)
+    assert calls == []
+
+    tdb._database_query_lock.release()
+    thread.join(timeout=1.0)
+
+    assert not thread.is_alive()
+    assert calls == [
+        ('contains', 'test_database'),
+        ('get', 'test_database'),
+        'delete',
+    ]
+
+
 def test_database_query_batch_uses_one_transaction():
     """database_query can run an ordered query batch in one transaction."""
     calls = []

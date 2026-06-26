@@ -13,6 +13,7 @@
 # limitations under the License.
 """ros_typedb_interface - python interface to interact with typedb via ROS."""
 
+import threading
 import traceback
 
 from typing import Any
@@ -332,6 +333,15 @@ class ROSTypeDBInterface(Node):
         self.typedb_interface_class = TypeDBInterface
 
         self.query_cb_group = MutuallyExclusiveCallbackGroup()
+        self._service_callback_lock = threading.Lock()
+
+    def _get_service_callback_lock(self):
+        """Return the lock used to serialize service callbacks with cleanup."""
+        lock = getattr(self, '_service_callback_lock', None)
+        if lock is None:
+            lock = threading.Lock()
+            self._service_callback_lock = lock
+        return lock
 
     def init_typedb_interface(
             self,
@@ -479,11 +489,13 @@ class ROSTypeDBInterface(Node):
                 self.destroy_service(service)
                 delattr(self, service_name)
 
-        if getattr(self, 'event_pub', None) is not None:
-            self.destroy_publisher(self.event_pub)
-            del self.event_pub
+        service_callback_lock = self._get_service_callback_lock()
+        with service_callback_lock:
+            if getattr(self, 'event_pub', None) is not None:
+                self.destroy_publisher(self.event_pub)
+                del self.event_pub
 
-        self.close_typedb_interface()
+            self.close_typedb_interface()
 
         self.get_logger().info(self.get_name() + ' :on_cleanup() is called.')
         return TransitionCallbackReturn.SUCCESS
@@ -502,36 +514,39 @@ class ROSTypeDBInterface(Node):
         :param response: query result
         :return: query result
         """
-        if req.query_type == Query.Request.INSERT:
-            query_func = self.typedb_interface.insert_database
-        elif req.query_type == Query.Request.DELETE:
-            query_func = self.typedb_interface.delete_from_database
-        elif req.query_type == Query.Request.FETCH:
-            query_func = self.typedb_interface.fetch_database
-        elif req.query_type == Query.Request.GET:
-            query_func = self.typedb_interface.get_database
-        elif req.query_type == Query.Request.GET_AGGREGATE:
-            query_func = self.typedb_interface.get_aggregate_database
-        elif req.query_type == Query.Request.UPDATE:
-            query_func = self.typedb_interface.update_database
-        elif req.query_type == Query.Request.DEFINE:
-            query_func = self.typedb_interface.define_database
-        else:
-            self.get_logger().warning(
-                'Query type {} not recognized'.format(req.query_type))
-            response.success = False
-            response.error_message = f'Unknown query type: {req.query_type}'
-            return response
+        service_callback_lock = self._get_service_callback_lock()
+        with service_callback_lock:
+            if req.query_type == Query.Request.INSERT:
+                query_func = self.typedb_interface.insert_database
+            elif req.query_type == Query.Request.DELETE:
+                query_func = self.typedb_interface.delete_from_database
+            elif req.query_type == Query.Request.FETCH:
+                query_func = self.typedb_interface.fetch_database
+            elif req.query_type == Query.Request.GET:
+                query_func = self.typedb_interface.get_database
+            elif req.query_type == Query.Request.GET_AGGREGATE:
+                query_func = self.typedb_interface.get_aggregate_database
+            elif req.query_type == Query.Request.UPDATE:
+                query_func = self.typedb_interface.update_database
+            elif req.query_type == Query.Request.DEFINE:
+                query_func = self.typedb_interface.define_database
+            else:
+                self.get_logger().warning(
+                    'Query type {} not recognized'.format(req.query_type))
+                response.success = False
+                response.error_message = (
+                    f'Unknown query type: {req.query_type}')
+                return response
 
-        per_call_timeout = req.timeout_s if req.timeout_s > 0 else None
-        query_result = query_func(req.query, timeout=per_call_timeout)
-        response = query_result_to_ros_msg(req.query_type, query_result)
-        if query_result is None:
-            response.success = False
-            response.error_message = self.typedb_interface.last_error
-        else:
-            response.success = True
-        return response
+            per_call_timeout = req.timeout_s if req.timeout_s > 0 else None
+            query_result = query_func(req.query, timeout=per_call_timeout)
+            response = query_result_to_ros_msg(req.query_type, query_result)
+            if query_result is None:
+                response.success = False
+                response.error_message = self.typedb_interface.last_error
+            else:
+                response.success = True
+            return response
 
     def delete_db_cb(
         self,
@@ -543,5 +558,7 @@ class ROSTypeDBInterface(Node):
 
         Delete the dabase.
         """
-        self.typedb_interface.delete_database()
+        service_callback_lock = self._get_service_callback_lock()
+        with service_callback_lock:
+            self.typedb_interface.delete_database()
         return response
