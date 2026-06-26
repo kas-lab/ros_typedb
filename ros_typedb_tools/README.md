@@ -99,7 +99,7 @@ Useful options:
 
 ## ros_typedb_stress_experiment
 
-Runs a fixed-count stress experiment against the real
+Runs fixed-count or duration-based stress experiments against the real
 `/ros_typedb_interface/query` service.
 
 Prerequisites:
@@ -112,19 +112,34 @@ Example:
 
 ```bash
 ros2 run ros_typedb_tools ros_typedb_stress_experiment \
-  --query 'match $p isa Plan; (plan: $p, action: $a) isa has_action; fetch $a: action_name;' \
+  --query 'match $p isa Plan; (plan: $p, action: $a) isa has_action; fetch $a: attribute;' \
   --query-type fetch \
   --requests 2000 \
   --timeout-s 5 \
   --output ~/results/ros_typedb_stress_results.json
 ```
 
+Concurrent read stress example:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 20 \
+  --duration-s 60 \
+  --timeout-s 10 \
+  --mode read \
+  --output ~/results/ros_typedb_read_stress_results.json
+```
+
 Useful options:
 
 - `--service-name`: query service name. Defaults to `/ros_typedb_interface/query`
-- `--query`: TypeDB query to send on each request
+- `--query`: optional TypeDB query to send on each request
 - `--query-type`: one of `define`, `delete`, `fetch`, `get`,
-  `get_aggregate`, `insert`, or `update`
-- `--requests`: number of requests to send
+  `get_aggregate`, `insert`, or `update`; required when `--query` is used
+- `--requests`: number of requests to send when `--duration-s` is omitted
+- `--clients`: number of concurrent service clients
+- `--duration-s`: run for this many seconds instead of a fixed request count
+- `--mode`: built-in query mix to use when `--query` is omitted; currently
+  supports `read`
 - `--timeout-s`: per-request client and server timeout
 - `--output`: optional JSON results path

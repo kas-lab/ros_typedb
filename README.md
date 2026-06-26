@@ -134,6 +134,39 @@ ros2 run ros_typedb ros_typedb_interface -p schema_path:=<schema_path> -p data_p
 **Note:** Make sure to replace <schema_path> and <data_path> with the real path for your schema and data file
 **Note 2:** Remember that ros_typedb_interface is a [LifeCycle](https://design.ros2.org/articles/node_lifecycle.html) node, so you need to change its state to active before using it. Check the [lifecycle tutorial](https://github.com/ros2/demos/tree/rolling/lifecycle).
 
+### Run the stress experiment
+
+`ros_typedb_tools` provides a stress experiment CLI that sends repeated or
+duration-based concurrent requests to the real `ros_typedb_interface/query`
+service and reports latency, successes, failures, timeouts, and optional JSON
+results.
+
+First, start TypeDB, run `ros_typedb_interface`, and configure the lifecycle
+node so the query service is available. Then run:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --query 'match $x isa entity; fetch $x: attribute;' \
+  --query-type fetch \
+  --requests 20 \
+  --timeout-s 5 \
+  --output /tmp/ros_typedb_stress_results.json
+```
+
+For concurrent read stress, omit `--query` and use the built-in read query mix:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 20 \
+  --duration-s 60 \
+  --timeout-s 10 \
+  --mode read \
+  --output /tmp/ros_typedb_read_stress_results.json
+```
+
+Use `--service-name` if the node name is different from the default
+`/ros_typedb_interface/query`.
+
 ## Extend the package
 
 To extend this package with custom functionalities, you can create a new ROS Node inheriting from ROSTypeDBInterface and a new typedb interface inheriting from TypeDBInterface. Then you simply need to add the new functionalities you need into your class.
