@@ -23,6 +23,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from ros_typedb_tools.stress_config import InvariantRecord
 from ros_typedb_tools.stress_config import QuerySpec
 from ros_typedb_tools.stress_config import RequestRecord
 
@@ -72,6 +73,21 @@ def summarize_records(records: list[RequestRecord]) -> dict[str, Any]:
     return summary
 
 
+def summarize_invariant_records(
+    records: list[InvariantRecord],
+) -> dict[str, Any]:
+    """Build summary metrics from invariant records."""
+    successes = sum(1 for record in records if record.success)
+    timeouts = sum(1 for record in records if record.timed_out)
+    failures = len(records) - successes
+    return {
+        'total_invariants': len(records),
+        'successes': successes,
+        'failures': failures,
+        'timeouts': timeouts,
+    }
+
+
 def write_results(
     output_path: Path,
     *,
@@ -87,8 +103,12 @@ def write_results(
     request_gap_s: float = 0.0,
     max_in_flight: int | None = None,
     executor: str = 'global',
+    invariant_profile: str = 'none',
+    invariant_period_s: float = 10.0,
+    invariant_records: list[InvariantRecord] | None = None,
 ) -> None:
     """Write experiment results to a JSON file."""
+    invariants = invariant_records or []
     payload = {
         'service_name': service_name,
         'mode': mode,
@@ -97,6 +117,8 @@ def write_results(
         'request_gap_s': request_gap_s,
         'max_in_flight': max_in_flight,
         'executor': executor,
+        'invariant_profile': invariant_profile,
+        'invariant_period_s': invariant_period_s,
         'query_type': query_type,
         'query': query,
         'query_mix': [
@@ -104,7 +126,9 @@ def write_results(
         ],
         'timeout_s': timeout_s,
         'summary': summarize_records(records),
+        'invariant_summary': summarize_invariant_records(invariants),
         'requests': [asdict(record) for record in records],
+        'invariants': [asdict(record) for record in invariants],
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
@@ -181,7 +205,10 @@ class DebugEventWriter:
         self._stream.write(json.dumps(payload, sort_keys=True) + '\n')
 
 
-def print_summary(summary: dict[str, Any]) -> None:
+def print_summary(
+    summary: dict[str, Any],
+    invariant_summary: dict[str, Any] | None = None,
+) -> None:
     """Print compact experiment summary."""
     latency = summary['latency_s']
     print('ros_typedb stress experiment summary')
@@ -197,3 +224,8 @@ def print_summary(summary: dict[str, Any]) -> None:
         print(f"  latency_p95_s: {latency['p95']:.6f}")
         print(f"  latency_p99_s: {latency['p99']:.6f}")
         print(f"  latency_max_s: {latency['max']:.6f}")
+    if invariant_summary is not None:
+        print(f"  invariants_total: {invariant_summary['total_invariants']}")
+        print(f"  invariants_successes: {invariant_summary['successes']}")
+        print(f"  invariants_failures: {invariant_summary['failures']}")
+        print(f"  invariants_timeouts: {invariant_summary['timeouts']}")

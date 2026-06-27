@@ -167,6 +167,69 @@ ros2 run ros_typedb_tools ros_typedb_stress_experiment \
 Use `--service-name` if the node name is different from the default
 `/ros_typedb_interface/query`.
 
+An invariant is a correctness check that should remain true while the stress
+load is running. Request metrics show whether the service answered; invariants
+show whether the database still contains expected baseline facts.
+
+Use `--invariant-profile test-data` only when `ros_typedb_interface` was started
+with the bundled test schema/data from `ros_typedb/test/typedb_test_data/`:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 10 \
+  --duration-s 60 \
+  --timeout-s 10 \
+  --mode read \
+  --invariant-profile test-data \
+  --output /tmp/ros_typedb_read_invariants_results.json
+```
+
+The `test-data` profile is stored in
+`ros_typedb_tools/ros_typedb_tools/profiles/test_data_invariants.json`. It
+periodically checks stable counts for `person`, `company`, and `employment`,
+plus the `boss@tudelft.nl` sentinel person. This profile is not appropriate for
+other schemas, such as the `ros_typedb_examples` plan schema. The command exits
+with status 1 if an invariant fails.
+
+For the `ros_typedb_examples` plan schema/data, use:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 10 \
+  --duration-s 60 \
+  --timeout-s 10 \
+  --mode read \
+  --invariant-profile plan-schema \
+  --output /tmp/ros_typedb_plan_invariants_results.json
+```
+
+The `plan-schema` profile is stored in
+`ros_typedb_tools/ros_typedb_tools/profiles/plan_schema_invariants.json`. It
+checks counts for `Plan`, `Action`, `Proposition`, and the plan/action relation
+types, plus a sentinel action named `collect-water-sample`.
+
+For robustness experiments, keep the ROS service load bounded. High-rate
+unbounded service calls produced timeout waves even with fake Query services
+implemented in both Python and C++, across Fast DDS, CycloneDDS, ROS Humble,
+and ROS Lyrical. That points to a ROS service transport/executor stress limit
+rather than TypeDB query execution or `ros_typedb` result conversion.
+
+A practical bounded read-stress baseline is:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 20 \
+  --duration-s 60 \
+  --timeout-s 10 \
+  --mode read \
+  --request-gap-s 0.01 \
+  --max-in-flight 10 \
+  --output /tmp/ros_typedb_read_bounded_results.json
+```
+
+Use higher in-flight counts only when intentionally testing ROS service
+transport saturation, not when validating `ros_typedb` database robustness.
+
 ## Extend the package
 
 To extend this package with custom functionalities, you can create a new ROS Node inheriting from ROSTypeDBInterface and a new typedb interface inheriting from TypeDBInterface. Then you simply need to add the new functionalities you need into your class.

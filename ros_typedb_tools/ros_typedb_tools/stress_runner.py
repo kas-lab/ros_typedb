@@ -27,11 +27,17 @@ from rclpy.executors import SingleThreadedExecutor
 
 from ros_typedb_msgs.srv import Query
 
+from ros_typedb_tools.stress_config import InvariantRecord
+from ros_typedb_tools.stress_config import InvariantSpec
 from ros_typedb_tools.stress_config import QuerySpec
 from ros_typedb_tools.stress_config import RequestRecord
+from ros_typedb_tools.stress_config import StressExperimentResult
+from ros_typedb_tools.stress_config import build_invariant_specs
 from ros_typedb_tools.stress_config import build_query_request
 from ros_typedb_tools.stress_config import build_query_specs
 from ros_typedb_tools.stress_config import validate_experiment_args
+from ros_typedb_tools.stress_invariants import build_timeout_invariant_record
+from ros_typedb_tools.stress_invariants import evaluate_invariant_response
 from ros_typedb_tools.stress_output import DebugEventWriter
 
 
@@ -48,11 +54,14 @@ class _PendingRequest:
 @dataclass
 class _RunState:
     records: list[RequestRecord]
+    invariant_records: list[InvariantRecord]
     pending_by_client: dict[int, _PendingRequest]
     last_started_by_client: list[float]
     next_index: int
+    next_invariant_index: int
     deadline_s: float | None
     next_snapshot_s: float
+    next_invariant_s: float
 
 
 def _build_executor(args: argparse.Namespace) -> Any | None:
@@ -358,10 +367,146 @@ def _process_pending_requests(
     return timed_out_this_cycle
 
 
-def run_experiment(args: argparse.Namespace) -> list[RequestRecord]:
+def _run_invariant_check(
+    *,
+    node: Any,
+    executor: Any | None,
+    client: Any,
+    spec: InvariantSpec,
+    index: int,
+    phase: str,
+    timeout_s: float,
+    debug_events: DebugEventWriter,
+) -> InvariantRecord:
+    started_at_s = time.monotonic()
+    request = build_query_request(
+        spec.query,
+        spec.query_type,
+        timeout_s,
+    )
+    future = client.call_async(request)
+    debug_events.log(
+        'invariant_sent',
+        index=index,
+        name=spec.name,
+        phase=phase,
+    )
+
+    while True:
+        _spin_once(node, executor)
+        now_s = time.monotonic()
+        if future.done():
+            exception = future.exception()
+            if exception is not None:
+                record = evaluate_invariant_response(
+                    index=index,
+                    phase=phase,
+                    spec=spec,
+                    started_at_s=started_at_s,
+                    ended_at_s=now_s,
+                    response=None,
+                    exception_message=str(exception),
+                )
+            else:
+                record = evaluate_invariant_response(
+                    index=index,
+                    phase=phase,
+                    spec=spec,
+                    started_at_s=started_at_s,
+                    ended_at_s=now_s,
+                    response=future.result(),
+                )
+            debug_events.log(
+                'invariant_complete',
+                index=index,
+                name=spec.name,
+                phase=phase,
+                success=record.success,
+                latency_s=record.latency_s,
+                error_message=record.error_message,
+            )
+            return record
+
+        if now_s - started_at_s >= timeout_s:
+            future.cancel()
+            record = build_timeout_invariant_record(
+                index=index,
+                phase=phase,
+                spec=spec,
+                started_at_s=started_at_s,
+            )
+            debug_events.log(
+                'invariant_timeout',
+                index=index,
+                name=spec.name,
+                phase=phase,
+                latency_s=record.latency_s,
+            )
+            return record
+
+
+def _run_invariant_profile(
+    *,
+    node: Any,
+    executor: Any | None,
+    client: Any,
+    specs: list[InvariantSpec],
+    state: _RunState,
+    phase: str,
+    timeout_s: float,
+    debug_events: DebugEventWriter,
+) -> None:
+    for spec in specs:
+        record = _run_invariant_check(
+            node=node,
+            executor=executor,
+            client=client,
+            spec=spec,
+            index=state.next_invariant_index,
+            phase=phase,
+            timeout_s=timeout_s,
+            debug_events=debug_events,
+        )
+        state.invariant_records.append(record)
+        state.next_invariant_index += 1
+
+
+def _maybe_run_periodic_invariants(
+    *,
+    args: argparse.Namespace,
+    node: Any,
+    executor: Any | None,
+    invariant_client: Any | None,
+    invariant_specs: list[InvariantSpec],
+    state: _RunState,
+    now_s: float,
+    debug_events: DebugEventWriter,
+) -> None:
+    if not invariant_specs or invariant_client is None:
+        return
+    if args.invariant_period_s == 0:
+        return
+    if now_s < state.next_invariant_s:
+        return
+
+    _run_invariant_profile(
+        node=node,
+        executor=executor,
+        client=invariant_client,
+        specs=invariant_specs,
+        state=state,
+        phase='periodic',
+        timeout_s=args.timeout_s,
+        debug_events=debug_events,
+    )
+    state.next_invariant_s = time.monotonic() + args.invariant_period_s
+
+
+def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
     """Run the stress experiment."""
     validate_experiment_args(args)
     query_specs = build_query_specs(args)
+    invariant_specs = build_invariant_specs(args)
     max_in_flight = args.max_in_flight or args.clients
     debug_events_output = (
         Path(args.debug_events_output).expanduser()
@@ -377,6 +522,11 @@ def run_experiment(args: argparse.Namespace) -> list[RequestRecord]:
         node.create_client(Query, args.service_name)
         for _ in range(args.clients)
     ]
+    invariant_client = (
+        node.create_client(Query, args.service_name)
+        if invariant_specs
+        else None
+    )
     deadline_s = (
         time.monotonic() + args.duration_s
         if args.duration_s is not None
@@ -384,11 +534,14 @@ def run_experiment(args: argparse.Namespace) -> list[RequestRecord]:
     )
     state = _RunState(
         records=[],
+        invariant_records=[],
         pending_by_client={},
         last_started_by_client=[float('-inf') for _ in range(args.clients)],
         next_index=0,
+        next_invariant_index=0,
         deadline_s=deadline_s,
         next_snapshot_s=time.monotonic() + 1.0,
+        next_invariant_s=time.monotonic() + args.invariant_period_s,
     )
 
     try:
@@ -399,9 +552,11 @@ def run_experiment(args: argparse.Namespace) -> list[RequestRecord]:
                 executor=args.executor,
                 max_in_flight=max_in_flight,
                 request_gap_s=args.request_gap_s,
+                invariant_profile=args.invariant_profile,
+                invariant_period_s=args.invariant_period_s,
             )
             _wait_for_all_clients(
-                clients,
+                clients + ([invariant_client] if invariant_client else []),
                 service_name=args.service_name,
                 wait_service_timeout_s=args.wait_service_timeout_s,
                 debug_events=debug_events,
@@ -442,12 +597,40 @@ def run_experiment(args: argparse.Namespace) -> list[RequestRecord]:
                     max_in_flight=max_in_flight,
                     debug_events=debug_events,
                 )
+                _maybe_run_periodic_invariants(
+                    args=args,
+                    node=node,
+                    executor=executor,
+                    invariant_client=invariant_client,
+                    invariant_specs=invariant_specs,
+                    state=state,
+                    now_s=now_s,
+                    debug_events=debug_events,
+                )
+
+            if invariant_specs and invariant_client is not None:
+                _run_invariant_profile(
+                    node=node,
+                    executor=executor,
+                    client=invariant_client,
+                    specs=invariant_specs,
+                    state=state,
+                    phase='final',
+                    timeout_s=args.timeout_s,
+                    debug_events=debug_events,
+                )
 
             debug_events.log(
                 'experiment_finished',
                 records=len(state.records),
+                invariant_records=len(state.invariant_records),
                 timeouts=sum(
                     1 for record in state.records if record.timed_out
+                ),
+                invariant_failures=sum(
+                    1
+                    for record in state.invariant_records
+                    if not record.success
                 ),
             )
     finally:
@@ -455,4 +638,7 @@ def run_experiment(args: argparse.Namespace) -> list[RequestRecord]:
             executor.remove_node(node)
             executor.shutdown()
         node.destroy_node()
-    return state.records
+    return StressExperimentResult(
+        records=state.records,
+        invariant_records=state.invariant_records,
+    )

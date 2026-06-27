@@ -5,6 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from rcl_interfaces.msg import ParameterType
+from rcl_interfaces.msg import ParameterValue
 
 from ros_typedb_tools.fake_query_service import (
     build_fake_service_argument_parser,
@@ -14,17 +16,25 @@ from ros_typedb_tools.ros_typedb_stress_experiment import (
 )
 from ros_typedb_tools.stress_config import (
     QUERY_TYPE_BY_NAME,
+    InvariantRecord,
+    InvariantSpec,
     RequestRecord,
+    build_invariant_specs,
     build_query_specs,
 )
+from ros_typedb_tools.stress_invariants import evaluate_invariant_response
 from ros_typedb_tools.stress_output import (
     DebugEventWriter,
     default_timeout_output_path,
+    summarize_invariant_records,
     summarize_records,
     write_results,
     write_timeout_results,
 )
 from ros_typedb_tools.stress_runner import run_experiment
+from ros_typedb_msgs.msg import Attribute
+from ros_typedb_msgs.msg import QueryResult
+from ros_typedb_msgs.msg import ResultTree
 
 
 def _record(
@@ -48,6 +58,47 @@ def _record(
         cancel_requested=timed_out,
         error_message='' if success else 'failed',
         result_count=1 if success else 0,
+    )
+
+
+def _invariant_record(
+    index: int,
+    *,
+    success: bool,
+    timed_out: bool = False,
+) -> InvariantRecord:
+    return InvariantRecord(
+        index=index,
+        phase='final',
+        name='person-count',
+        query_type='get_aggregate',
+        query='match $p isa person; get $p; count;',
+        started_at_s=20.0 + index,
+        ended_at_s=20.1 + index,
+        latency_s=0.1,
+        success=success,
+        timed_out=timed_out,
+        error_message='' if success else 'failed',
+        expected_value=20,
+        actual_value=20 if success else 0,
+    )
+
+
+def _aggregate_count_response(value: int, *, success: bool = True):
+    parameter_value = ParameterValue()
+    parameter_value.type = ParameterType.PARAMETER_INTEGER
+    parameter_value.integer_value = value
+    attribute = Attribute()
+    attribute.value = parameter_value
+    query_result = QueryResult()
+    query_result.type = QueryResult.ATTRIBUTE
+    query_result.attribute = attribute
+    result_tree = ResultTree()
+    result_tree.results.append(query_result)
+    return SimpleNamespace(
+        success=success,
+        error_message='',
+        results=[result_tree],
     )
 
 
@@ -124,6 +175,29 @@ def test_parser_accepts_stage_two_arguments():
     assert args.executor == 'global'
 
 
+def test_parser_accepts_stage_three_arguments():
+    """Check Stage 3 invariant arguments."""
+    parser = build_argument_parser()
+
+    args = parser.parse_args(
+        [
+            '--clients',
+            '10',
+            '--duration-s',
+            '60',
+            '--mode',
+            'read',
+            '--invariant-profile',
+            'test-data',
+            '--invariant-period-s',
+            '5',
+        ]
+    )
+
+    assert args.invariant_profile == 'test-data'
+    assert args.invariant_period_s == 5
+
+
 def test_fake_service_parser_accepts_diagnostic_arguments():
     """Check the fake service CLI options."""
     parser = build_fake_service_argument_parser()
@@ -183,6 +257,22 @@ def test_summarize_records_counts_success_failure_and_timeouts():
     assert summary['latency_s']['max'] == pytest.approx(0.4)
 
 
+def test_summarize_invariant_records_counts_failures_and_timeouts():
+    """Check invariant summary counters."""
+    records = [
+        _invariant_record(0, success=True),
+        _invariant_record(1, success=False),
+        _invariant_record(2, success=False, timed_out=True),
+    ]
+
+    summary = summarize_invariant_records(records)
+
+    assert summary['total_invariants'] == 3
+    assert summary['successes'] == 1
+    assert summary['failures'] == 2
+    assert summary['timeouts'] == 1
+
+
 def test_write_results_writes_summary_and_request_records(tmp_path: Path):
     """Check JSON output includes metadata, summary, and records."""
     output_path = tmp_path / 'stress' / 'results.json'
@@ -204,6 +294,9 @@ def test_write_results_writes_summary_and_request_records(tmp_path: Path):
         request_gap_s=0.01,
         max_in_flight=1,
         executor='single',
+        invariant_profile='test-data',
+        invariant_period_s=5.0,
+        invariant_records=[_invariant_record(0, success=True)],
     )
 
     payload = json.loads(output_path.read_text(encoding='utf-8'))
@@ -213,6 +306,8 @@ def test_write_results_writes_summary_and_request_records(tmp_path: Path):
     assert payload['request_gap_s'] == 0.01
     assert payload['max_in_flight'] == 1
     assert payload['executor'] == 'single'
+    assert payload['invariant_profile'] == 'test-data'
+    assert payload['invariant_period_s'] == 5.0
     assert payload['mode'] == 'read'
     assert payload['query_type'] == 'fetch'
     assert payload['query_mix'][0]['query_type'] in QUERY_TYPE_BY_NAME
@@ -225,6 +320,8 @@ def test_write_results_writes_summary_and_request_records(tmp_path: Path):
         'match $x isa entity; fetch $x: attribute;'
     )
     assert payload['requests'][0]['success'] is True
+    assert payload['invariant_summary']['successes'] == 1
+    assert payload['invariants'][0]['name'] == 'person-count'
 
 
 def test_default_timeout_output_path_uses_result_stem():
@@ -318,6 +415,91 @@ def test_build_query_specs_rejects_query_without_query_type():
         build_query_specs(args)
 
 
+def test_build_invariant_specs_uses_test_data_profile():
+    """Check the built-in test-data profile."""
+    specs = build_invariant_specs(
+        SimpleNamespace(invariant_profile='test-data')
+    )
+
+    assert [spec.name for spec in specs] == [
+        'person-count',
+        'company-count',
+        'employment-count',
+        'boss-sentinel-count',
+    ]
+    assert all(spec.query_type == 'get_aggregate' for spec in specs)
+
+
+def test_build_invariant_specs_uses_plan_schema_profile():
+    """Check the built-in plan-schema profile."""
+    specs = build_invariant_specs(
+        SimpleNamespace(invariant_profile='plan-schema')
+    )
+
+    assert [spec.name for spec in specs] == [
+        'plan-count',
+        'action-count',
+        'proposition-count',
+        'has-action-count',
+        'action-preconditions-count',
+        'action-effects-count',
+        'collect-water-sample-sentinel-count',
+    ]
+    assert all(spec.query_type == 'get_aggregate' for spec in specs)
+
+
+def test_build_invariant_specs_returns_empty_list_for_none_profile():
+    """Check invariant checks are optional."""
+    specs = build_invariant_specs(SimpleNamespace(invariant_profile='none'))
+
+    assert specs == []
+
+
+def test_evaluate_invariant_response_compares_aggregate_value():
+    """Check invariant evaluation reads aggregate scalar values."""
+    spec = InvariantSpec(
+        name='person-count',
+        query='match $p isa person; get $p; count;',
+        query_type='get_aggregate',
+        expected_value=20,
+    )
+
+    record = evaluate_invariant_response(
+        index=0,
+        phase='final',
+        spec=spec,
+        started_at_s=1.0,
+        ended_at_s=1.2,
+        response=_aggregate_count_response(20),
+    )
+
+    assert record.success is True
+    assert record.actual_value == 20
+
+
+def test_evaluate_invariant_response_reports_unexpected_value():
+    """Check invariant evaluation reports mismatched aggregate values."""
+    spec = InvariantSpec(
+        name='person-count',
+        query='match $p isa person; get $p; count;',
+        query_type='get_aggregate',
+        expected_value=20,
+    )
+
+    record = evaluate_invariant_response(
+        index=0,
+        phase='final',
+        spec=spec,
+        started_at_s=1.0,
+        ended_at_s=1.2,
+        response=_aggregate_count_response(0),
+    )
+
+    assert record.success is False
+    assert record.actual_value == 0
+    assert 'expected 20' in record.error_message
+
+
 def test_run_experiment_rejects_invalid_request_count():
     """Check request count validation before ROS service use."""
     args = SimpleNamespace(
@@ -331,6 +513,8 @@ def test_run_experiment_rejects_invalid_request_count():
         executor='global',
         executor_threads=2,
         debug_events_output=None,
+        invariant_profile='none',
+        invariant_period_s=10.0,
         query='match $x isa entity; fetch $x: attribute;',
         query_type='fetch',
         mode='read',
@@ -348,6 +532,13 @@ def test_run_experiment_rejects_invalid_client_count():
         duration_s=None,
         timeout_s=5.0,
         wait_service_timeout_s=1.0,
+        request_gap_s=0.0,
+        max_in_flight=None,
+        executor='global',
+        executor_threads=2,
+        debug_events_output=None,
+        invariant_profile='none',
+        invariant_period_s=10.0,
         query='match $x isa entity; fetch $x: attribute;',
         query_type='fetch',
         mode='read',

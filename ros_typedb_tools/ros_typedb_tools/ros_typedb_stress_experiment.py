@@ -22,9 +22,12 @@ from pathlib import Path
 import rclpy
 
 from ros_typedb_tools.stress_config import QUERY_TYPE_BY_NAME
+from ros_typedb_tools.stress_config import INVARIANT_PROFILE_NAMES
+from ros_typedb_tools.stress_config import StressExperimentResult
 from ros_typedb_tools.stress_config import build_query_specs
 from ros_typedb_tools.stress_output import default_timeout_output_path
 from ros_typedb_tools.stress_output import print_summary
+from ros_typedb_tools.stress_output import summarize_invariant_records
 from ros_typedb_tools.stress_output import summarize_records
 from ros_typedb_tools.stress_output import write_results
 from ros_typedb_tools.stress_output import write_timeout_results
@@ -120,6 +123,24 @@ def build_argument_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        '--invariant-profile',
+        choices=INVARIANT_PROFILE_NAMES,
+        default='none',
+        help=(
+            'Optional built-in invariant profile. Use test-data with the '
+            'bundled ros_typedb test schema/data. Defaults to none.'
+        ),
+    )
+    parser.add_argument(
+        '--invariant-period-s',
+        type=float,
+        default=10.0,
+        help=(
+            'Seconds between periodic invariant checks. Use 0 to run only '
+            'the final check. Defaults to 10.'
+        ),
+    )
+    parser.add_argument(
         '--wait-service-timeout-s',
         type=float,
         default=10.0,
@@ -154,7 +175,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
 
 def _write_requested_outputs(
     args: argparse.Namespace,
-    records,
+    result: StressExperimentResult,
 ) -> None:
     output_path = None
     if args.output:
@@ -166,7 +187,7 @@ def _write_requested_outputs(
             query_type=args.query_type,
             query=args.query,
             timeout_s=args.timeout_s,
-            records=records,
+            records=result.records,
             clients=args.clients,
             duration_s=args.duration_s,
             mode=args.mode,
@@ -174,6 +195,9 @@ def _write_requested_outputs(
             request_gap_s=args.request_gap_s,
             max_in_flight=args.max_in_flight,
             executor=args.executor,
+            invariant_profile=args.invariant_profile,
+            invariant_period_s=args.invariant_period_s,
+            invariant_records=result.invariant_records,
         )
         print(f'  output: {output_path}')
 
@@ -186,7 +210,7 @@ def _write_requested_outputs(
         write_timeout_results(
             timeout_output_path,
             source_output_path=output_path,
-            records=records,
+            records=result.records,
         )
         print(f'  timeout_output: {timeout_output_path}')
 
@@ -198,10 +222,15 @@ def main(argv: list[str] | None = None) -> int:
 
     rclpy.init(args=None)
     try:
-        records = run_experiment(args)
-        summary = summarize_records(records)
-        print_summary(summary)
-        _write_requested_outputs(args, records)
+        result = run_experiment(args)
+        summary = summarize_records(result.records)
+        invariant_summary = summarize_invariant_records(
+            result.invariant_records
+        )
+        print_summary(summary, invariant_summary)
+        _write_requested_outputs(args, result)
+        if invariant_summary['failures'] > 0:
+            return 1
         if args.fail_on_failure and summary['failures'] > 0:
             return 1
         return 0

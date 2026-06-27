@@ -150,6 +150,52 @@ The command exits successfully when the experiment runs to completion, even if
 some requests fail. Use `--fail-on-failure` when a nonzero exit code is useful
 for CI or scripted thresholds.
 
+An invariant is a correctness check that should remain true while the stress
+load is running. Request metrics show whether the service answered; invariants
+show whether the database still contains expected baseline facts.
+
+Correctness invariant example for the bundled `ros_typedb` test schema/data:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 10 \
+  --duration-s 60 \
+  --timeout-s 10 \
+  --mode read \
+  --invariant-profile test-data \
+  --output ~/results/ros_typedb_read_invariants_results.json
+```
+
+Use `--invariant-profile test-data` only when `ros_typedb_interface` was started
+with the schema/data from `ros_typedb/test/typedb_test_data/`. The profile is
+stored in `ros_typedb_tools/ros_typedb_tools/profiles/test_data_invariants.json`
+and checks stable aggregate counts for `person`, `company`, and `employment`,
+plus the `boss@tudelft.nl` sentinel person. This profile is not appropriate for
+other schemas, such as the `ros_typedb_examples` plan schema.
+
+For `ros_typedb_examples/data/plan_schema.tql` and `plan_data.tql`, use:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 10 \
+  --duration-s 60 \
+  --timeout-s 10 \
+  --mode read \
+  --invariant-profile plan-schema \
+  --output ~/results/ros_typedb_plan_invariants_results.json
+```
+
+The `plan-schema` profile is stored in
+`ros_typedb_tools/ros_typedb_tools/profiles/plan_schema_invariants.json` and
+checks counts for `Plan`, `Action`, `Proposition`, and the plan/action relation
+types, plus a sentinel action named `collect-water-sample`.
+
+Checks run every 10 seconds by default and once at the end. Use
+`--invariant-period-s` to adjust the periodic interval, or
+`--invariant-period-s 0` to run only the final check. Invariant failures are
+reported separately from request failures and always make the command exit with
+status 1.
+
 For ROS client/executor debugging, `--debug-events-output` writes JSONL events
 for request sends, `spin_once()` calls, completed futures, timeouts, and periodic
 pending-request snapshots. Use `--executor single` or `--executor multi` to
@@ -157,6 +203,30 @@ compare explicit executors against the default `rclpy.spin_once(node)` behavior.
 Use `--request-gap-s` to add a small per-client delay between requests, or
 `--max-in-flight` to cap total outstanding service requests independently of the
 number of clients.
+
+For `ros_typedb` robustness experiments, prefer bounded service concurrency.
+High-rate unbounded Query service calls produced timeout waves even when TypeDB
+was removed from the path by using fake Query services. The same behavior was
+observed with Python and C++ clients/servers, Fast DDS and CycloneDDS, and ROS
+Humble and Lyrical. Treat that as a ROS service transport/executor stress limit,
+not as a database or result-conversion failure.
+
+A practical bounded baseline is:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 20 \
+  --duration-s 60 \
+  --timeout-s 10 \
+  --mode read \
+  --request-gap-s 0.01 \
+  --max-in-flight 10 \
+  --output ~/results/ros_typedb_read_bounded_results.json
+```
+
+Use larger `--max-in-flight` values only when intentionally probing ROS service
+transport saturation. In local tests, about 12-15 in-flight requests started to
+produce timeout waves, while 10 or fewer stayed stable.
 
 To isolate ROS service/client behavior from TypeDB work, run a fake Query
 service in one terminal:
@@ -193,6 +263,9 @@ Useful options:
 - `--max-in-flight`: maximum number of outstanding requests across all clients
 - `--executor`: client executor mode, one of `global`, `single`, or `multi`
 - `--debug-events-output`: optional JSONL debug event path
+- `--invariant-profile`: optional correctness profile, such as `test-data` or
+  `plan-schema`
+- `--invariant-period-s`: seconds between periodic invariant checks
 - `--timeout-s`: per-request client and server timeout
 - `--output`: optional JSON results path
 - `--timeout-output`: optional timeout-only JSON results path
@@ -223,3 +296,8 @@ Start new terminal in the container:
 ```Bash
 docker exec -it ros_typedb bash
 ```
+
+
+ export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp

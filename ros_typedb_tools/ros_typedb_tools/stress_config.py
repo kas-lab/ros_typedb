@@ -16,7 +16,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 from ros_typedb_msgs.srv import Query
 
@@ -46,6 +49,13 @@ DEFAULT_READ_QUERY_SPECS = (
     ),
 )
 
+INVARIANT_PROFILE_FILES = {
+    'plan-schema': 'plan_schema_invariants.json',
+    'test-data': 'test_data_invariants.json',
+}
+INVARIANT_PROFILE_NAMES = ('none', *INVARIANT_PROFILE_FILES)
+INVARIANT_PROFILE_DIR = Path(__file__).with_name('profiles')
+
 
 @dataclass(frozen=True)
 class QuerySpec:
@@ -74,6 +84,43 @@ class RequestRecord:
     result_count: int
 
 
+@dataclass(frozen=True)
+class InvariantSpec:
+    """Query and expected scalar value for one invariant check."""
+
+    name: str
+    query: str
+    query_type: str
+    expected_value: Any
+
+
+@dataclass(frozen=True)
+class InvariantRecord:
+    """Result of one invariant query."""
+
+    index: int
+    phase: str
+    name: str
+    query_type: str
+    query: str
+    started_at_s: float
+    ended_at_s: float
+    latency_s: float
+    success: bool
+    timed_out: bool
+    error_message: str
+    expected_value: Any
+    actual_value: Any
+
+
+@dataclass(frozen=True)
+class StressExperimentResult:
+    """Complete stress experiment result."""
+
+    records: list[RequestRecord]
+    invariant_records: list[InvariantRecord]
+
+
 def validate_experiment_args(args: argparse.Namespace) -> None:
     """Validate stress arguments before ROS resources are created."""
     if args.requests < 1:
@@ -94,6 +141,14 @@ def validate_experiment_args(args: argparse.Namespace) -> None:
         raise ValueError('--max-in-flight must be greater than zero')
     if args.executor_threads < 1:
         raise ValueError('--executor-threads must be greater than zero')
+    if args.invariant_profile not in INVARIANT_PROFILE_NAMES:
+        raise ValueError(
+            f'unsupported invariant profile: {args.invariant_profile}'
+        )
+    if args.invariant_period_s < 0:
+        raise ValueError(
+            '--invariant-period-s must be greater than or equal to zero'
+        )
 
 
 def build_query_specs(args: argparse.Namespace) -> list[QuerySpec]:
@@ -113,6 +168,40 @@ def build_query_specs(args: argparse.Namespace) -> list[QuerySpec]:
         ]
 
     raise ValueError(f'unsupported mode: {args.mode}')
+
+
+def build_invariant_specs(args: argparse.Namespace) -> list[InvariantSpec]:
+    """Build invariant checks for the selected invariant profile."""
+    if args.invariant_profile == 'none':
+        return []
+
+    profile_filename = INVARIANT_PROFILE_FILES.get(args.invariant_profile)
+    if profile_filename is None:
+        raise ValueError(
+            f'unsupported invariant profile: {args.invariant_profile}'
+        )
+
+    return _load_invariant_profile(INVARIANT_PROFILE_DIR / profile_filename)
+
+
+def _load_invariant_profile(profile_path: Path) -> list[InvariantSpec]:
+    """Load invariant checks from a packaged JSON profile."""
+    payload = json.loads(profile_path.read_text(encoding='utf-8'))
+    invariants = payload.get('invariants', [])
+    specs = []
+    for invariant in invariants:
+        query_type = invariant['query_type']
+        if query_type not in QUERY_TYPE_BY_NAME:
+            raise ValueError(f'unsupported invariant query type: {query_type}')
+        specs.append(
+            InvariantSpec(
+                name=invariant['name'],
+                query=invariant['query'],
+                query_type=query_type,
+                expected_value=invariant['expected_value'],
+            )
+        )
+    return specs
 
 
 def build_query_request(
