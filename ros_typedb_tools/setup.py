@@ -43,8 +43,7 @@ setup(
             ),
             (
                 'ros_typedb_fake_query_service = '
-                'ros_typedb_tools.ros_typedb_stress_experiment:'
-                'fake_query_service_main'
+                'ros_typedb_tools.fake_query_service:fake_query_service_main'
             ),
         ],
     },

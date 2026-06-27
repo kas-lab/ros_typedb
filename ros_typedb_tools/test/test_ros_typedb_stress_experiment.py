@@ -6,19 +6,25 @@ from types import SimpleNamespace
 
 import pytest
 
+from ros_typedb_tools.fake_query_service import (
+    build_fake_service_argument_parser,
+)
 from ros_typedb_tools.ros_typedb_stress_experiment import (
-    DebugEventWriter,
+    build_argument_parser,
+)
+from ros_typedb_tools.stress_config import (
     QUERY_TYPE_BY_NAME,
     RequestRecord,
-    _build_query_specs,
-    build_argument_parser,
-    build_fake_service_argument_parser,
+    build_query_specs,
+)
+from ros_typedb_tools.stress_output import (
+    DebugEventWriter,
     default_timeout_output_path,
-    run_experiment,
     summarize_records,
     write_results,
     write_timeout_results,
 )
+from ros_typedb_tools.stress_runner import run_experiment
 
 
 def _record(
@@ -192,7 +198,7 @@ def test_write_results_writes_summary_and_request_records(tmp_path: Path):
         clients=2,
         duration_s=10.0,
         mode='read',
-        query_mix=_build_query_specs(
+        query_mix=build_query_specs(
             SimpleNamespace(query=None, query_type=None, mode='read')
         ),
         request_gap_s=0.01,
@@ -277,7 +283,7 @@ def test_debug_event_writer_writes_json_lines(tmp_path: Path):
 
 def test_build_query_specs_uses_single_explicit_query():
     """Check explicit query arguments override the built-in mix."""
-    specs = _build_query_specs(
+    specs = build_query_specs(
         SimpleNamespace(
             query='match $x isa entity; fetch $x: attribute;',
             query_type='fetch',
@@ -292,7 +298,7 @@ def test_build_query_specs_uses_single_explicit_query():
 
 def test_build_query_specs_uses_read_query_mix_by_default():
     """Check read mode provides runnable queries without explicit input."""
-    specs = _build_query_specs(
+    specs = build_query_specs(
         SimpleNamespace(query=None, query_type=None, mode='read')
     )
 
@@ -309,7 +315,7 @@ def test_build_query_specs_rejects_query_without_query_type():
     )
 
     with pytest.raises(ValueError, match='--query-type'):
-        _build_query_specs(args)
+        build_query_specs(args)
 
 
 def test_run_experiment_rejects_invalid_request_count():
