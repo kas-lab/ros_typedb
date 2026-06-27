@@ -1,3 +1,5 @@
+"""Package setup for ros_typedb_tools."""
+
 from setuptools import find_packages, setup
 
 package_name = 'ros_typedb_tools'
@@ -15,7 +17,10 @@ setup(
     zip_safe=True,
     maintainer='Gustavo Rezende',
     maintainer_email='g.rezendesilva@tudelft.nl',
-    description='Tools for TypeDB workflows, including schema and rule diagram generation',
+    description=(
+        'Tools for TypeDB workflows, including schema and rule diagram '
+        'generation'
+    ),
     license='Apache-2.0',
     extras_require={
         'test': [
@@ -24,9 +29,23 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'typedb_schema_diagram = ros_typedb_tools.typedb_schema_diagram:main',
-            'typedb_rule_diagram = ros_typedb_tools.typedb_rule_diagram:main',
-            'ros_typedb_stress_experiment = ros_typedb_tools.ros_typedb_stress_experiment:main',
+            (
+                'typedb_schema_diagram = '
+                'ros_typedb_tools.typedb_schema_diagram:main'
+            ),
+            (
+                'typedb_rule_diagram = '
+                'ros_typedb_tools.typedb_rule_diagram:main'
+            ),
+            (
+                'ros_typedb_stress_experiment = '
+                'ros_typedb_tools.ros_typedb_stress_experiment:main'
+            ),
+            (
+                'ros_typedb_fake_query_service = '
+                'ros_typedb_tools.ros_typedb_stress_experiment:'
+                'fake_query_service_main'
+            ),
         ],
     },
 )

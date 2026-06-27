@@ -127,8 +127,56 @@ ros2 run ros_typedb_tools ros_typedb_stress_experiment \
   --duration-s 60 \
   --timeout-s 10 \
   --mode read \
+  --debug-events-output ~/results/ros_typedb_read_stress_events.jsonl \
   --output ~/results/ros_typedb_read_stress_results.json
 ```
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 20 \
+  --duration-s 60 \
+  --timeout-s 10 \
+  --query 'match $x isa entity; get $x;' \
+  --query-type get \
+  --debug-events-output ~/results/ros_typedb_read_stress_events.jsonl \
+  --output ~/results/ros_typedb_get_stress_results.json
+```
+
+When `--output` is set, timeout-only records are also written next to the main
+result file using the suffix `_timeouts.json`. Use `--timeout-output` to choose
+a different path. Timeout records include request index, client id, query index,
+query type, query text, latency, and whether future cancellation was requested.
+The command exits successfully when the experiment runs to completion, even if
+some requests fail. Use `--fail-on-failure` when a nonzero exit code is useful
+for CI or scripted thresholds.
+
+For ROS client/executor debugging, `--debug-events-output` writes JSONL events
+for request sends, `spin_once()` calls, completed futures, timeouts, and periodic
+pending-request snapshots. Use `--executor single` or `--executor multi` to
+compare explicit executors against the default `rclpy.spin_once(node)` behavior.
+Use `--request-gap-s` to add a small per-client delay between requests, or
+`--max-in-flight` to cap total outstanding service requests independently of the
+number of clients.
+
+To isolate ROS service/client behavior from TypeDB work, run a fake Query
+service in one terminal:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_fake_query_service
+```
+
+Then run the same stress command against it from another terminal.
+
+To run the common timeout-debug scenarios in sequence, use:
+
+```bash
+bash src/ros_typedb/ros_typedb_tools/scripts/run_stage2_timeout_scenarios.sh
+```
+
+The script runs real read/global, real read/multi, fake read/global, fake
+read/multi, and real explicit entity-get/global scenarios. Override defaults
+with environment variables such as `CLIENTS`, `DURATION_S`, `TIMEOUT_S`, and
+`OUTPUT_DIR`.
 
 Useful options:
 
@@ -141,5 +189,37 @@ Useful options:
 - `--duration-s`: run for this many seconds instead of a fixed request count
 - `--mode`: built-in query mix to use when `--query` is omitted; currently
   supports `read`
+- `--request-gap-s`: minimum delay between requests from the same client
+- `--max-in-flight`: maximum number of outstanding requests across all clients
+- `--executor`: client executor mode, one of `global`, `single`, or `multi`
+- `--debug-events-output`: optional JSONL debug event path
 - `--timeout-s`: per-request client and server timeout
 - `--output`: optional JSON results path
+- `--timeout-output`: optional timeout-only JSON results path
+- `--fail-on-failure`: return exit code 1 when any request fails
+
+## Tests
+
+```Bash
+colcon test --event-handlers console_cohesion+ --packages-select ros_typedb_tools
+```
+
+## Docker
+
+The commands below assume you are running them from the workspace root:
+
+```Bash
+cd <workspace_root>
+```
+
+Start dev container **without** display and the `ros_typedb` directory mounted:
+
+```Bash
+docker run -it --rm --name ros_typedb -v /etc/localtime:/etc/localtime:ro -v $PWD/src/ros_typedb:/home/ubuntu-user/typedb_ws/src/ros_typedb  -v $PWD/ros_typedb_results/:/home/ubuntu-user/results/ ros_typedb
+```
+
+Start new terminal in the container:
+
+```Bash
+docker exec -it ros_typedb bash
+```
