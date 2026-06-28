@@ -1,3 +1,6 @@
+# folder for keep annotations to self
+docs-self/
+
 .vscode
 docs/source/_autosummary/
 docs/source/generated/
