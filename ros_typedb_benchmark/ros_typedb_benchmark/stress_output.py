@@ -24,10 +24,10 @@ import threading
 import time
 from typing import Any
 
-from ros_typedb_tools.stress_config import FaultResult
-from ros_typedb_tools.stress_config import InvariantRecord
-from ros_typedb_tools.stress_config import QuerySpec
-from ros_typedb_tools.stress_config import RequestRecord
+from ros_typedb_benchmark.stress_config import FaultResult
+from ros_typedb_benchmark.stress_config import InvariantRecord
+from ros_typedb_benchmark.stress_config import QuerySpec
+from ros_typedb_benchmark.stress_config import RequestRecord
 
 
 def _latency_percentile(

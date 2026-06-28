@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 from ros_typedb_msgs.srv import Query
 
 if TYPE_CHECKING:
-    from ros_typedb_tools.stress_mixed import MixedQueryProfile
+    from ros_typedb_benchmark.stress_mixed import MixedQueryProfile
 
 
 QUERY_TYPE_BY_NAME = {

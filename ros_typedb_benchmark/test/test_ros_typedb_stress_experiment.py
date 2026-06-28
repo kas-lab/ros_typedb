@@ -12,14 +12,14 @@ from rcl_interfaces.msg import ParameterValue
 from ros_typedb_msgs.msg import Attribute
 from ros_typedb_msgs.msg import QueryResult
 from ros_typedb_msgs.msg import ResultTree
-from ros_typedb_tools.fake_query_service import (
+from ros_typedb_benchmark.fake_query_service import (
     build_fake_service_argument_parser,
 )
-import ros_typedb_tools.ros_typedb_stress_experiment as stress_cli
-from ros_typedb_tools.ros_typedb_stress_experiment import (
+import ros_typedb_benchmark.ros_typedb_stress_experiment as stress_cli
+from ros_typedb_benchmark.ros_typedb_stress_experiment import (
     build_argument_parser,
 )
-from ros_typedb_tools.stress_config import (
+from ros_typedb_benchmark.stress_config import (
     build_invariant_specs,
     build_query_specs,
     DEFAULT_TYPEDB_START_COMMAND,
@@ -33,12 +33,12 @@ from ros_typedb_tools.stress_config import (
     StressExperimentResult,
     validate_experiment_args,
 )
-from ros_typedb_tools.stress_invariants import evaluate_invariant_response
-from ros_typedb_tools.stress_mixed import build_mixed_cleanup_query_spec
-from ros_typedb_tools.stress_mixed import build_mixed_query_spec
-from ros_typedb_tools.stress_mixed import load_mixed_query_profile
-from ros_typedb_tools.stress_mixed import make_mixed_key
-from ros_typedb_tools.stress_output import (
+from ros_typedb_benchmark.stress_invariants import evaluate_invariant_response
+from ros_typedb_benchmark.stress_mixed import build_mixed_cleanup_query_spec
+from ros_typedb_benchmark.stress_mixed import build_mixed_query_spec
+from ros_typedb_benchmark.stress_mixed import load_mixed_query_profile
+from ros_typedb_benchmark.stress_mixed import make_mixed_key
+from ros_typedb_benchmark.stress_output import (
     DebugEventWriter,
     default_timeout_output_path,
     summarize_invariant_records,
@@ -46,8 +46,8 @@ from ros_typedb_tools.stress_output import (
     write_results,
     write_timeout_results,
 )
-from ros_typedb_tools.stress_resolution import resolve_stress_config
-from ros_typedb_tools.stress_runner import (
+from ros_typedb_benchmark.stress_resolution import resolve_stress_config
+from ros_typedb_benchmark.stress_runner import (
     _build_typedb_restart_commands,
     _call_lifecycle_transition,
     _compute_observed_fault_outage_s,
@@ -57,8 +57,8 @@ from ros_typedb_tools.stress_runner import (
     _run_fault_command,
     _start_fault_command,
 )
-from ros_typedb_tools.stress_runner import _RunState
-from ros_typedb_tools.stress_runner import run_experiment
+from ros_typedb_benchmark.stress_runner import _RunState
+from ros_typedb_benchmark.stress_runner import run_experiment
 
 
 def _record(
@@ -739,7 +739,7 @@ def test_run_fault_command_reports_nonzero_exit(monkeypatch):
         return Completed()
 
     monkeypatch.setattr(
-        'ros_typedb_tools.stress_runner.subprocess.run',
+        'ros_typedb_benchmark.stress_runner.subprocess.run',
         fake_run,
     )
 
@@ -768,7 +768,7 @@ def test_start_fault_command_treats_running_process_as_success(monkeypatch):
         return RunningProcess()
 
     monkeypatch.setattr(
-        'ros_typedb_tools.stress_runner.subprocess.Popen',
+        'ros_typedb_benchmark.stress_runner.subprocess.Popen',
         fake_popen,
     )
 

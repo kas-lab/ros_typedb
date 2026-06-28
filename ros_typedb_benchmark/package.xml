@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>ros_typedb_tools</name>
+  <name>ros_typedb_benchmark</name>
   <version>0.0.0</version>
-  <description>Utility tools for TypeDB workflows, including schema and rule diagram generation.</description>
+  <description>Stress-testing and fault-injection benchmark tools for ros_typedb.</description>
   <maintainer email="g.rezendesilva@tudelft.nl">Gustavo Rezende</maintainer>
   <license>Apache-2.0</license>
 
-  <exec_depend>python3-pydot</exec_depend>
-  <exec_depend>graphviz</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>ros_typedb_msgs</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

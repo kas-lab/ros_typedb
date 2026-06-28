@@ -24,7 +24,7 @@ run_stress() {
 
   echo
   echo "==> Running $name"
-  ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  ros2 run ros_typedb_benchmark ros_typedb_stress_experiment \
     --service-name "$service_name" \
     --clients "$CLIENTS" \
     --duration-s "$DURATION_S" \
@@ -37,7 +37,7 @@ run_stress() {
 start_fake_service() {
   echo
   echo "==> Starting fake Query service on $FAKE_SERVICE_NAME"
-  ros2 run ros_typedb_tools ros_typedb_fake_query_service \
+  ros2 run ros_typedb_benchmark ros_typedb_fake_query_service \
     --service-name "$FAKE_SERVICE_NAME" \
     >"$OUTPUT_DIR/fake_query_service.log" 2>&1 &
   FAKE_SERVICE_PID="$!"

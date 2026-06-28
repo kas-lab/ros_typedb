@@ -20,9 +20,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ros_typedb_tools.stress_config import MIXED_PROFILE_FILES
-from ros_typedb_tools.stress_config import QUERY_TYPE_BY_NAME
-from ros_typedb_tools.stress_config import QuerySpec
+from ros_typedb_benchmark.stress_config import MIXED_PROFILE_FILES
+from ros_typedb_benchmark.stress_config import QUERY_TYPE_BY_NAME
+from ros_typedb_benchmark.stress_config import QuerySpec
 
 
 MIXED_PROFILE_DIR = Path(__file__).with_name('profiles')

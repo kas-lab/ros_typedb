@@ -20,8 +20,8 @@ from typing import Any
 
 from rcl_interfaces.msg import ParameterType
 
-from ros_typedb_tools.stress_config import InvariantRecord
-from ros_typedb_tools.stress_config import InvariantSpec
+from ros_typedb_benchmark.stress_config import InvariantRecord
+from ros_typedb_benchmark.stress_config import InvariantSpec
 
 
 def _parameter_value_to_python(parameter_value: Any) -> Any:

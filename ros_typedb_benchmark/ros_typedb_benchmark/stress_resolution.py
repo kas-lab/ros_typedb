@@ -18,15 +18,15 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from ros_typedb_tools.stress_config import build_invariant_specs
-from ros_typedb_tools.stress_config import build_query_specs
-from ros_typedb_tools.stress_config import DEFAULT_TYPEDB_START_COMMAND
-from ros_typedb_tools.stress_config import DEFAULT_TYPEDB_STOP_COMMAND
-from ros_typedb_tools.stress_config import QuerySpec
-from ros_typedb_tools.stress_config import ResolvedStressConfig
-from ros_typedb_tools.stress_config import validate_experiment_args
-from ros_typedb_tools.stress_mixed import load_mixed_query_profile
-from ros_typedb_tools.stress_mixed import MixedQueryProfile
+from ros_typedb_benchmark.stress_config import build_invariant_specs
+from ros_typedb_benchmark.stress_config import build_query_specs
+from ros_typedb_benchmark.stress_config import DEFAULT_TYPEDB_START_COMMAND
+from ros_typedb_benchmark.stress_config import DEFAULT_TYPEDB_STOP_COMMAND
+from ros_typedb_benchmark.stress_config import QuerySpec
+from ros_typedb_benchmark.stress_config import ResolvedStressConfig
+from ros_typedb_benchmark.stress_config import validate_experiment_args
+from ros_typedb_benchmark.stress_mixed import load_mixed_query_profile
+from ros_typedb_benchmark.stress_mixed import MixedQueryProfile
 
 
 def resolve_stress_config(

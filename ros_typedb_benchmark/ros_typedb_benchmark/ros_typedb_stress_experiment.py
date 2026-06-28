@@ -22,20 +22,20 @@ from typing import Any
 
 import rclpy
 
-from ros_typedb_tools.stress_config import INVARIANT_PROFILE_NAMES
-from ros_typedb_tools.stress_config import MIXED_PROFILE_NAMES
-from ros_typedb_tools.stress_config import QUERY_TYPE_BY_NAME
-from ros_typedb_tools.stress_config import DEFAULT_TYPEDB_START_COMMAND
-from ros_typedb_tools.stress_config import DEFAULT_TYPEDB_STOP_COMMAND
-from ros_typedb_tools.stress_config import InvariantRecord
-from ros_typedb_tools.stress_config import StressExperimentResult
-from ros_typedb_tools.stress_output import default_timeout_output_path
-from ros_typedb_tools.stress_output import print_summary
-from ros_typedb_tools.stress_output import summarize_invariant_records
-from ros_typedb_tools.stress_output import summarize_records
-from ros_typedb_tools.stress_output import write_results
-from ros_typedb_tools.stress_output import write_timeout_results
-from ros_typedb_tools.stress_runner import run_experiment
+from ros_typedb_benchmark.stress_config import INVARIANT_PROFILE_NAMES
+from ros_typedb_benchmark.stress_config import MIXED_PROFILE_NAMES
+from ros_typedb_benchmark.stress_config import QUERY_TYPE_BY_NAME
+from ros_typedb_benchmark.stress_config import DEFAULT_TYPEDB_START_COMMAND
+from ros_typedb_benchmark.stress_config import DEFAULT_TYPEDB_STOP_COMMAND
+from ros_typedb_benchmark.stress_config import InvariantRecord
+from ros_typedb_benchmark.stress_config import StressExperimentResult
+from ros_typedb_benchmark.stress_output import default_timeout_output_path
+from ros_typedb_benchmark.stress_output import print_summary
+from ros_typedb_benchmark.stress_output import summarize_invariant_records
+from ros_typedb_benchmark.stress_output import summarize_records
+from ros_typedb_benchmark.stress_output import write_results
+from ros_typedb_benchmark.stress_output import write_timeout_results
+from ros_typedb_benchmark.stress_runner import run_experiment
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
