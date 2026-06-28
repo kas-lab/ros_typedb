@@ -5,7 +5,7 @@
 This package provides a basic generic integration between ROS and [typeDB](https://typedb.com/).
 The package was designed in a way to enable users to easily extend it to fulfill their needs, the package design is explained in the [Package Design](#package-design) section.
 
-This package was tested in Ubuntu 22.04 with ROS Humble and typedb v2.28.3.
+This package was tested in Ubuntu 22.04 with ROS Humble and typedb v2.29.1.
 
 ## Install
 
@@ -17,7 +17,7 @@ Follow the [official instructions](https://docs.ros.org/en/humble/Installation/U
 
 #### Install TypeDB
 
-**Note:** This package has been tested with TypeDB version `2.28.3` and the typedb python driver version `2.28.0`.
+**Note:** This package has been tested with TypeDB version `2.29.1` and the typedb python driver version `2.29.7`.
 
 Install typedb: follow the[official instructions](https://typedb.com/docs/typedb/2.x/installation.html).
 
@@ -134,101 +134,7 @@ ros2 run ros_typedb ros_typedb_interface -p schema_path:=<schema_path> -p data_p
 **Note:** Make sure to replace <schema_path> and <data_path> with the real path for your schema and data file
 **Note 2:** Remember that ros_typedb_interface is a [LifeCycle](https://design.ros2.org/articles/node_lifecycle.html) node, so you need to change its state to active before using it. Check the [lifecycle tutorial](https://github.com/ros2/demos/tree/rolling/lifecycle).
 
-### Run the stress experiment
-
-`ros_typedb_tools` provides a stress experiment CLI that sends repeated or
-duration-based concurrent requests to the real `ros_typedb_interface/query`
-service and reports latency, successes, failures, timeouts, and optional JSON
-results.
-
-First, start TypeDB, run `ros_typedb_interface`, and configure the lifecycle
-node so the query service is available. Then run:
-
-```bash
-ros2 run ros_typedb_tools ros_typedb_stress_experiment \
-  --query 'match $x isa entity; fetch $x: attribute;' \
-  --query-type fetch \
-  --requests 20 \
-  --timeout-s 5 \
-  --output /tmp/ros_typedb_stress_results.json
-```
-
-For concurrent read stress, omit `--query` and use the built-in read query mix:
-
-```bash
-ros2 run ros_typedb_tools ros_typedb_stress_experiment \
-  --clients 20 \
-  --duration-s 60 \
-  --timeout-s 10 \
-  --mode read \
-  --output /tmp/ros_typedb_read_stress_results.json
-```
-
-Use `--service-name` if the node name is different from the default
-`/ros_typedb_interface/query`.
-
-An invariant is a correctness check that should remain true while the stress
-load is running. Request metrics show whether the service answered; invariants
-show whether the database still contains expected baseline facts.
-
-Use `--invariant-profile test-data` only when `ros_typedb_interface` was started
-with the bundled test schema/data from `ros_typedb/test/typedb_test_data/`:
-
-```bash
-ros2 run ros_typedb_tools ros_typedb_stress_experiment \
-  --clients 10 \
-  --duration-s 60 \
-  --timeout-s 10 \
-  --mode read \
-  --invariant-profile test-data \
-  --output /tmp/ros_typedb_read_invariants_results.json
-```
-
-The `test-data` profile is stored in
-`ros_typedb_tools/ros_typedb_tools/profiles/test_data_invariants.json`. It
-periodically checks stable counts for `person`, `company`, and `employment`,
-plus the `boss@tudelft.nl` sentinel person. This profile is not appropriate for
-other schemas, such as the `ros_typedb_examples` plan schema. The command exits
-with status 1 if an invariant fails.
-
-For the `ros_typedb_examples` plan schema/data, use:
-
-```bash
-ros2 run ros_typedb_tools ros_typedb_stress_experiment \
-  --clients 10 \
-  --duration-s 60 \
-  --timeout-s 10 \
-  --mode read \
-  --invariant-profile plan-schema \
-  --output /tmp/ros_typedb_plan_invariants_results.json
-```
-
-The `plan-schema` profile is stored in
-`ros_typedb_tools/ros_typedb_tools/profiles/plan_schema_invariants.json`. It
-checks counts for `Plan`, `Action`, `Proposition`, and the plan/action relation
-types, plus a sentinel action named `collect-water-sample`.
-
-For robustness experiments, keep the ROS service load bounded. High-rate
-unbounded service calls produced timeout waves even with fake Query services
-implemented in both Python and C++, across Fast DDS, CycloneDDS, ROS Humble,
-and ROS Lyrical. That points to a ROS service transport/executor stress limit
-rather than TypeDB query execution or `ros_typedb` result conversion.
-
-A practical bounded read-stress baseline is:
-
-```bash
-ros2 run ros_typedb_tools ros_typedb_stress_experiment \
-  --clients 20 \
-  --duration-s 60 \
-  --timeout-s 10 \
-  --mode read \
-  --request-gap-s 0.01 \
-  --max-in-flight 10 \
-  --output /tmp/ros_typedb_read_bounded_results.json
-```
-
-Use higher in-flight counts only when intentionally testing ROS service
-transport saturation, not when validating `ros_typedb` database robustness.
+For stress testing, fault injection, and correctness invariant experiments, see [`ros_typedb_benchmark/README.md`](ros_typedb_benchmark/README.md).
 
 ## Extend the package
 
