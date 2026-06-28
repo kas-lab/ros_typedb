@@ -186,7 +186,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         '--fault',
-        choices=('none', 'delete-database', 'restart-typedb'),
+        choices=(
+            'none',
+            'delete-database',
+            'restart-typedb',
+            'lifecycle-cleanup',
+        ),
         default='none',
         help=(
             'Fault to inject during the experiment. '
@@ -255,6 +260,45 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=30.0,
         help='Seconds to wait for each fault command. Defaults to 30.',
     )
+    parser.add_argument(
+        '--lifecycle-change-state-service-name',
+        help=(
+            'Lifecycle change_state service name. Defaults to the '
+            '--service-name prefix with /change_state appended '
+            '(e.g. /ros_typedb_interface/change_state).'
+        ),
+    )
+    parser.add_argument(
+        '--lifecycle-get-state-service-name',
+        help=(
+            'Lifecycle get_state service name. Defaults to the '
+            '--service-name prefix with /get_state appended '
+            '(e.g. /ros_typedb_interface/get_state).'
+        ),
+    )
+    lifecycle_reactivate_group = parser.add_mutually_exclusive_group()
+    lifecycle_reactivate_group.add_argument(
+        '--lifecycle-reactivate',
+        dest='lifecycle_reactivate',
+        action='store_true',
+        help=(
+            'Configure and activate the node after lifecycle cleanup. This '
+            'is the default.'
+        ),
+    )
+    lifecycle_reactivate_group.add_argument(
+        '--no-lifecycle-reactivate',
+        dest='lifecycle_reactivate',
+        action='store_false',
+        help='Leave the node cleaned up after the lifecycle fault.',
+    )
+    parser.set_defaults(lifecycle_reactivate=True)
+    parser.add_argument(
+        '--lifecycle-transition-timeout-s',
+        type=float,
+        default=10.0,
+        help='Seconds to wait for each lifecycle transition. Defaults to 10.',
+    )
     return parser
 
 
@@ -312,6 +356,20 @@ def _fault_controller_failed(fault_result: Any) -> bool:
                 fault_result.fault_restart_stop_success is not True
                 or fault_result.fault_restart_start_success is not True
             )
+        )
+    if fault_result.fault == 'lifecycle-cleanup':
+        required_successes = [
+            fault_result.fault_lifecycle_deactivate_success,
+            fault_result.fault_lifecycle_cleanup_success,
+        ]
+        if fault_result.fault_lifecycle_reactivate is not False:
+            required_successes.extend([
+                fault_result.fault_lifecycle_configure_success,
+                fault_result.fault_lifecycle_activate_success,
+            ])
+        return (
+            fault_result.fault_triggered_at_s is not None
+            and any(success is not True for success in required_successes)
         )
     return False
 

@@ -62,6 +62,16 @@ def resolve_stress_config(
     ) or DEFAULT_TYPEDB_START_COMMAND
     typedb_restart_delay_s = getattr(args, 'typedb_restart_delay_s', 2.0)
     fault_command_timeout_s = getattr(args, 'fault_command_timeout_s', 30.0)
+    lifecycle_change_state_service_name = getattr(
+        args, 'lifecycle_change_state_service_name', None
+    )
+    lifecycle_get_state_service_name = getattr(
+        args, 'lifecycle_get_state_service_name', None
+    )
+    lifecycle_reactivate = getattr(args, 'lifecycle_reactivate', True)
+    lifecycle_transition_timeout_s = getattr(
+        args, 'lifecycle_transition_timeout_s', 10.0
+    )
 
     return ResolvedStressConfig(
         query_specs=query_specs,
@@ -81,6 +91,12 @@ def resolve_stress_config(
         typedb_start_command=typedb_start_command,
         typedb_restart_delay_s=typedb_restart_delay_s,
         fault_command_timeout_s=fault_command_timeout_s,
+        lifecycle_change_state_service_name=(
+            lifecycle_change_state_service_name
+        ),
+        lifecycle_get_state_service_name=lifecycle_get_state_service_name,
+        lifecycle_reactivate=lifecycle_reactivate,
+        lifecycle_transition_timeout_s=lifecycle_transition_timeout_s,
     )
 
 

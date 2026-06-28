@@ -129,6 +129,45 @@ def _fault_payload(fault_result: FaultResult | None) -> dict[str, Any]:
         'fault_restart_delay_s': fault_result.fault_restart_delay_s,
         'fault_restart_outage_s': fault_result.fault_restart_outage_s,
         'fault_observed_outage_s': fault_result.fault_observed_outage_s,
+        'fault_lifecycle_deactivate_success': (
+            fault_result.fault_lifecycle_deactivate_success
+        ),
+        'fault_lifecycle_deactivate_error': (
+            fault_result.fault_lifecycle_deactivate_error
+        ),
+        'fault_lifecycle_deactivate_latency_s': (
+            fault_result.fault_lifecycle_deactivate_latency_s
+        ),
+        'fault_lifecycle_cleanup_success': (
+            fault_result.fault_lifecycle_cleanup_success
+        ),
+        'fault_lifecycle_cleanup_error': (
+            fault_result.fault_lifecycle_cleanup_error
+        ),
+        'fault_lifecycle_cleanup_latency_s': (
+            fault_result.fault_lifecycle_cleanup_latency_s
+        ),
+        'fault_lifecycle_configure_success': (
+            fault_result.fault_lifecycle_configure_success
+        ),
+        'fault_lifecycle_configure_error': (
+            fault_result.fault_lifecycle_configure_error
+        ),
+        'fault_lifecycle_configure_latency_s': (
+            fault_result.fault_lifecycle_configure_latency_s
+        ),
+        'fault_lifecycle_activate_success': (
+            fault_result.fault_lifecycle_activate_success
+        ),
+        'fault_lifecycle_activate_error': (
+            fault_result.fault_lifecycle_activate_error
+        ),
+        'fault_lifecycle_activate_latency_s': (
+            fault_result.fault_lifecycle_activate_latency_s
+        ),
+        'fault_lifecycle_reactivate': (
+            fault_result.fault_lifecycle_reactivate
+        ),
     }
 
 
@@ -323,6 +362,32 @@ def print_summary(
                 f'{triggered_at} | restart: {restart_status} '
                 f'({restart_outage}) | observed outage: '
                 f'{observed_outage} | recovery: {recovery_str}'
+            )
+            return
+        if fault_result.fault == 'lifecycle-cleanup':
+            lifecycle_steps = [
+                fault_result.fault_lifecycle_deactivate_success,
+                fault_result.fault_lifecycle_cleanup_success,
+            ]
+            if fault_result.fault_lifecycle_reactivate is not False:
+                lifecycle_steps.extend([
+                    fault_result.fault_lifecycle_configure_success,
+                    fault_result.fault_lifecycle_activate_success,
+                ])
+            lifecycle_status = (
+                'ok' if all(step is True for step in lifecycle_steps)
+                else 'FAILED'
+            )
+            observed_outage = (
+                f'{fault_result.fault_observed_outage_s:.3f}s'
+                if fault_result.fault_observed_outage_s is not None
+                else 'n/a'
+            )
+            print(
+                f'  fault: {fault_result.fault} triggered at '
+                f'{triggered_at} | lifecycle: {lifecycle_status} '
+                f'| observed outage: {observed_outage} | recovery: '
+                f'{recovery_str}'
             )
             return
         print(

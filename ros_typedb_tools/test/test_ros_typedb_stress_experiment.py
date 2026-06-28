@@ -49,7 +49,10 @@ from ros_typedb_tools.stress_output import (
 from ros_typedb_tools.stress_resolution import resolve_stress_config
 from ros_typedb_tools.stress_runner import (
     _build_typedb_restart_commands,
+    _call_lifecycle_transition,
     _compute_observed_fault_outage_s,
+    _derive_lifecycle_change_state_service_name,
+    _derive_lifecycle_get_state_service_name,
     _mark_fault_recovered_from_invariant_pass,
     _run_fault_command,
     _start_fault_command,
@@ -128,6 +131,35 @@ def _run_state(**overrides) -> _RunState:
     for name, value in overrides.items():
         setattr(state, name, value)
     return state
+
+
+class _DoneFuture:
+    """Minimal completed future for lifecycle helper tests."""
+
+    def __init__(self, *, result=None, exception=None):
+        self._result = result
+        self._exception = exception
+
+    def done(self):
+        return True
+
+    def exception(self):
+        return self._exception
+
+    def result(self):
+        return self._result
+
+
+class _CapturingClient:
+    """Minimal service client that captures the last async request."""
+
+    def __init__(self, future):
+        self.future = future
+        self.request = None
+
+    def call_async(self, request):
+        self.request = request
+        return self.future
 
 
 def _aggregate_count_response(value: int, *, success: bool = True):
@@ -304,6 +336,44 @@ def test_parser_accepts_stage_six_restart_fault_arguments():
     assert args.fault_at_s == 60
     assert args.typedb_restart_delay_s == 3
     assert args.fault_command_timeout_s == 15
+
+
+def test_parser_accepts_stage_seven_lifecycle_fault_arguments():
+    """Check Stage 7 lifecycle cleanup fault arguments."""
+    parser = build_argument_parser()
+
+    args = parser.parse_args(
+        [
+            '--clients',
+            '10',
+            '--duration-s',
+            '180',
+            '--mode',
+            'read',
+            '--fault',
+            'lifecycle-cleanup',
+            '--fault-at-s',
+            '60',
+            '--lifecycle-change-state-service-name',
+            '/ros_typedb/change_state',
+            '--lifecycle-get-state-service-name',
+            '/ros_typedb/get_state',
+            '--no-lifecycle-reactivate',
+            '--lifecycle-transition-timeout-s',
+            '12',
+            '--invariant-profile',
+            'test-data',
+        ]
+    )
+
+    assert args.fault == 'lifecycle-cleanup'
+    assert args.fault_at_s == 60
+    assert args.lifecycle_change_state_service_name == (
+        '/ros_typedb/change_state'
+    )
+    assert args.lifecycle_get_state_service_name == '/ros_typedb/get_state'
+    assert args.lifecycle_reactivate is False
+    assert args.lifecycle_transition_timeout_s == 12
 
 
 def test_fake_service_parser_accepts_diagnostic_arguments():
@@ -501,6 +571,19 @@ def test_write_results_writes_summary_and_request_records(tmp_path: Path):
         'fault_restart_delay_s': None,
         'fault_restart_outage_s': None,
         'fault_observed_outage_s': None,
+        'fault_lifecycle_deactivate_success': None,
+        'fault_lifecycle_deactivate_error': None,
+        'fault_lifecycle_deactivate_latency_s': None,
+        'fault_lifecycle_cleanup_success': None,
+        'fault_lifecycle_cleanup_error': None,
+        'fault_lifecycle_cleanup_latency_s': None,
+        'fault_lifecycle_configure_success': None,
+        'fault_lifecycle_configure_error': None,
+        'fault_lifecycle_configure_latency_s': None,
+        'fault_lifecycle_activate_success': None,
+        'fault_lifecycle_activate_error': None,
+        'fault_lifecycle_activate_latency_s': None,
+        'fault_lifecycle_reactivate': None,
     }
 
 
@@ -536,6 +619,19 @@ def test_write_results_writes_default_fault_payload(tmp_path: Path):
         'fault_restart_delay_s': None,
         'fault_restart_outage_s': None,
         'fault_observed_outage_s': None,
+        'fault_lifecycle_deactivate_success': None,
+        'fault_lifecycle_deactivate_error': None,
+        'fault_lifecycle_deactivate_latency_s': None,
+        'fault_lifecycle_cleanup_success': None,
+        'fault_lifecycle_cleanup_error': None,
+        'fault_lifecycle_cleanup_latency_s': None,
+        'fault_lifecycle_configure_success': None,
+        'fault_lifecycle_configure_error': None,
+        'fault_lifecycle_configure_latency_s': None,
+        'fault_lifecycle_activate_success': None,
+        'fault_lifecycle_activate_error': None,
+        'fault_lifecycle_activate_latency_s': None,
+        'fault_lifecycle_reactivate': None,
     }
 
 
@@ -575,6 +671,61 @@ def test_build_typedb_restart_commands_uses_command_hooks():
     assert start_command == ['bash', '-lc', 'typedb server start']
 
 
+def test_derive_lifecycle_change_state_service_name_from_query_service():
+    """Check lifecycle service name follows the query service prefix."""
+    assert _derive_lifecycle_change_state_service_name(
+        '/ros_typedb_interface/query'
+    ) == '/ros_typedb_interface/change_state'
+    assert _derive_lifecycle_change_state_service_name(
+        '/query'
+    ) == '/change_state'
+
+
+def test_derive_lifecycle_get_state_service_name_from_query_service():
+    """Check lifecycle get_state service name follows the query prefix."""
+    assert _derive_lifecycle_get_state_service_name(
+        '/ros_typedb_interface/query'
+    ) == '/ros_typedb_interface/get_state'
+    assert _derive_lifecycle_get_state_service_name(
+        '/query'
+    ) == '/get_state'
+
+
+def test_call_lifecycle_transition_reports_success():
+    """Check lifecycle transition helper builds a ChangeState request."""
+    response = SimpleNamespace(success=True)
+    client = _CapturingClient(_DoneFuture(result=response))
+
+    success, error, latency_s = _call_lifecycle_transition(
+        client=client,
+        transition_id=3,
+        transition_name='activate',
+        timeout_s=1.0,
+    )
+
+    assert success is True
+    assert error is None
+    assert latency_s >= 0.0
+    assert client.request.transition.id == 3
+
+
+def test_call_lifecycle_transition_reports_rejected_transition():
+    """Check lifecycle transition helper treats success=False as failure."""
+    response = SimpleNamespace(success=False)
+    client = _CapturingClient(_DoneFuture(result=response))
+
+    success, error, latency_s = _call_lifecycle_transition(
+        client=client,
+        transition_id=2,
+        transition_name='cleanup',
+        timeout_s=1.0,
+    )
+
+    assert success is False
+    assert error == 'lifecycle cleanup transition rejected'
+    assert latency_s >= 0.0
+
+
 def test_run_fault_command_reports_nonzero_exit(monkeypatch):
     """Check fault command execution reports stderr on failure."""
     class Completed:
@@ -604,6 +755,7 @@ def test_run_fault_command_reports_nonzero_exit(monkeypatch):
 
 def test_start_fault_command_treats_running_process_as_success(monkeypatch):
     """Check foreground server commands succeed once they stay running."""
+
     class RunningProcess:
         def wait(self, timeout):
             assert timeout == 0.25
@@ -1043,6 +1195,10 @@ def _base_args(**overrides):
         'typedb_start_command': DEFAULT_TYPEDB_START_COMMAND,
         'typedb_restart_delay_s': 2.0,
         'fault_command_timeout_s': 30.0,
+        'lifecycle_change_state_service_name': None,
+        'lifecycle_get_state_service_name': None,
+        'lifecycle_reactivate': True,
+        'lifecycle_transition_timeout_s': 10.0,
     }
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -1139,6 +1295,32 @@ def test_validate_args_fault_restart_typedb_accepts_container():
     validate_experiment_args(args)
 
 
+def test_validate_args_fault_lifecycle_cleanup_accepts_defaults():
+    """Check lifecycle-cleanup accepts default lifecycle controller args."""
+    args = _base_args(
+        fault='lifecycle-cleanup',
+        invariant_profile='test-data',
+        duration_s=60.0,
+        fault_at_s=10.0,
+    )
+
+    validate_experiment_args(args)
+
+
+def test_validate_args_lifecycle_transition_timeout_s_must_be_positive():
+    """Check lifecycle transition timeout must be greater than zero."""
+    args = _base_args(
+        fault='lifecycle-cleanup',
+        invariant_profile='test-data',
+        duration_s=60.0,
+        fault_at_s=10.0,
+        lifecycle_transition_timeout_s=0.0,
+    )
+
+    with pytest.raises(ValueError, match='--lifecycle-transition-timeout-s'):
+        validate_experiment_args(args)
+
+
 def test_validate_args_fault_recovery_timeout_s_must_be_positive():
     """Check --fault-recovery-timeout-s must be greater than zero."""
     args = _base_args(fault_recovery_timeout_s=0.0)
@@ -1218,6 +1400,47 @@ def test_main_fails_when_restart_fault_controller_fails(monkeypatch):
             max_in_flight=1,
             debug_events_output=None,
             fault='restart-typedb',
+            fault_at_s=10.0,
+            fault_recovery_timeout_s=30.0,
+        ),
+        fault_result=fault_result,
+    )
+
+    monkeypatch.setattr(stress_cli.rclpy, 'init', lambda args=None: None)
+    monkeypatch.setattr(stress_cli.rclpy, 'shutdown', lambda: None)
+    monkeypatch.setattr(stress_cli, 'run_experiment', lambda args: result)
+
+    assert stress_cli.main([]) == 1
+
+
+def test_main_fails_when_lifecycle_fault_controller_fails(monkeypatch):
+    """Check CLI exits nonzero when lifecycle cleanup fails."""
+    fault_result = FaultResult(
+        fault='lifecycle-cleanup',
+        fault_at_s=10.0,
+        fault_triggered_at_s=10.0,
+        fault_delete_success=None,
+        fault_delete_error=None,
+        fault_delete_latency_s=None,
+        fault_recovered_at_s=12.0,
+        fault_recovery_s=2.0,
+        fault_lifecycle_deactivate_success=True,
+        fault_lifecycle_cleanup_success=False,
+        fault_lifecycle_cleanup_error='cleanup rejected',
+        fault_lifecycle_reactivate=True,
+    )
+    result = StressExperimentResult(
+        records=[],
+        invariant_records=[],
+        config=ResolvedStressConfig(
+            query_specs=[],
+            invariant_specs=[],
+            mixed_profile=None,
+            mixed_profile_name=None,
+            invariant_profile_name='test-data',
+            max_in_flight=1,
+            debug_events_output=None,
+            fault='lifecycle-cleanup',
             fault_at_s=10.0,
             fault_recovery_timeout_s=30.0,
         ),

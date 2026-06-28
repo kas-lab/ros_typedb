@@ -154,6 +154,10 @@ class ResolvedStressConfig:
     typedb_start_command: str | None = DEFAULT_TYPEDB_START_COMMAND
     typedb_restart_delay_s: float = 2.0
     fault_command_timeout_s: float = 30.0
+    lifecycle_change_state_service_name: str | None = None
+    lifecycle_get_state_service_name: str | None = None
+    lifecycle_reactivate: bool = True
+    lifecycle_transition_timeout_s: float = 10.0
 
 
 @dataclass(frozen=True)
@@ -177,6 +181,19 @@ class FaultResult:
     fault_restart_delay_s: float | None = None
     fault_restart_outage_s: float | None = None
     fault_observed_outage_s: float | None = None
+    fault_lifecycle_deactivate_success: bool | None = None
+    fault_lifecycle_deactivate_error: str | None = None
+    fault_lifecycle_deactivate_latency_s: float | None = None
+    fault_lifecycle_cleanup_success: bool | None = None
+    fault_lifecycle_cleanup_error: str | None = None
+    fault_lifecycle_cleanup_latency_s: float | None = None
+    fault_lifecycle_configure_success: bool | None = None
+    fault_lifecycle_configure_error: str | None = None
+    fault_lifecycle_configure_latency_s: float | None = None
+    fault_lifecycle_activate_success: bool | None = None
+    fault_lifecycle_activate_error: str | None = None
+    fault_lifecycle_activate_latency_s: float | None = None
+    fault_lifecycle_reactivate: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -251,6 +268,11 @@ def validate_experiment_args(args: argparse.Namespace) -> None:
         if getattr(args, 'fault_command_timeout_s', 0.0) <= 0:
             raise ValueError(
                 '--fault-command-timeout-s must be greater than zero'
+            )
+    if fault == 'lifecycle-cleanup':
+        if getattr(args, 'lifecycle_transition_timeout_s', 0.0) <= 0:
+            raise ValueError(
+                '--lifecycle-transition-timeout-s must be greater than zero'
             )
     if fault_recovery_timeout_s <= 0:
         raise ValueError(

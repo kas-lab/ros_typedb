@@ -28,6 +28,10 @@ import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.executors import SingleThreadedExecutor
 
+from lifecycle_msgs.msg import State
+from lifecycle_msgs.msg import Transition
+from lifecycle_msgs.srv import ChangeState
+from lifecycle_msgs.srv import GetState
 from ros_typedb_msgs.srv import Query
 
 from ros_typedb_tools.stress_config import build_query_request
@@ -89,6 +93,19 @@ class _RunState:
     fault_restart_started_at_s: float | None = None
     fault_restart_ended_at_s: float | None = None
     fault_restart_delay_s: float | None = None
+    fault_lifecycle_deactivate_success: bool | None = None
+    fault_lifecycle_deactivate_error: str | None = None
+    fault_lifecycle_deactivate_latency_s: float | None = None
+    fault_lifecycle_cleanup_success: bool | None = None
+    fault_lifecycle_cleanup_error: str | None = None
+    fault_lifecycle_cleanup_latency_s: float | None = None
+    fault_lifecycle_configure_success: bool | None = None
+    fault_lifecycle_configure_error: str | None = None
+    fault_lifecycle_configure_latency_s: float | None = None
+    fault_lifecycle_activate_success: bool | None = None
+    fault_lifecycle_activate_error: str | None = None
+    fault_lifecycle_activate_latency_s: float | None = None
+    fault_lifecycle_reactivate: bool | None = None
 
 
 def _build_executor(args: argparse.Namespace) -> Any | None:
@@ -685,6 +702,20 @@ def _derive_delete_db_service_name(service_name: str) -> str:
     return prefix + '/delete_database'
 
 
+def _derive_lifecycle_change_state_service_name(service_name: str) -> str:
+    """Derive lifecycle change_state service name from the query service."""
+    parts = service_name.rstrip('/').rsplit('/', 1)
+    prefix = parts[0] if len(parts) > 1 else ''
+    return prefix + '/change_state'
+
+
+def _derive_lifecycle_get_state_service_name(service_name: str) -> str:
+    """Derive lifecycle get_state service name from the query service."""
+    parts = service_name.rstrip('/').rsplit('/', 1)
+    prefix = parts[0] if len(parts) > 1 else ''
+    return prefix + '/get_state'
+
+
 def _maybe_run_periodic_invariants(
     *,
     args: argparse.Namespace,
@@ -961,6 +992,279 @@ def _trigger_restart_typedb_fault(
     return thread
 
 
+def _call_lifecycle_transition(
+    *,
+    client: Any,
+    transition_id: int,
+    transition_name: str,
+    timeout_s: float,
+) -> tuple[bool, str | None, float]:
+    """Request one lifecycle transition and wait for the main loop to spin."""
+    started_at_s = time.monotonic()
+    request = ChangeState.Request()
+    request.transition.id = transition_id
+    future = client.call_async(request)
+    deadline_s = started_at_s + timeout_s
+
+    while not future.done():
+        if time.monotonic() >= deadline_s:
+            return (
+                False,
+                (
+                    f'lifecycle {transition_name} transition timed out '
+                    f'after {timeout_s:g}s'
+                ),
+                time.monotonic() - started_at_s,
+            )
+        time.sleep(0.01)
+
+    latency_s = time.monotonic() - started_at_s
+    exc = future.exception()
+    if exc is not None:
+        return False, str(exc), latency_s
+
+    result = future.result()
+    if not getattr(result, 'success', False):
+        return (
+            False,
+            f'lifecycle {transition_name} transition rejected',
+            latency_s,
+        )
+    return True, None, latency_s
+
+
+def _call_lifecycle_get_state(
+    *,
+    client: Any,
+    timeout_s: float,
+) -> tuple[bool, str | None, float, int | None, str | None]:
+    """Request the current lifecycle state."""
+    started_at_s = time.monotonic()
+    future = client.call_async(GetState.Request())
+    deadline_s = started_at_s + timeout_s
+
+    while not future.done():
+        if time.monotonic() >= deadline_s:
+            return (
+                False,
+                f'lifecycle get_state timed out after {timeout_s:g}s',
+                time.monotonic() - started_at_s,
+                None,
+                None,
+            )
+        time.sleep(0.01)
+
+    latency_s = time.monotonic() - started_at_s
+    exc = future.exception()
+    if exc is not None:
+        return False, str(exc), latency_s, None, None
+
+    current_state = future.result().current_state
+    return (
+        True,
+        None,
+        latency_s,
+        current_state.id,
+        current_state.label,
+    )
+
+
+def _wait_for_lifecycle_state(
+    *,
+    client: Any,
+    expected_state_id: int,
+    expected_state_label: str,
+    timeout_s: float,
+    debug_events: DebugEventWriter,
+) -> tuple[bool, str | None, float]:
+    """Poll lifecycle get_state until the expected primary state is reached."""
+    started_at_s = time.monotonic()
+    deadline_s = started_at_s + timeout_s
+    last_state_id = None
+    last_state_label = None
+    last_error = None
+
+    while time.monotonic() < deadline_s:
+        remaining_s = max(0.0, deadline_s - time.monotonic())
+        success, error, _, state_id, state_label = _call_lifecycle_get_state(
+            client=client,
+            timeout_s=min(1.0, remaining_s),
+        )
+        debug_events.log(
+            'fault_lifecycle_state_observed',
+            expected_state=expected_state_label,
+            state_id=state_id,
+            state_label=state_label,
+            success=success,
+            error=error,
+        )
+        if success and state_id == expected_state_id:
+            return True, None, time.monotonic() - started_at_s
+        last_state_id = state_id
+        last_state_label = state_label
+        last_error = error
+        time.sleep(0.05)
+
+    if last_error:
+        detail = last_error
+    else:
+        detail = f'last state was {last_state_label} ({last_state_id})'
+    return (
+        False,
+        (
+            f'lifecycle did not reach {expected_state_label} after '
+            f'{timeout_s:g}s; {detail}'
+        ),
+        time.monotonic() - started_at_s,
+    )
+
+
+def _record_lifecycle_transition_result(
+    *,
+    state: _RunState,
+    transition_name: str,
+    success: bool,
+    error: str | None,
+    latency_s: float,
+) -> None:
+    """Store one lifecycle transition result on the run state."""
+    setattr(state, f'fault_lifecycle_{transition_name}_success', success)
+    setattr(state, f'fault_lifecycle_{transition_name}_error', error)
+    setattr(
+        state,
+        f'fault_lifecycle_{transition_name}_latency_s',
+        latency_s,
+    )
+
+
+def _lifecycle_cleanup_fault_worker(
+    *,
+    lifecycle_change_state_client: Any,
+    lifecycle_get_state_client: Any,
+    reactivate: bool,
+    transition_timeout_s: float,
+    state: _RunState,
+    debug_events: DebugEventWriter,
+) -> None:
+    """Cleanup and optionally reactivate the lifecycle node during load."""
+    state.fault_lifecycle_reactivate = reactivate
+    transitions = [
+        (
+            'deactivate',
+            Transition.TRANSITION_DEACTIVATE,
+            State.PRIMARY_STATE_INACTIVE,
+            'inactive',
+        ),
+        (
+            'cleanup',
+            Transition.TRANSITION_CLEANUP,
+            State.PRIMARY_STATE_UNCONFIGURED,
+            'unconfigured',
+        ),
+    ]
+    if reactivate:
+        transitions.extend([
+            (
+                'configure',
+                Transition.TRANSITION_CONFIGURE,
+                State.PRIMARY_STATE_INACTIVE,
+                'inactive',
+            ),
+            (
+                'activate',
+                Transition.TRANSITION_ACTIVATE,
+                State.PRIMARY_STATE_ACTIVE,
+                'active',
+            ),
+        ])
+
+    for (
+        transition_name,
+        transition_id,
+        expected_state_id,
+        expected_state_label,
+    ) in transitions:
+        debug_events.log(
+            'fault_lifecycle_transition_started',
+            transition=transition_name,
+            transition_id=transition_id,
+            expected_state=expected_state_label,
+            transition_timeout_s=transition_timeout_s,
+        )
+        success, error, latency_s = _call_lifecycle_transition(
+            client=lifecycle_change_state_client,
+            transition_id=transition_id,
+            transition_name=transition_name,
+            timeout_s=transition_timeout_s,
+        )
+        if success:
+            state_success, state_error, state_latency_s = (
+                _wait_for_lifecycle_state(
+                    client=lifecycle_get_state_client,
+                    expected_state_id=expected_state_id,
+                    expected_state_label=expected_state_label,
+                    timeout_s=transition_timeout_s,
+                    debug_events=debug_events,
+                )
+            )
+            success = state_success
+            error = state_error
+            latency_s += state_latency_s
+        _record_lifecycle_transition_result(
+            state=state,
+            transition_name=transition_name,
+            success=success,
+            error=error,
+            latency_s=latency_s,
+        )
+        debug_events.log(
+            'fault_lifecycle_transition_complete',
+            transition=transition_name,
+            success=success,
+            error=error,
+            latency_s=latency_s,
+        )
+        if not success:
+            return
+
+
+def _trigger_lifecycle_cleanup_fault(
+    *,
+    lifecycle_change_state_client: Any,
+    lifecycle_get_state_client: Any,
+    config: Any,
+    state: _RunState,
+    debug_events: DebugEventWriter,
+) -> threading.Thread:
+    """Start a background lifecycle cleanup fault controller."""
+    started_at_s = time.monotonic()
+    pending_count = len(state.pending_by_client)
+    state.fault_triggered = True
+    state.fault_triggered_at_s = started_at_s
+    state.fault_lifecycle_reactivate = config.lifecycle_reactivate
+    debug_events.log(
+        'fault_triggered',
+        fault='lifecycle-cleanup',
+        triggered_at_s=started_at_s,
+        pending_count_at_fault=pending_count,
+        lifecycle_reactivate=config.lifecycle_reactivate,
+    )
+    thread = threading.Thread(
+        target=_lifecycle_cleanup_fault_worker,
+        kwargs={
+            'lifecycle_change_state_client': lifecycle_change_state_client,
+            'lifecycle_get_state_client': lifecycle_get_state_client,
+            'reactivate': config.lifecycle_reactivate,
+            'transition_timeout_s': config.lifecycle_transition_timeout_s,
+            'state': state,
+            'debug_events': debug_events,
+        },
+        daemon=True,
+    )
+    thread.start()
+    return thread
+
+
 def _compute_observed_fault_outage_s(
     records: list[RequestRecord],
     *,
@@ -1052,6 +1356,26 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
         if getattr(args, 'fault', 'none') == 'delete-database'
         else None
     )
+    lifecycle_change_state_service_name = (
+        config.lifecycle_change_state_service_name
+        if config.lifecycle_change_state_service_name
+        else _derive_lifecycle_change_state_service_name(args.service_name)
+    )
+    lifecycle_get_state_service_name = (
+        config.lifecycle_get_state_service_name
+        if config.lifecycle_get_state_service_name
+        else _derive_lifecycle_get_state_service_name(args.service_name)
+    )
+    lifecycle_change_state_client = (
+        node.create_client(ChangeState, lifecycle_change_state_service_name)
+        if config.fault == 'lifecycle-cleanup'
+        else None
+    )
+    lifecycle_get_state_client = (
+        node.create_client(GetState, lifecycle_get_state_service_name)
+        if config.fault == 'lifecycle-cleanup'
+        else None
+    )
     deadline_s = (
         time.monotonic() + args.duration_s
         if args.duration_s is not None
@@ -1073,6 +1397,7 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
         next_invariant_s=time.monotonic() + args.invariant_period_s,
     )
     restart_fault_thread = None
+    lifecycle_fault_thread = None
 
     try:
         with DebugEventWriter(config.debug_events_output) as debug_events:
@@ -1090,7 +1415,17 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
                 clients
                 + ([invariant_client] if invariant_client else [])
                 + ([cleanup_client] if cleanup_client else [])
-                + ([delete_db_client] if delete_db_client is not None else []),
+                + ([delete_db_client] if delete_db_client is not None else [])
+                + (
+                    [lifecycle_change_state_client]
+                    if lifecycle_change_state_client is not None
+                    else []
+                )
+                + (
+                    [lifecycle_get_state_client]
+                    if lifecycle_get_state_client is not None
+                    else []
+                ),
                 service_name=args.service_name,
                 wait_service_timeout_s=args.wait_service_timeout_s,
                 debug_events=debug_events,
@@ -1170,9 +1505,29 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
                         state=state,
                         debug_events=debug_events,
                     )
+                if (
+                    config.fault == 'lifecycle-cleanup'
+                    and lifecycle_change_state_client is not None
+                    and lifecycle_get_state_client is not None
+                    and not state.fault_triggered
+                    and config.fault_at_s is not None
+                    and time.monotonic() - experiment_started_at_s
+                    >= config.fault_at_s
+                ):
+                    lifecycle_fault_thread = _trigger_lifecycle_cleanup_fault(
+                        lifecycle_change_state_client=(
+                            lifecycle_change_state_client
+                        ),
+                        lifecycle_get_state_client=lifecycle_get_state_client,
+                        config=config,
+                        state=state,
+                        debug_events=debug_events,
+                    )
 
             if restart_fault_thread is not None:
                 restart_fault_thread.join()
+            if lifecycle_fault_thread is not None:
+                lifecycle_fault_thread.join()
 
             # 1. Recovery must come before cleanup. Cleanup queries trigger DB
             #    recreation, silently advancing recovery unobserved.
@@ -1267,6 +1622,37 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
             state.records,
             fault_triggered_at_s=state.fault_triggered_at_s,
         ),
+        fault_lifecycle_deactivate_success=(
+            state.fault_lifecycle_deactivate_success
+        ),
+        fault_lifecycle_deactivate_error=(
+            state.fault_lifecycle_deactivate_error
+        ),
+        fault_lifecycle_deactivate_latency_s=(
+            state.fault_lifecycle_deactivate_latency_s
+        ),
+        fault_lifecycle_cleanup_success=state.fault_lifecycle_cleanup_success,
+        fault_lifecycle_cleanup_error=state.fault_lifecycle_cleanup_error,
+        fault_lifecycle_cleanup_latency_s=(
+            state.fault_lifecycle_cleanup_latency_s
+        ),
+        fault_lifecycle_configure_success=(
+            state.fault_lifecycle_configure_success
+        ),
+        fault_lifecycle_configure_error=(
+            state.fault_lifecycle_configure_error
+        ),
+        fault_lifecycle_configure_latency_s=(
+            state.fault_lifecycle_configure_latency_s
+        ),
+        fault_lifecycle_activate_success=(
+            state.fault_lifecycle_activate_success
+        ),
+        fault_lifecycle_activate_error=state.fault_lifecycle_activate_error,
+        fault_lifecycle_activate_latency_s=(
+            state.fault_lifecycle_activate_latency_s
+        ),
+        fault_lifecycle_reactivate=state.fault_lifecycle_reactivate,
     )
     return StressExperimentResult(
         records=state.records,

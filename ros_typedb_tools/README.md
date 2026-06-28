@@ -122,7 +122,7 @@ interface.
 | 4. Mixed read/write load | Implemented | Read while inserting, updating, deleting, and cleaning up experiment-owned temporary data. |
 | 5. Delete-database fault injection | Implemented | Delete the database during load and measure whether the driver fails loudly, reloads correctly, and recovers invariants. |
 | 6. TypeDB restart fault injection | Implemented | Stop/restart TypeDB during load and measure outage, reconnect behavior, and post-recovery correctness. |
-| 7. Lifecycle stress | Planned | Trigger ROS lifecycle cleanup/configure/activate transitions during load to check teardown races. |
+| 7. Lifecycle stress | Implemented | Trigger ROS lifecycle cleanup/configure/activate transitions during load to check teardown races. |
 | 8. External schema/data profiles | Planned | Run the same harness with application-specific schema/data, query mixes, invariants, setup, and cleanup profiles. |
 
 Use Stage 1 when validating a single query path. Use Stage 2 when probing ROS
@@ -130,7 +130,10 @@ service throughput and timeout behavior. Use Stage 3 when checking that load
 does not corrupt or hide baseline data. Use Stage 4 when validating robustness
 under real read/write activity. Use Stage 5 when validating recovery after a
 database deletion fault. Use Stage 6 when validating driver reconnect behavior
-after the TypeDB server process or container is restarted.
+after the TypeDB server process or container is restarted. Use Stage 7 when
+validating that ROS lifecycle cleanup waits for active query callbacks before
+tearing down TypeDB resources and that the node can be configured and activated
+again afterward.
 
 ### Stage 1: Minimal Real Service Load
 
@@ -394,14 +397,81 @@ status 1. Request failures during the outage remain recorded in the JSON output;
 use `--fail-on-failure` only when you want any request failure to fail the
 command even if invariants later recover.
 
+### Stage 7: Lifecycle Stress
+
+This stage calls the ROS lifecycle `change_state` service while normal query
+clients continue sending requests. The default sequence is deactivate, cleanup,
+configure, then activate. Cleanup destroys the query and delete services and
+waits for active service callbacks before closing TypeDB resources; the
+experiment verifies that this does not race with in-flight requests and that
+the node recovers after reactivation. The controller checks `get_state` after
+each transition and only sends the next transition after the expected lifecycle
+state is observed.
+
+When using a launch file that automatically reactivates the node after every
+deactivate, disable that behavior for this experiment. The bundled test-data
+launch file defaults to normal auto-reactivation, so start it for Stage 7 with:
+
+```bash
+ros2 launch ros_typedb_examples test_data_example.launch.py \
+  reactivate_on_deactivate:=False
+```
+
+Then run the stress experiment:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 10 \
+  --duration-s 180 \
+  --timeout-s 10 \
+  --mode read \
+  --fault lifecycle-cleanup \
+  --fault-at-s 60 \
+  --invariant-profile test-data \
+  --request-gap-s 0.01 \
+  --max-in-flight 10 \
+  --output /tmp/stage7_lifecycle_cleanup.json \
+  --debug-events-output /tmp/stage7_lifecycle_cleanup_debug.jsonl
+```
+
+The lifecycle `change_state` and `get_state` services default to the
+`--service-name` prefix with `/change_state` and `/get_state` appended. For
+example, the default query service `/ros_typedb_interface/query` maps to
+`/ros_typedb_interface/change_state` and `/ros_typedb_interface/get_state`.
+Override them with `--lifecycle-change-state-service-name` and
+`--lifecycle-get-state-service-name` when the launched lifecycle node uses a
+different name, such as `/ros_typedb/change_state` and
+`/ros_typedb/get_state`.
+
+By default the node is configured and activated again after cleanup. Use
+`--no-lifecycle-reactivate` only when you intentionally want to leave the node
+cleaned up; in that mode recovery invariants are not expected to pass unless
+something else reactivates the node.
+
+The result JSON adds lifecycle fields to the `fault` object:
+
+- `fault_lifecycle_deactivate_success`, `fault_lifecycle_deactivate_error`,
+  and `fault_lifecycle_deactivate_latency_s`
+- `fault_lifecycle_cleanup_success`, `fault_lifecycle_cleanup_error`, and
+  `fault_lifecycle_cleanup_latency_s`
+- `fault_lifecycle_configure_success`, `fault_lifecycle_configure_error`, and
+  `fault_lifecycle_configure_latency_s`
+- `fault_lifecycle_activate_success`, `fault_lifecycle_activate_error`, and
+  `fault_lifecycle_activate_latency_s`
+- `fault_lifecycle_reactivate`: whether configure/activate was requested
+- `fault_observed_outage_s`: elapsed time from the first failed post-fault
+  request result to the first later successful request result
+
+If a lifecycle transition is rejected or times out, the CLI exits with status
+1. If transitions succeed but invariants do not recover, the CLI also exits
+with status 1. Request failures while the lifecycle node is inactive or cleaned
+up remain recorded in the JSON output.
+
 ### Planned Fault-Injection Stages
 
-Stages 7-8 are not implemented yet. They are placeholders for the next
-robustness checks:
+Stage 8 is not implemented yet. It is a placeholder for the next robustness
+check:
 
-- Stage 7, lifecycle stress: call lifecycle cleanup/configure/activate while
-  requests are in flight, then check that service callbacks and resource
-  teardown do not race.
 - Stage 8, external profiles: load schema-specific query mixes, invariants,
   setup, and cleanup from user-provided JSON/YAML profile files instead of only
   the packaged examples.
