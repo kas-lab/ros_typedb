@@ -1,12 +1,18 @@
 """Setup for the ros_typedb_examples package."""
 
-import os
 from glob import glob
+import os
 
 from setuptools import find_packages
 from setuptools import setup
 
 package_name = 'ros_typedb_examples'
+typedb_test_data_path = os.path.join(
+    '..',
+    'ros_typedb',
+    'test',
+    'typedb_test_data',
+)
 
 setup(
     name=package_name,
@@ -20,6 +26,11 @@ setup(
             glob('launch/*launch.[pxy][yma]*')),
         (os.path.join('share', package_name, 'data'),
             glob('data/*.tql')),
+        (os.path.join('share', package_name, 'data', 'typedb_test_data'),
+            [
+                os.path.join(typedb_test_data_path, 'schema.tql'),
+                os.path.join(typedb_test_data_path, 'data.tql'),
+            ]),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

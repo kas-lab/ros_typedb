@@ -20,6 +20,7 @@ $inspect_hull isa Action,
 
 $collect_water_sample isa Action,
     has action_name "collect-water-sample",
+    has action_name "dual_name",
     has action_duration 240.0,
     has start_time 2026-06-26T10:05:00.000;
 
