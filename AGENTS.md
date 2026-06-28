@@ -2,14 +2,15 @@
 
 ## Project Structure & Module Organization
 
-This repository contains three ROS 2 packages. `ros_typedb/` is the core
+This repository contains four ROS 2 packages. `ros_typedb/` is the core
 `ament_python` package, with runtime code in `ros_typedb/ros_typedb/`, launch
 files in `ros_typedb/launch/`, and tests plus TypeDB fixtures in
 `ros_typedb/test/`. `ros_typedb_msgs/` is the `ament_cmake` interface package;
 message definitions live in `msg/` and services in `srv/`. `ros_typedb_tools/`
 contains Python command-line tools for TypeDB schema and rule diagrams, with
-tests and fixtures under `ros_typedb_tools/test/`. Sphinx documentation is in
-`docs/source/`.
+tests and fixtures under `ros_typedb_tools/test/`. `ros_typedb_benchmark/`
+contains stress-testing, fault-injection, and benchmark tools. Sphinx
+documentation is in `docs/source/`.
 
 ## Build, Test, and Development Commands
 
@@ -22,6 +23,7 @@ colcon build --symlink-install
 source install/setup.bash
 colcon test --event-handlers console_cohesion+ --packages-up-to ros_typedb
 colcon test --event-handlers console_cohesion+ --packages-select ros_typedb_tools
+colcon test --event-handlers console_cohesion+ --packages-select ros_typedb_benchmark
 ```
 
 Use `ros2 run ros_typedb ros_typedb_interface -p schema_path:=<schema> -p data_path:=<data>`
@@ -123,7 +125,7 @@ exceptions, then return `success=False` with `error_message` populated. Do not
 let malformed or unexpected query results escape the callback and crash the
 `ros_typedb_interface` node.
 
-## ros_typedb_tools Stress Diagnostics
+## ros_typedb_benchmark Stress Diagnostics
 
 When debugging Stage 2 stress timeouts, use the fake query service and the
 scenario runner before changing `ros_typedb_interface` behavior. If the fake
@@ -140,7 +142,7 @@ database robustness tests, stay inside the bounded envelope: in local testing
 Stress invariants are correctness checks that run alongside load to verify the
 database still contains expected baseline facts. Keep invariant and mixed
 read/write profiles as packaged JSON files under
-`ros_typedb_tools/ros_typedb_tools/profiles/`, not as hard-coded Python data.
+`ros_typedb_benchmark/ros_typedb_benchmark/profiles/`, not as hard-coded Python data.
 Update `setup.py` package data when adding new profile file patterns.
 
 Do not use a built-in invariant profile with a different schema/data pair. A
@@ -170,7 +172,7 @@ package `setup.py`; do not rely on source-tree-relative paths after
 Useful stress diagnostics:
 
 ```bash
-bash src/ros_typedb/ros_typedb_tools/scripts/run_stage2_timeout_scenarios.sh
+bash src/ros_typedb/ros_typedb_benchmark/scripts/run_stage2_timeout_scenarios.sh
 ```
 
 The script runs real read/global, real read/multi, fake read/global, fake
