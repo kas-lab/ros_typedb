@@ -15,6 +15,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.actions import EmitEvent
 from launch.actions import RegisterEventHandler
+from launch.conditions import IfCondition
 from launch.events import matches_action
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import LifecycleNode
@@ -31,6 +32,7 @@ def generate_launch_description():
     force_data = LaunchConfiguration('force_data')
     force_database = LaunchConfiguration('force_database')
     infer = LaunchConfiguration('infer')
+    reactivate_on_deactivate = LaunchConfiguration('reactivate_on_deactivate')
 
     schema_path_arg = DeclareLaunchArgument(
         'schema_path',
@@ -74,6 +76,12 @@ def generate_launch_description():
         description='use inference engine'
     )
 
+    reactivate_on_deactivate_arg = DeclareLaunchArgument(
+        'reactivate_on_deactivate',
+        default_value='True',
+        description='reactivate the lifecycle node after deactivate'
+    )
+
     ros_typedb_node = LifecycleNode(
         package='ros_typedb',
         executable='ros_typedb',
@@ -101,14 +109,34 @@ def generate_launch_description():
     ros_typedb_node_activate_event = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node=ros_typedb_node,
+            start_state='configuring',
             goal_state='inactive',
             entities=[
                 EmitEvent(event=ChangeState(
                     lifecycle_node_matcher=matches_action(ros_typedb_node),
-                    transition_id=lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE,
+                    transition_id=(
+                        lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE
+                    ),
                 )),
             ],
         )
+    )
+
+    ros_typedb_node_reactivate_event = RegisterEventHandler(
+        OnStateTransition(
+            target_lifecycle_node=ros_typedb_node,
+            start_state='deactivating',
+            goal_state='inactive',
+            entities=[
+                EmitEvent(event=ChangeState(
+                    lifecycle_node_matcher=matches_action(ros_typedb_node),
+                    transition_id=(
+                        lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE
+                    ),
+                )),
+            ],
+        ),
+        condition=IfCondition(reactivate_on_deactivate),
     )
 
     return LaunchDescription([
@@ -119,7 +147,9 @@ def generate_launch_description():
         force_data_arg,
         force_database_arg,
         infer_arg,
+        reactivate_on_deactivate_arg,
         ros_typedb_node,
         ros_typedb_node_config_event,
-        ros_typedb_node_activate_event
+        ros_typedb_node_activate_event,
+        ros_typedb_node_reactivate_event,
     ])
