@@ -95,6 +95,7 @@ def test_query_service_cb_passes_timeout_to_wrapper():
 
     node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
     node.typedb_interface = FakeTypeDBInterface()
+    node._state_machine = SimpleNamespace(current_state=(1, 'active'))
 
     req = Query.Request()
     req.query_type = Query.Request.FETCH
@@ -120,6 +121,7 @@ def test_query_service_cb_passes_none_when_timeout_s_is_zero():
 
     node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
     node.typedb_interface = FakeTypeDBInterface()
+    node._state_machine = SimpleNamespace(current_state=(1, 'active'))
 
     req = Query.Request()
     req.query_type = Query.Request.FETCH
@@ -146,6 +148,7 @@ def test_query_service_cb_catches_query_result_conversion_error(monkeypatch):
 
     node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
     node.typedb_interface = FakeTypeDBInterface()
+    node._state_machine = SimpleNamespace(current_state=(1, 'active'))
     logger = MagicMock()
     node.get_logger = MagicMock(return_value=logger)
     monkeypatch.setattr(
@@ -224,21 +227,16 @@ def test_close_typedb_interface_closes_driver_and_clears_interface():
     assert node.typedb_interface is None
 
 
-def test_on_cleanup_destroys_ros_entities_and_closes_typedb_driver():
+def test_on_cleanup_destroys_publisher_and_closes_typedb_driver():
     driver = MagicMock()
     typedb_interface = SimpleNamespace(driver=driver)
 
     event_pub = MagicMock()
-    query_service = MagicMock()
-    delete_db_service = MagicMock()
 
     node = SimpleNamespace(
         event_pub=event_pub,
-        query_service=query_service,
-        delete_db_service=delete_db_service,
         typedb_interface=typedb_interface,
         destroy_publisher=MagicMock(return_value=True),
-        destroy_service=MagicMock(return_value=True),
         get_logger=MagicMock(return_value=MagicMock()),
         get_name=MagicMock(return_value='ros_typedb'),
         close_typedb_interface=MagicMock(
@@ -252,14 +250,9 @@ def test_on_cleanup_destroys_ros_entities_and_closes_typedb_driver():
 
     assert result == TransitionCallbackReturn.SUCCESS
     node.destroy_publisher.assert_called_once_with(event_pub)
-    node.destroy_service.assert_any_call(query_service)
-    node.destroy_service.assert_any_call(delete_db_service)
-    assert node.destroy_service.call_count == 2
     assert node.close_typedb_interface.call_count == 1
     driver.close.assert_called_once_with()
     assert not hasattr(node, 'event_pub')
-    assert not hasattr(node, 'query_service')
-    assert not hasattr(node, 'delete_db_service')
     assert node.typedb_interface is None
 
 
@@ -271,12 +264,9 @@ def test_on_cleanup_waits_for_active_service_callback_before_closing_driver():
 
     node = SimpleNamespace(
         event_pub=MagicMock(),
-        query_service=MagicMock(),
-        delete_db_service=MagicMock(),
         typedb_interface=typedb_interface,
         _service_callback_lock=service_callback_lock,
         destroy_publisher=MagicMock(return_value=True),
-        destroy_service=MagicMock(return_value=True),
         get_logger=MagicMock(return_value=MagicMock()),
         get_name=MagicMock(return_value='ros_typedb'),
         close_typedb_interface=MagicMock(
@@ -870,3 +860,102 @@ def test_fetch_result_to_ros_result_tree():
     assert result_tree.results[6] == employee_var_thing3_result
     assert result_tree.results[7] == employment_var_thing3_result
     assert expected_tree == result_tree
+
+
+def test_lifecycle_state_is_active_returns_true_when_active():
+    """lifecycle_state_is_active returns True when state label is 'active'."""
+    node = SimpleNamespace(
+        _state_machine=SimpleNamespace(current_state=(1, 'active')))
+    assert ros_typedb_interface.lifecycle_state_is_active(node) is True
+
+
+def test_lifecycle_state_is_active_returns_false_for_non_active_states():
+    """lifecycle_state_is_active returns False for non-active states."""
+    for label in ('inactive', 'unconfigured', 'finalized'):
+        node = SimpleNamespace(
+            _state_machine=SimpleNamespace(current_state=(1, label)))
+        assert ros_typedb_interface.lifecycle_state_is_active(node) is False
+
+
+def test_when_lifecycle_active_skips_call_when_not_active():
+    """when_lifecycle_active returns None without calling func when inactive."""
+    called = []
+
+    @ros_typedb_interface.when_lifecycle_active
+    def example_method(self):
+        """Return an example result."""
+        called.append(True)
+        return 'result'
+
+    node = SimpleNamespace(
+        _state_machine=SimpleNamespace(current_state=(1, 'inactive')))
+    result = example_method(node)
+
+    assert result is None
+    assert called == []
+
+
+def test_query_service_cb_returns_not_active_when_node_is_inactive():
+    """query_service_cb returns success=False when node is not active."""
+    node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    node._state_machine = SimpleNamespace(current_state=(1, 'inactive'))
+    node.typedb_interface = MagicMock()
+
+    req = Query.Request()
+    req.query_type = Query.Request.FETCH
+    req.query = 'match $x isa thing; fetch $x;'
+
+    response = Query.Response()
+    result = node.query_service_cb(req, response)
+
+    assert result.success is False
+    assert 'not active' in result.error_message
+
+
+def test_query_service_cb_returns_not_configured_when_typedb_interface_is_none():
+    """query_service_cb returns success=False when typedb_interface is None."""
+    node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    node._state_machine = SimpleNamespace(current_state=(1, 'active'))
+    node.typedb_interface = None
+
+    req = Query.Request()
+    req.query_type = Query.Request.FETCH
+    req.query = 'match $x isa thing; fetch $x;'
+
+    response = Query.Response()
+    result = node.query_service_cb(req, response)
+
+    assert result.success is False
+    assert 'not configured' in result.error_message
+
+
+def test_delete_db_cb_skips_deletion_when_node_is_inactive():
+    """delete_db_cb skips database deletion when node is not active."""
+    from std_srvs.srv import Empty
+
+    node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    node._state_machine = SimpleNamespace(current_state=(1, 'inactive'))
+    typedb_mock = MagicMock()
+    node.typedb_interface = typedb_mock
+
+    result = ROSTypeDBInterface.delete_db_cb(
+        node, Empty.Request(), Empty.Response())
+
+    assert result is not None
+    typedb_mock.delete_database.assert_not_called()
+
+
+def test_delete_db_cb_skips_deletion_when_typedb_interface_is_none():
+    """
+    Check delete_db_cb skips deletion when typedb_interface is None.
+
+    If the guard were absent, None.delete_database() would raise AttributeError.
+    """
+    from std_srvs.srv import Empty
+
+    node = ROSTypeDBInterface.__new__(ROSTypeDBInterface)
+    node._state_machine = SimpleNamespace(current_state=(1, 'active'))
+    node.typedb_interface = None
+
+    ROSTypeDBInterface.delete_db_cb(
+        node, Empty.Request(), Empty.Response())

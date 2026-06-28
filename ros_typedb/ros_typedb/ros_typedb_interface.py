@@ -13,6 +13,7 @@
 # limitations under the License.
 """ros_typedb_interface - python interface to interact with typedb via ROS."""
 
+from functools import wraps
 import threading
 import traceback
 
@@ -503,6 +504,20 @@ def query_result_to_ros_msg(
     return response
 
 
+def lifecycle_state_is_active(node):
+    """Return True when the lifecycle node is in the active state."""
+    return node._state_machine.current_state[1] == 'active'
+
+
+def when_lifecycle_active(func):
+    """Decorate a method to run only when its lifecycle node is active."""
+    @wraps(func)
+    def inner(self, *args, **kwargs):
+        if lifecycle_state_is_active(self):
+            return func(self, *args, **kwargs)
+    return inner
+
+
 class ROSTypeDBInterface(Node):
     """ROS lifecycle node to interact with typedb."""
 
@@ -528,6 +543,18 @@ class ROSTypeDBInterface(Node):
 
         self.query_cb_group = MutuallyExclusiveCallbackGroup()
         self._service_callback_lock = threading.Lock()
+
+        self.query_service = self.create_service(
+            Query,
+            self.get_name() + '/query',
+            self.query_service_cb,
+            callback_group=self.query_cb_group)
+
+        self.delete_db_service = self.create_service(
+            Empty,
+            self.get_name() + '/delete_database',
+            self.delete_db_cb,
+            callback_group=self.query_cb_group)
 
     def _get_service_callback_lock(self):
         """Return the lock used to serialize service callbacks with cleanup."""
@@ -595,6 +622,7 @@ class ROSTypeDBInterface(Node):
         if typedb_interface is not None:
             self.typedb_interface = None
 
+    @when_lifecycle_active
     def publish_data_event(self, event_type: str) -> None:
         """
         Publish message in the `/event` topic.
@@ -643,18 +671,6 @@ class ROSTypeDBInterface(Node):
                 self.get_name() + '/events',
                 10,
                 callback_group=ReentrantCallbackGroup())
-
-            self.query_service = self.create_service(
-                Query,
-                self.get_name() + '/query',
-                self.query_service_cb,
-                callback_group=self.query_cb_group)
-
-            self.delete_db_service = self.create_service(
-                Empty,
-                self.get_name() + '/delete_database',
-                self.delete_db_cb,
-                callback_group=self.query_cb_group)
         except Exception as exc:
             try:
                 self.close_typedb_interface()
@@ -677,12 +693,6 @@ class ROSTypeDBInterface(Node):
 
         :return: transition result
         """
-        for service_name in ('query_service', 'delete_db_service'):
-            service = getattr(self, service_name, None)
-            if service is not None:
-                self.destroy_service(service)
-                delattr(self, service_name)
-
         service_callback_lock = self._get_service_callback_lock()
         with service_callback_lock:
             if getattr(self, 'event_pub', None) is not None:
@@ -710,6 +720,14 @@ class ROSTypeDBInterface(Node):
         """
         service_callback_lock = self._get_service_callback_lock()
         with service_callback_lock:
+            if not lifecycle_state_is_active(self):
+                response.success = False
+                response.error_message = 'Node is not active'
+                return response
+            if getattr(self, 'typedb_interface', None) is None:
+                response.success = False
+                response.error_message = 'Node is not configured'
+                return response
             if req.query_type == Query.Request.INSERT:
                 query_func = self.typedb_interface.insert_database
             elif req.query_type == Query.Request.DELETE:
@@ -766,5 +784,9 @@ class ROSTypeDBInterface(Node):
         """
         service_callback_lock = self._get_service_callback_lock()
         with service_callback_lock:
+            if not lifecycle_state_is_active(self):
+                return response
+            if getattr(self, 'typedb_interface', None) is None:
+                return response
             self.typedb_interface.delete_database()
         return response
