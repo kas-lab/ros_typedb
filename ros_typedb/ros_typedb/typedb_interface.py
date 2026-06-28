@@ -411,6 +411,8 @@ class TypeDBInterface:
 
         succeeded, result = result_queue.get_nowait()
         if succeeded:
+            self.logger.warning(
+                'Connected TypeDB driver to %s', self._address)
             self.driver = result
         else:
             raise result
