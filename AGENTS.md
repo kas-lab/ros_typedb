@@ -92,21 +92,16 @@ Keep TypeDB interface tests split by dependency style:
 
 ## TypeDB Runtime Notes
 
-Do not let `ensure_database_exists()` silently create an empty database. If the
-configured database is missing, recreate it only by replaying stored schema/data
-paths, or fail loudly when no initialization files are configured. Recovery code
-that runs while `_database_query_lock` is held should use internal unlocked
-helpers instead of calling the public `database_query()` path again; this avoids
-recursive health checks and avoids needing `RLock`.
+Do not let missing-database recovery silently create an empty database. Recreate
+from configured schema/data paths, or fail loudly when no initialization files
+are configured.
 
 `reload_schema=False` should skip schema redefinition only when reusing an
 existing database. Newly created, force-recreated, or missing-and-recreated
 databases must still load the configured schema before data is loaded.
 
 `delete_all_data()` must fail loudly if any delete step fails. Do not load new
-data on top of potentially residual data after a failed cleanup. The current
-live fixture confirms entity-first deletion works for the bundled schema/data,
-but that does not prove the order is universal for every TypeDB schema.
+data on top of potentially residual data after a failed cleanup.
 
 For TypeDB `fetch` queries, do not fetch a bare concept variable directly
 (`fetch $x;`). Fetch attributes explicitly; to fetch all attributes owned by a
@@ -121,10 +116,7 @@ grouping them by concrete `(label, value_type)` before converting them to ROS
 `Attribute` messages.
 
 When changing ROS fetch-result conversion, cover both unit-level JSON/dict
-shapes and launch integration tests against the real TypeDB service. The
-existing integration fixture data already includes mixed attribute value types
-on `person` (`string`, `long`, `double`, `boolean`, `datetime`) and is enough to
-reproduce wildcard attribute conversion bugs without extending the fixture.
+shapes and launch integration tests against the real TypeDB service.
 
 ROS service callbacks should catch and log query execution or result conversion
 exceptions, then return `success=False` with `error_message` populated. Do not
@@ -133,56 +125,47 @@ let malformed or unexpected query results escape the callback and crash the
 
 ## ros_typedb_tools Stress Diagnostics
 
-The stress experiment CLI is intentionally split by responsibility:
-
-- `ros_typedb_stress_experiment.py`: thin stress CLI entry point.
-- `stress_config.py`: query specs, request records, validation, and Query
-  request construction.
-- `stress_output.py`: summaries, result JSON, timeout JSON, and debug JSONL
-  writing.
-- `stress_runner.py`: ROS client loop, executor handling, service readiness,
-  pending future processing, and timeout-barrier behavior.
-- `stress_invariants.py`: invariant response evaluation and scalar extraction.
-- `fake_query_service.py`: fake `Query` service used to isolate ROS
-  service-client behavior from TypeDB work.
-
 When debugging Stage 2 stress timeouts, use the fake query service and the
 scenario runner before changing `ros_typedb_interface` behavior. If the fake
 service reproduces the same timeout-wave pattern, suspect ROS/rclpy/RMW/DDS or
 stress-harness behavior rather than TypeDB queries, schema/data, or result
 conversion.
 
-Observed stress-test boundary: high-rate ROS `Query` service calls can produce
-timeout waves even with fake services that do no TypeDB work. This reproduced
-with Python and C++ clients/servers, Fast DDS and CycloneDDS, and both Humble
-and Lyrical environments. Treat this as a ROS service transport/executor stress
-limit, not as evidence of a `ros_typedb` database/query bug. For meaningful
-`ros_typedb` robustness tests, cap outstanding service requests; in local
-testing `--max-in-flight 10` with `--request-gap-s 0.01` was stable, while
-roughly 12-15 in-flight requests started producing timeout waves.
-
-Move on from this transport limit unless the task is specifically to diagnose
-ROS service middleware behavior. Later stress stages should run inside the
-bounded envelope and focus on driver behavior: mixed read/write workloads,
-lifecycle transitions under load, TypeDB restart/reconnect, malformed query
-handling, schema/data reload behavior, and long-duration soak tests.
+High-rate ROS `Query` service calls can produce timeout waves even with fake
+services that do no TypeDB work. Treat this as a ROS service
+transport/executor stress limit, not as evidence of a TypeDB/query bug. For
+database robustness tests, stay inside the bounded envelope: in local testing
+`--max-in-flight 10` with `--request-gap-s 0.01` was stable.
 
 Stress invariants are correctness checks that run alongside load to verify the
-database still contains expected baseline facts. Keep invariant profiles as
-packaged JSON files under `ros_typedb_tools/ros_typedb_tools/profiles/`, not as
-hard-coded Python data. Update `setup.py` package data when adding new profile
-file patterns. Current built-in profiles are:
-
-- `test-data`: for `ros_typedb/test/typedb_test_data/schema.tql` and
-  `data.tql`; checks `person`, `company`, `employment`, and the
-  `boss@tudelft.nl` sentinel.
-- `plan-schema`: for `ros_typedb_examples/data/plan_schema.tql` and
-  `plan_data.tql`; checks `Plan`, `Action`, `Proposition`, plan/action
-  relations, and the `collect-water-sample` sentinel action.
+database still contains expected baseline facts. Keep invariant and mixed
+read/write profiles as packaged JSON files under
+`ros_typedb_tools/ros_typedb_tools/profiles/`, not as hard-coded Python data.
+Update `setup.py` package data when adding new profile file patterns.
 
 Do not use a built-in invariant profile with a different schema/data pair. A
 passing request-load test only proves the service answered; passing invariants
 prove the expected baseline data remained visible.
+
+Stage 5 delete-database fault injection deletes the database through the real
+`/delete_database` service while read load continues. The database is not
+recreated by the delete service itself; recreation is lazy and happens when a
+later `database_query()` calls `ensure_database_exists()`. That recovery only
+works when the node was configured with valid schema/data paths.
+
+Stage 5 recovery should be measured from the delete fault trigger to the first
+complete successful invariant pass after the fault. Periodic invariants during
+active load are the primary recovery signal; the post-load recovery loop is
+only a fallback when periodic checks did not observe recovery. Do not implement
+recovery timing that starts only after the main load duration ends, because it
+can falsely report `recovery: not recovered` even if ordinary post-delete
+queries already recreated and reloaded the database.
+
+`ros_typedb_examples` can include launch files for reusable schema/data demos.
+If a launch file needs data that normally lives under another package's `test/`
+tree, install only the specific runtime fixture files through the examples
+package `setup.py`; do not rely on source-tree-relative paths after
+`colcon build`.
 
 Useful stress diagnostics:
 
@@ -200,10 +183,6 @@ When changing `setup.py` console entry points in an `ament_python` package,
 If a `ros2 run` command still imports an old module after a source change,
 remove that package's generated `build/<pkg>` and `install/<pkg>` directories
 inside the workspace and rebuild the package.
-
-For PR support notes under `docs-agents/`, keep changelogs brief: summary,
-compact bullet list of changes, and verification commands. Avoid copying the
-more verbose style from planning documents.
 
 ## Commit & Pull Request Guidelines
 
