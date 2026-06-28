@@ -18,12 +18,16 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import sys
+from typing import Any
 
 import rclpy
 
 from ros_typedb_tools.stress_config import INVARIANT_PROFILE_NAMES
 from ros_typedb_tools.stress_config import MIXED_PROFILE_NAMES
 from ros_typedb_tools.stress_config import QUERY_TYPE_BY_NAME
+from ros_typedb_tools.stress_config import DEFAULT_TYPEDB_START_COMMAND
+from ros_typedb_tools.stress_config import DEFAULT_TYPEDB_STOP_COMMAND
+from ros_typedb_tools.stress_config import InvariantRecord
 from ros_typedb_tools.stress_config import StressExperimentResult
 from ros_typedb_tools.stress_output import default_timeout_output_path
 from ros_typedb_tools.stress_output import print_summary
@@ -182,7 +186,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         '--fault',
-        choices=('none', 'delete-database'),
+        choices=('none', 'delete-database', 'restart-typedb'),
         default='none',
         help=(
             'Fault to inject during the experiment. '
@@ -213,6 +217,43 @@ def build_argument_parser() -> argparse.ArgumentParser:
             'prefix with /delete_database appended '
             '(e.g. /ros_typedb_interface/delete_database).'
         ),
+    )
+    parser.add_argument(
+        '--typedb-container',
+        help=(
+            'Docker container that runs only the TypeDB server. Used with '
+            '--fault restart-typedb to run docker stop/start.'
+        ),
+    )
+    parser.add_argument(
+        '--typedb-stop-command',
+        default=DEFAULT_TYPEDB_STOP_COMMAND,
+        help=(
+            'Command used with --fault restart-typedb to stop TypeDB. '
+            'Defaults to pkill -f "typedb/core/server". Ignored when '
+            '--typedb-container is set.'
+        ),
+    )
+    parser.add_argument(
+        '--typedb-start-command',
+        default=DEFAULT_TYPEDB_START_COMMAND,
+        help=(
+            'Command used with --fault restart-typedb to start TypeDB. '
+            'Defaults to typedb server. Ignored when --typedb-container is '
+            'set.'
+        ),
+    )
+    parser.add_argument(
+        '--typedb-restart-delay-s',
+        type=float,
+        default=2.0,
+        help='Seconds to wait between TypeDB stop and start. Defaults to 2.',
+    )
+    parser.add_argument(
+        '--fault-command-timeout-s',
+        type=float,
+        default=30.0,
+        help='Seconds to wait for each fault command. Defaults to 30.',
     )
     return parser
 
@@ -262,6 +303,46 @@ def _write_requested_outputs(
         print(f'  timeout_output: {timeout_output_path}')
 
 
+def _fault_controller_failed(fault_result: Any) -> bool:
+    """Return True when the configured fault action itself failed."""
+    if fault_result.fault == 'restart-typedb':
+        return (
+            fault_result.fault_triggered_at_s is not None
+            and (
+                fault_result.fault_restart_stop_success is not True
+                or fault_result.fault_restart_start_success is not True
+            )
+        )
+    return False
+
+
+def _invariant_failures_should_fail(
+    records: list[InvariantRecord],
+    fault_result: Any,
+) -> bool:
+    """Return True when invariant failures should make the CLI fail."""
+    if not any(not record.success for record in records):
+        return False
+    if (
+        fault_result.fault == 'none'
+        or fault_result.fault_triggered_at_s is None
+        or fault_result.fault_recovered_at_s is None
+    ):
+        return True
+
+    for record in records:
+        if record.success:
+            continue
+        if (
+            record.phase in ('periodic', 'recovery')
+            and record.started_at_s >= fault_result.fault_triggered_at_s
+            and record.started_at_s <= fault_result.fault_recovered_at_s
+        ):
+            continue
+        return True
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the stress experiment CLI."""
     parser = build_argument_parser()
@@ -283,7 +364,12 @@ def main(argv: list[str] | None = None) -> int:
             and fault_result.fault_recovered_at_s is None
         ):
             return 1
-        if invariant_summary['failures'] > 0:
+        if _fault_controller_failed(fault_result):
+            return 1
+        if _invariant_failures_should_fail(
+            result.invariant_records,
+            fault_result,
+        ):
             return 1
         if args.fail_on_failure and summary['failures'] > 0:
             return 1

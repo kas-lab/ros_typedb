@@ -121,7 +121,7 @@ interface.
 | 3. Correctness invariants | Implemented | Check that expected baseline facts remain visible during and after load, not only that requests returned. |
 | 4. Mixed read/write load | Implemented | Read while inserting, updating, deleting, and cleaning up experiment-owned temporary data. |
 | 5. Delete-database fault injection | Implemented | Delete the database during load and measure whether the driver fails loudly, reloads correctly, and recovers invariants. |
-| 6. TypeDB restart fault injection | Planned | Stop/restart TypeDB during load and measure outage, reconnect behavior, and post-recovery correctness. |
+| 6. TypeDB restart fault injection | Implemented | Stop/restart TypeDB during load and measure outage, reconnect behavior, and post-recovery correctness. |
 | 7. Lifecycle stress | Planned | Trigger ROS lifecycle cleanup/configure/activate transitions during load to check teardown races. |
 | 8. External schema/data profiles | Planned | Run the same harness with application-specific schema/data, query mixes, invariants, setup, and cleanup profiles. |
 
@@ -129,7 +129,8 @@ Use Stage 1 when validating a single query path. Use Stage 2 when probing ROS
 service throughput and timeout behavior. Use Stage 3 when checking that load
 does not corrupt or hide baseline data. Use Stage 4 when validating robustness
 under real read/write activity. Use Stage 5 when validating recovery after a
-database deletion fault.
+database deletion fault. Use Stage 6 when validating driver reconnect behavior
+after the TypeDB server process or container is restarted.
 
 ### Stage 1: Minimal Real Service Load
 
@@ -336,13 +337,68 @@ test-data launch; use a matching invariant profile for any other schema/data
 pair. Keep `--max-in-flight 10` and `--request-gap-s 0.01` for robustness
 testing so the experiment stays inside the known stable ROS service envelope.
 
+### Stage 6: TypeDB Restart Fault Injection
+
+This stage restarts the TypeDB server while normal query clients continue
+sending requests. It is meant to check that server outages produce bounded,
+explicit failures and that later requests reconnect to TypeDB without
+restarting the ROS lifecycle node. Recovery is still correctness-based: the
+first complete post-fault invariant pass marks `fault_recovered_at_s`.
+
+Run TypeDB separately from the ROS node and stress process. Do not pass the
+same Docker container that is running `ros_typedb_interface` or the experiment
+to `--typedb-container`, because stopping that container stops the test itself.
+By default, the process fault uses `pkill -f "typedb/core/server"` to stop
+TypeDB and `typedb server` to start it again:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 10 \
+  --duration-s 240 \
+  --timeout-s 10 \
+  --mode read \
+  --fault restart-typedb \
+  --typedb-restart-delay-s 2 \
+  --fault-at-s 60 \
+  --invariant-profile test-data \
+  --request-gap-s 0.01 \
+  --max-in-flight 10 \
+  --output /tmp/stage6_restart_typedb.json \
+  --debug-events-output /tmp/stage6_restart_typedb_debug.jsonl
+```
+
+Override the process commands with `--typedb-stop-command` and
+`--typedb-start-command` when needed. For a TypeDB-only Docker container, pass
+`--typedb-container`; it overrides the process commands:
+
+```bash
+--typedb-container typedb_server
+```
+
+The restart controller runs in a background thread, so the main experiment loop
+keeps spinning ROS futures and sending requests during the outage. The result
+JSON adds restart fields to the `fault` object:
+
+- `fault_restart_stop_success`, `fault_restart_stop_error`, and
+  `fault_restart_stop_latency_s`
+- `fault_restart_start_success`, `fault_restart_start_error`, and
+  `fault_restart_start_latency_s`
+- `fault_restart_delay_s`: configured delay between stop and start
+- `fault_restart_outage_s`: elapsed controller time from stop start to start
+  completion
+- `fault_observed_outage_s`: elapsed time from the first failed post-fault
+  request result to the first later successful request result
+
+If the fault is triggered but invariants do not recover, the CLI exits with
+status 1. Request failures during the outage remain recorded in the JSON output;
+use `--fail-on-failure` only when you want any request failure to fail the
+command even if invariants later recover.
+
 ### Planned Fault-Injection Stages
 
-Stages 6-8 are not implemented yet. They are placeholders for the next
+Stages 7-8 are not implemented yet. They are placeholders for the next
 robustness checks:
 
-- Stage 6, TypeDB restart fault injection: stop and restart the TypeDB server
-  or container during load, then measure outage and reconnect behavior.
 - Stage 7, lifecycle stress: call lifecycle cleanup/configure/activate while
   requests are in flight, then check that service callbacks and resource
   teardown do not race.

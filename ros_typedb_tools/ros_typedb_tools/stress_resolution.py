@@ -20,6 +20,8 @@ from pathlib import Path
 
 from ros_typedb_tools.stress_config import build_invariant_specs
 from ros_typedb_tools.stress_config import build_query_specs
+from ros_typedb_tools.stress_config import DEFAULT_TYPEDB_START_COMMAND
+from ros_typedb_tools.stress_config import DEFAULT_TYPEDB_STOP_COMMAND
 from ros_typedb_tools.stress_config import QuerySpec
 from ros_typedb_tools.stress_config import ResolvedStressConfig
 from ros_typedb_tools.stress_config import validate_experiment_args
@@ -51,6 +53,15 @@ def resolve_stress_config(
     fault = getattr(args, 'fault', 'none')
     fault_at_s = getattr(args, 'fault_at_s', None)
     fault_recovery_timeout_s = getattr(args, 'fault_recovery_timeout_s', 30.0)
+    typedb_container = getattr(args, 'typedb_container', None)
+    typedb_stop_command = getattr(
+        args, 'typedb_stop_command', DEFAULT_TYPEDB_STOP_COMMAND
+    ) or DEFAULT_TYPEDB_STOP_COMMAND
+    typedb_start_command = getattr(
+        args, 'typedb_start_command', DEFAULT_TYPEDB_START_COMMAND
+    ) or DEFAULT_TYPEDB_START_COMMAND
+    typedb_restart_delay_s = getattr(args, 'typedb_restart_delay_s', 2.0)
+    fault_command_timeout_s = getattr(args, 'fault_command_timeout_s', 30.0)
 
     return ResolvedStressConfig(
         query_specs=query_specs,
@@ -65,6 +76,11 @@ def resolve_stress_config(
         fault=fault,
         fault_at_s=fault_at_s,
         fault_recovery_timeout_s=fault_recovery_timeout_s,
+        typedb_container=typedb_container,
+        typedb_stop_command=typedb_stop_command,
+        typedb_start_command=typedb_start_command,
+        typedb_restart_delay_s=typedb_restart_delay_s,
+        fault_command_timeout_s=fault_command_timeout_s,
     )
 
 

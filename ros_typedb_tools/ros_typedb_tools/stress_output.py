@@ -20,6 +20,7 @@ from dataclasses import asdict
 import json
 from pathlib import Path
 import statistics
+import threading
 import time
 from typing import Any
 
@@ -111,6 +112,23 @@ def _fault_payload(fault_result: FaultResult | None) -> dict[str, Any]:
         'fault_delete_latency_s': fault_result.fault_delete_latency_s,
         'fault_recovered_at_s': fault_result.fault_recovered_at_s,
         'fault_recovery_s': fault_result.fault_recovery_s,
+        'fault_restart_stop_success': (
+            fault_result.fault_restart_stop_success
+        ),
+        'fault_restart_stop_error': fault_result.fault_restart_stop_error,
+        'fault_restart_stop_latency_s': (
+            fault_result.fault_restart_stop_latency_s
+        ),
+        'fault_restart_start_success': (
+            fault_result.fault_restart_start_success
+        ),
+        'fault_restart_start_error': fault_result.fault_restart_start_error,
+        'fault_restart_start_latency_s': (
+            fault_result.fault_restart_start_latency_s
+        ),
+        'fault_restart_delay_s': fault_result.fault_restart_delay_s,
+        'fault_restart_outage_s': fault_result.fault_restart_outage_s,
+        'fault_observed_outage_s': fault_result.fault_observed_outage_s,
     }
 
 
@@ -210,6 +228,7 @@ class DebugEventWriter:
         """Create an event writer for the optional output path."""
         self._output_path = output_path
         self._stream = None
+        self._lock = threading.Lock()
 
     def __enter__(self) -> 'DebugEventWriter':
         """Open the event stream when debug output is enabled."""
@@ -232,7 +251,8 @@ class DebugEventWriter:
             'monotonic_s': time.monotonic(),
             **fields,
         }
-        self._stream.write(json.dumps(payload, sort_keys=True) + '\n')
+        with self._lock:
+            self._stream.write(json.dumps(payload, sort_keys=True) + '\n')
 
 
 def print_summary(
@@ -279,6 +299,32 @@ def print_summary(
             if fault_result.fault_recovery_s is not None
             else 'not recovered'
         )
+        if fault_result.fault == 'restart-typedb':
+            restart_status = (
+                'ok'
+                if (
+                    fault_result.fault_restart_stop_success
+                    and fault_result.fault_restart_start_success
+                )
+                else 'FAILED'
+            )
+            restart_outage = (
+                f'{fault_result.fault_restart_outage_s:.3f}s'
+                if fault_result.fault_restart_outage_s is not None
+                else 'n/a'
+            )
+            observed_outage = (
+                f'{fault_result.fault_observed_outage_s:.3f}s'
+                if fault_result.fault_observed_outage_s is not None
+                else 'n/a'
+            )
+            print(
+                f'  fault: {fault_result.fault} triggered at '
+                f'{triggered_at} | restart: {restart_status} '
+                f'({restart_outage}) | observed outage: '
+                f'{observed_outage} | recovery: {recovery_str}'
+            )
+            return
         print(
             f'  fault: {fault_result.fault} triggered at {triggered_at} | '
             f'delete: {delete_status} ({delete_latency}) | '

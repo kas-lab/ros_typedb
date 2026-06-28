@@ -17,6 +17,9 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import shlex
+import subprocess
+import threading
 import time
 from typing import Any
 import uuid
@@ -28,6 +31,8 @@ from rclpy.executors import SingleThreadedExecutor
 from ros_typedb_msgs.srv import Query
 
 from ros_typedb_tools.stress_config import build_query_request
+from ros_typedb_tools.stress_config import DEFAULT_TYPEDB_START_COMMAND
+from ros_typedb_tools.stress_config import DEFAULT_TYPEDB_STOP_COMMAND
 from ros_typedb_tools.stress_config import FaultResult
 from ros_typedb_tools.stress_config import InvariantRecord
 from ros_typedb_tools.stress_config import InvariantSpec
@@ -75,6 +80,15 @@ class _RunState:
     fault_delete_error: str | None = None
     fault_delete_latency_s: float | None = None
     fault_recovered_at_s: float | None = None
+    fault_restart_stop_success: bool | None = None
+    fault_restart_stop_error: str | None = None
+    fault_restart_stop_latency_s: float | None = None
+    fault_restart_start_success: bool | None = None
+    fault_restart_start_error: str | None = None
+    fault_restart_start_latency_s: float | None = None
+    fault_restart_started_at_s: float | None = None
+    fault_restart_ended_at_s: float | None = None
+    fault_restart_delay_s: float | None = None
 
 
 def _build_executor(args: argparse.Namespace) -> Any | None:
@@ -198,7 +212,7 @@ def _start_request(
     state.last_started_by_client[client_id] = started_at_s
     state.sent_count_by_client[client_id] += 1
     # Mixed workloads create experiment-owned temporary concepts. Track keys
-    # until a matching delete succeeds, then final cleanup can remove leftovers.
+    # until a matching delete succeeds. Final cleanup removes leftovers.
     if (
         query_spec.cleanup_key is not None
         and query_spec.query_type != 'delete'
@@ -760,6 +774,214 @@ def _trigger_delete_database_fault(
             )
 
 
+def _build_typedb_restart_commands(
+    *,
+    typedb_container: str | None,
+    typedb_stop_command: str | None,
+    typedb_start_command: str | None,
+) -> tuple[list[str], list[str]]:
+    """Build stop/start command argv for a TypeDB restart fault."""
+    if typedb_container:
+        return (
+            ['docker', 'stop', typedb_container],
+            ['docker', 'start', typedb_container],
+        )
+    return (
+        shlex.split(typedb_stop_command or DEFAULT_TYPEDB_STOP_COMMAND),
+        shlex.split(typedb_start_command or DEFAULT_TYPEDB_START_COMMAND),
+    )
+
+
+def _run_fault_command(
+    command: list[str],
+    *,
+    timeout_s: float,
+) -> tuple[bool, str | None, float]:
+    """Run one TypeDB restart command and return success, error, latency."""
+    started_at_s = time.monotonic()
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        return (
+            False,
+            f'command timed out after {timeout_s:g}s: {command!r}',
+            time.monotonic() - started_at_s,
+        )
+    except Exception as exc:  # noqa: B902
+        return False, str(exc), time.monotonic() - started_at_s
+
+    if completed.returncode == 0:
+        return True, None, time.monotonic() - started_at_s
+    error = completed.stderr.strip() or completed.stdout.strip()
+    if not error:
+        error = f'command exited with status {completed.returncode}'
+    return False, error, time.monotonic() - started_at_s
+
+
+def _start_fault_command(
+    command: list[str],
+    *,
+    observation_s: float = 1.0,
+) -> tuple[bool, str | None, float]:
+    """Start a TypeDB process command that may keep running in foreground."""
+    started_at_s = time.monotonic()
+    try:
+        process = subprocess.Popen(  # noqa: S603
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception as exc:  # noqa: B902
+        return False, str(exc), time.monotonic() - started_at_s
+
+    try:
+        returncode = process.wait(timeout=observation_s)
+    except subprocess.TimeoutExpired:
+        return True, None, time.monotonic() - started_at_s
+
+    if returncode == 0:
+        return True, None, time.monotonic() - started_at_s
+    return (
+        False,
+        f'command exited with status {returncode}',
+        time.monotonic() - started_at_s,
+    )
+
+
+def _restart_typedb_fault_worker(
+    *,
+    stop_command: list[str],
+    start_command: list[str],
+    start_command_waits_for_exit: bool,
+    restart_delay_s: float,
+    command_timeout_s: float,
+    state: _RunState,
+    debug_events: DebugEventWriter,
+) -> None:
+    """Stop and restart TypeDB while the main experiment loop continues."""
+    state.fault_restart_started_at_s = time.monotonic()
+    state.fault_restart_delay_s = restart_delay_s
+    debug_events.log(
+        'fault_restart_stop_started',
+        command=stop_command,
+        command_timeout_s=command_timeout_s,
+    )
+    stop_success, stop_error, stop_latency_s = _run_fault_command(
+        stop_command,
+        timeout_s=command_timeout_s,
+    )
+    state.fault_restart_stop_success = stop_success
+    state.fault_restart_stop_error = stop_error
+    state.fault_restart_stop_latency_s = stop_latency_s
+    debug_events.log(
+        'fault_restart_stop_complete',
+        success=stop_success,
+        error=stop_error,
+        latency_s=stop_latency_s,
+    )
+
+    if restart_delay_s > 0:
+        time.sleep(restart_delay_s)
+
+    debug_events.log(
+        'fault_restart_start_started',
+        command=start_command,
+        command_timeout_s=command_timeout_s,
+    )
+    if start_command_waits_for_exit:
+        start_success, start_error, start_latency_s = _run_fault_command(
+            start_command,
+            timeout_s=command_timeout_s,
+        )
+    else:
+        start_success, start_error, start_latency_s = _start_fault_command(
+            start_command,
+        )
+    state.fault_restart_start_success = start_success
+    state.fault_restart_start_error = start_error
+    state.fault_restart_start_latency_s = start_latency_s
+    state.fault_restart_ended_at_s = time.monotonic()
+    debug_events.log(
+        'fault_restart_start_complete',
+        success=start_success,
+        error=start_error,
+        latency_s=start_latency_s,
+        controller_outage_s=(
+            state.fault_restart_ended_at_s
+            - state.fault_restart_started_at_s
+        ),
+    )
+
+
+def _trigger_restart_typedb_fault(
+    *,
+    config: Any,
+    state: _RunState,
+    debug_events: DebugEventWriter,
+) -> threading.Thread:
+    """Start a background TypeDB restart fault controller."""
+    started_at_s = time.monotonic()
+    pending_count = len(state.pending_by_client)
+    state.fault_triggered = True
+    state.fault_triggered_at_s = started_at_s
+    stop_command, start_command = _build_typedb_restart_commands(
+        typedb_container=config.typedb_container,
+        typedb_stop_command=config.typedb_stop_command,
+        typedb_start_command=config.typedb_start_command,
+    )
+    start_command_waits_for_exit = config.typedb_container is not None
+    debug_events.log(
+        'fault_triggered',
+        fault='restart-typedb',
+        triggered_at_s=started_at_s,
+        pending_count_at_fault=pending_count,
+        stop_command=stop_command,
+        start_command=start_command,
+    )
+    thread = threading.Thread(
+        target=_restart_typedb_fault_worker,
+        kwargs={
+            'stop_command': stop_command,
+            'start_command': start_command,
+            'start_command_waits_for_exit': start_command_waits_for_exit,
+            'restart_delay_s': config.typedb_restart_delay_s,
+            'command_timeout_s': config.fault_command_timeout_s,
+            'state': state,
+            'debug_events': debug_events,
+        },
+        daemon=True,
+    )
+    thread.start()
+    return thread
+
+
+def _compute_observed_fault_outage_s(
+    records: list[RequestRecord],
+    *,
+    fault_triggered_at_s: float | None,
+) -> float | None:
+    """Measure observed outage from request failures and later success."""
+    if fault_triggered_at_s is None:
+        return None
+    first_failure_ended_at_s = None
+    for record in sorted(records, key=lambda item: item.ended_at_s):
+        if record.ended_at_s < fault_triggered_at_s:
+            continue
+        if first_failure_ended_at_s is None:
+            if not record.success:
+                first_failure_ended_at_s = record.ended_at_s
+            continue
+        if record.success:
+            return record.ended_at_s - first_failure_ended_at_s
+    return None
+
+
 def _wait_for_recovery(
     *,
     node: Any,
@@ -827,7 +1049,7 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
     )
     delete_db_client = (
         node.create_client(Empty, delete_db_service_name)
-        if getattr(args, 'fault', 'none') != 'none'
+        if getattr(args, 'fault', 'none') == 'delete-database'
         else None
     )
     deadline_s = (
@@ -850,6 +1072,7 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
         next_snapshot_s=time.monotonic() + 1.0,
         next_invariant_s=time.monotonic() + args.invariant_period_s,
     )
+    restart_fault_thread = None
 
     try:
         with DebugEventWriter(config.debug_events_output) as debug_events:
@@ -920,7 +1143,8 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
                     debug_events=debug_events,
                 )
                 if (
-                    delete_db_client is not None
+                    config.fault == 'delete-database'
+                    and delete_db_client is not None
                     and not state.fault_triggered
                     and config.fault_at_s is not None
                     and time.monotonic() - experiment_started_at_s
@@ -934,9 +1158,24 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
                         timeout_s=args.timeout_s,
                         debug_events=debug_events,
                     )
+                if (
+                    config.fault == 'restart-typedb'
+                    and not state.fault_triggered
+                    and config.fault_at_s is not None
+                    and time.monotonic() - experiment_started_at_s
+                    >= config.fault_at_s
+                ):
+                    restart_fault_thread = _trigger_restart_typedb_fault(
+                        config=config,
+                        state=state,
+                        debug_events=debug_events,
+                    )
 
-            # 1. Recovery (must come before cleanup — cleanup queries trigger DB
-            #    recreation, which would silently advance recovery unobserved)
+            if restart_fault_thread is not None:
+                restart_fault_thread.join()
+
+            # 1. Recovery must come before cleanup. Cleanup queries trigger DB
+            #    recreation, silently advancing recovery unobserved.
             if (
                 state.fault_triggered
                 and config.invariant_specs
@@ -1001,6 +1240,12 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
         and state.fault_recovered_at_s is not None
         else None
     )
+    fault_restart_outage_s = (
+        state.fault_restart_ended_at_s - state.fault_restart_started_at_s
+        if state.fault_restart_started_at_s is not None
+        and state.fault_restart_ended_at_s is not None
+        else None
+    )
     fault_result = FaultResult(
         fault=config.fault,
         fault_at_s=config.fault_at_s,
@@ -1010,6 +1255,18 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
         fault_delete_latency_s=state.fault_delete_latency_s,
         fault_recovered_at_s=state.fault_recovered_at_s,
         fault_recovery_s=fault_recovery_s,
+        fault_restart_stop_success=state.fault_restart_stop_success,
+        fault_restart_stop_error=state.fault_restart_stop_error,
+        fault_restart_stop_latency_s=state.fault_restart_stop_latency_s,
+        fault_restart_start_success=state.fault_restart_start_success,
+        fault_restart_start_error=state.fault_restart_start_error,
+        fault_restart_start_latency_s=state.fault_restart_start_latency_s,
+        fault_restart_delay_s=state.fault_restart_delay_s,
+        fault_restart_outage_s=fault_restart_outage_s,
+        fault_observed_outage_s=_compute_observed_fault_outage_s(
+            state.records,
+            fault_triggered_at_s=state.fault_triggered_at_s,
+        ),
     )
     return StressExperimentResult(
         records=state.records,

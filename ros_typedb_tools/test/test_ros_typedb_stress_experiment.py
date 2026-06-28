@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 
 import pytest
@@ -21,6 +22,8 @@ from ros_typedb_tools.ros_typedb_stress_experiment import (
 from ros_typedb_tools.stress_config import (
     build_invariant_specs,
     build_query_specs,
+    DEFAULT_TYPEDB_START_COMMAND,
+    DEFAULT_TYPEDB_STOP_COMMAND,
     FaultResult,
     InvariantRecord,
     InvariantSpec,
@@ -45,7 +48,11 @@ from ros_typedb_tools.stress_output import (
 )
 from ros_typedb_tools.stress_resolution import resolve_stress_config
 from ros_typedb_tools.stress_runner import (
+    _build_typedb_restart_commands,
+    _compute_observed_fault_outage_s,
     _mark_fault_recovered_from_invariant_pass,
+    _run_fault_command,
+    _start_fault_command,
 )
 from ros_typedb_tools.stress_runner import _RunState
 from ros_typedb_tools.stress_runner import run_experiment
@@ -80,15 +87,18 @@ def _invariant_record(
     *,
     success: bool,
     timed_out: bool = False,
+    phase: str = 'final',
+    started_at_s: float | None = None,
 ) -> InvariantRecord:
+    started_at_s = 20.0 + index if started_at_s is None else started_at_s
     return InvariantRecord(
         index=index,
-        phase='final',
+        phase=phase,
         name='person-count',
         query_type='get_aggregate',
         query='match $p isa person; get $p; count;',
-        started_at_s=20.0 + index,
-        ended_at_s=20.1 + index,
+        started_at_s=started_at_s,
+        ended_at_s=started_at_s + 0.1,
         latency_s=0.1,
         success=success,
         timed_out=timed_out,
@@ -258,6 +268,42 @@ def test_parser_accepts_stage_four_mixed_mode():
     assert args.mode == 'mixed'
     assert args.mixed_profile == 'plan-schema'
     assert args.invariant_profile == 'plan-schema-mixed'
+
+
+def test_parser_accepts_stage_six_restart_fault_arguments():
+    """Check Stage 6 TypeDB restart fault arguments."""
+    parser = build_argument_parser()
+
+    args = parser.parse_args(
+        [
+            '--clients',
+            '10',
+            '--duration-s',
+            '240',
+            '--mode',
+            'read',
+            '--fault',
+            'restart-typedb',
+            '--typedb-container',
+            'typedb_server',
+            '--fault-at-s',
+            '60',
+            '--typedb-restart-delay-s',
+            '3',
+            '--fault-command-timeout-s',
+            '15',
+            '--invariant-profile',
+            'test-data',
+        ]
+    )
+
+    assert args.fault == 'restart-typedb'
+    assert args.typedb_container == 'typedb_server'
+    assert args.typedb_stop_command == DEFAULT_TYPEDB_STOP_COMMAND
+    assert args.typedb_start_command == DEFAULT_TYPEDB_START_COMMAND
+    assert args.fault_at_s == 60
+    assert args.typedb_restart_delay_s == 3
+    assert args.fault_command_timeout_s == 15
 
 
 def test_fake_service_parser_accepts_diagnostic_arguments():
@@ -446,6 +492,15 @@ def test_write_results_writes_summary_and_request_records(tmp_path: Path):
         'fault_delete_latency_s': 0.125,
         'fault_recovered_at_s': 12.75,
         'fault_recovery_s': 2.5,
+        'fault_restart_stop_success': None,
+        'fault_restart_stop_error': None,
+        'fault_restart_stop_latency_s': None,
+        'fault_restart_start_success': None,
+        'fault_restart_start_error': None,
+        'fault_restart_start_latency_s': None,
+        'fault_restart_delay_s': None,
+        'fault_restart_outage_s': None,
+        'fault_observed_outage_s': None,
     }
 
 
@@ -472,7 +527,126 @@ def test_write_results_writes_default_fault_payload(tmp_path: Path):
         'fault_delete_latency_s': None,
         'fault_recovered_at_s': None,
         'fault_recovery_s': None,
+        'fault_restart_stop_success': None,
+        'fault_restart_stop_error': None,
+        'fault_restart_stop_latency_s': None,
+        'fault_restart_start_success': None,
+        'fault_restart_start_error': None,
+        'fault_restart_start_latency_s': None,
+        'fault_restart_delay_s': None,
+        'fault_restart_outage_s': None,
+        'fault_observed_outage_s': None,
     }
+
+
+def test_build_typedb_restart_commands_uses_container():
+    """Check container restart commands override process hooks."""
+    stop_command, start_command = _build_typedb_restart_commands(
+        typedb_container='typedb_server',
+        typedb_stop_command='custom stop',
+        typedb_start_command='custom start',
+    )
+
+    assert stop_command == ['docker', 'stop', 'typedb_server']
+    assert start_command == ['docker', 'start', 'typedb_server']
+
+
+def test_build_typedb_restart_commands_uses_default_process_hooks():
+    """Check default process restart commands."""
+    stop_command, start_command = _build_typedb_restart_commands(
+        typedb_container=None,
+        typedb_stop_command=None,
+        typedb_start_command=None,
+    )
+
+    assert stop_command == ['pkill', '-f', 'typedb/core/server']
+    assert start_command == ['typedb', 'server']
+
+
+def test_build_typedb_restart_commands_uses_command_hooks():
+    """Check restart command hooks are parsed into argv."""
+    stop_command, start_command = _build_typedb_restart_commands(
+        typedb_container=None,
+        typedb_stop_command='bash -lc "typedb server stop"',
+        typedb_start_command='bash -lc "typedb server start"',
+    )
+
+    assert stop_command == ['bash', '-lc', 'typedb server stop']
+    assert start_command == ['bash', '-lc', 'typedb server start']
+
+
+def test_run_fault_command_reports_nonzero_exit(monkeypatch):
+    """Check fault command execution reports stderr on failure."""
+    class Completed:
+        returncode = 2
+        stdout = ''
+        stderr = 'failed to stop'
+
+    def fake_run(command, **kwargs):
+        assert command == ['typedb', 'server', 'stop']
+        assert kwargs['timeout'] == 5.0
+        return Completed()
+
+    monkeypatch.setattr(
+        'ros_typedb_tools.stress_runner.subprocess.run',
+        fake_run,
+    )
+
+    success, error, latency_s = _run_fault_command(
+        ['typedb', 'server', 'stop'],
+        timeout_s=5.0,
+    )
+
+    assert success is False
+    assert error == 'failed to stop'
+    assert latency_s >= 0.0
+
+
+def test_start_fault_command_treats_running_process_as_success(monkeypatch):
+    """Check foreground server commands succeed once they stay running."""
+    class RunningProcess:
+        def wait(self, timeout):
+            assert timeout == 0.25
+            raise subprocess.TimeoutExpired(['typedb', 'server'], timeout)
+
+    def fake_popen(command, **kwargs):
+        assert command == ['typedb', 'server']
+        assert kwargs['stdout'] == subprocess.DEVNULL
+        assert kwargs['stderr'] == subprocess.DEVNULL
+        return RunningProcess()
+
+    monkeypatch.setattr(
+        'ros_typedb_tools.stress_runner.subprocess.Popen',
+        fake_popen,
+    )
+
+    success, error, latency_s = _start_fault_command(
+        ['typedb', 'server'],
+        observation_s=0.25,
+    )
+
+    assert success is True
+    assert error is None
+    assert latency_s >= 0.0
+
+
+def test_compute_observed_fault_outage_s_uses_failure_to_success_window():
+    """Check observed outage is measured from failure to later success."""
+    records = [
+        _record(0, latency_s=0.1, success=True),
+        _record(1, latency_s=0.2, success=False),
+        _record(2, latency_s=0.4, success=False, timed_out=True),
+        _record(3, latency_s=0.3, success=True),
+    ]
+
+    outage_s = _compute_observed_fault_outage_s(
+        records,
+        fault_triggered_at_s=10.5,
+    )
+
+    assert outage_s == pytest.approx(
+        records[3].ended_at_s - records[1].ended_at_s
+    )
 
 
 def test_default_timeout_output_path_uses_result_stem():
@@ -864,6 +1038,11 @@ def _base_args(**overrides):
         'fault': 'none',
         'fault_at_s': None,
         'fault_recovery_timeout_s': 30.0,
+        'typedb_container': None,
+        'typedb_stop_command': DEFAULT_TYPEDB_STOP_COMMAND,
+        'typedb_start_command': DEFAULT_TYPEDB_START_COMMAND,
+        'typedb_restart_delay_s': 2.0,
+        'fault_command_timeout_s': 30.0,
     }
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -920,6 +1099,46 @@ def test_validate_args_fault_at_s_must_be_less_than_duration_s():
         validate_experiment_args(args)
 
 
+def test_validate_args_fault_restart_typedb_accepts_default_controller():
+    """Check restart-typedb accepts default process commands."""
+    args = _base_args(
+        fault='restart-typedb',
+        invariant_profile='test-data',
+        duration_s=60.0,
+        fault_at_s=10.0,
+    )
+
+    validate_experiment_args(args)
+
+
+def test_validate_args_fault_restart_typedb_accepts_container_override():
+    """Check restart-typedb accepts container overriding process commands."""
+    args = _base_args(
+        fault='restart-typedb',
+        invariant_profile='test-data',
+        duration_s=60.0,
+        fault_at_s=10.0,
+        typedb_container='typedb_server',
+        typedb_stop_command='typedb server stop',
+        typedb_start_command='typedb server start',
+    )
+
+    validate_experiment_args(args)
+
+
+def test_validate_args_fault_restart_typedb_accepts_container():
+    """Check restart-typedb accepts a TypeDB container controller."""
+    args = _base_args(
+        fault='restart-typedb',
+        invariant_profile='test-data',
+        duration_s=60.0,
+        fault_at_s=10.0,
+        typedb_container='typedb_server',
+    )
+
+    validate_experiment_args(args)
+
+
 def test_validate_args_fault_recovery_timeout_s_must_be_positive():
     """Check --fault-recovery-timeout-s must be greater than zero."""
     args = _base_args(fault_recovery_timeout_s=0.0)
@@ -959,6 +1178,152 @@ def test_main_fails_when_triggered_fault_does_not_recover(monkeypatch):
             max_in_flight=1,
             debug_events_output=None,
             fault='delete-database',
+            fault_at_s=10.0,
+            fault_recovery_timeout_s=30.0,
+        ),
+        fault_result=fault_result,
+    )
+
+    monkeypatch.setattr(stress_cli.rclpy, 'init', lambda args=None: None)
+    monkeypatch.setattr(stress_cli.rclpy, 'shutdown', lambda: None)
+    monkeypatch.setattr(stress_cli, 'run_experiment', lambda args: result)
+
+    assert stress_cli.main([]) == 1
+
+
+def test_main_fails_when_restart_fault_controller_fails(monkeypatch):
+    """Check CLI exits nonzero when restart stop/start fails."""
+    fault_result = FaultResult(
+        fault='restart-typedb',
+        fault_at_s=10.0,
+        fault_triggered_at_s=10.0,
+        fault_delete_success=None,
+        fault_delete_error=None,
+        fault_delete_latency_s=None,
+        fault_recovered_at_s=12.0,
+        fault_recovery_s=2.0,
+        fault_restart_stop_success=False,
+        fault_restart_stop_error='failed to stop',
+        fault_restart_start_success=True,
+    )
+    result = StressExperimentResult(
+        records=[],
+        invariant_records=[],
+        config=ResolvedStressConfig(
+            query_specs=[],
+            invariant_specs=[],
+            mixed_profile=None,
+            mixed_profile_name=None,
+            invariant_profile_name='test-data',
+            max_in_flight=1,
+            debug_events_output=None,
+            fault='restart-typedb',
+            fault_at_s=10.0,
+            fault_recovery_timeout_s=30.0,
+        ),
+        fault_result=fault_result,
+    )
+
+    monkeypatch.setattr(stress_cli.rclpy, 'init', lambda args=None: None)
+    monkeypatch.setattr(stress_cli.rclpy, 'shutdown', lambda: None)
+    monkeypatch.setattr(stress_cli, 'run_experiment', lambda args: result)
+
+    assert stress_cli.main([]) == 1
+
+
+def test_main_allows_periodic_invariant_failures_during_recovered_fault(
+    monkeypatch,
+):
+    """Check recovered fault runs tolerate outage-window invariant failures."""
+    fault_result = FaultResult(
+        fault='restart-typedb',
+        fault_at_s=10.0,
+        fault_triggered_at_s=10.0,
+        fault_delete_success=None,
+        fault_delete_error=None,
+        fault_delete_latency_s=None,
+        fault_recovered_at_s=20.0,
+        fault_recovery_s=10.0,
+        fault_restart_stop_success=True,
+        fault_restart_start_success=True,
+    )
+    result = StressExperimentResult(
+        records=[],
+        invariant_records=[
+            _invariant_record(
+                0,
+                success=False,
+                phase='periodic',
+                started_at_s=12.0,
+            ),
+            _invariant_record(
+                1,
+                success=False,
+                phase='recovery',
+                started_at_s=15.0,
+            ),
+            _invariant_record(
+                2,
+                success=True,
+                phase='final',
+                started_at_s=21.0,
+            ),
+        ],
+        config=ResolvedStressConfig(
+            query_specs=[],
+            invariant_specs=[],
+            mixed_profile=None,
+            mixed_profile_name=None,
+            invariant_profile_name='test-data',
+            max_in_flight=1,
+            debug_events_output=None,
+            fault='restart-typedb',
+            fault_at_s=10.0,
+            fault_recovery_timeout_s=30.0,
+        ),
+        fault_result=fault_result,
+    )
+
+    monkeypatch.setattr(stress_cli.rclpy, 'init', lambda args=None: None)
+    monkeypatch.setattr(stress_cli.rclpy, 'shutdown', lambda: None)
+    monkeypatch.setattr(stress_cli, 'run_experiment', lambda args: result)
+
+    assert stress_cli.main([]) == 0
+
+
+def test_main_fails_final_invariant_failure_after_recovered_fault(monkeypatch):
+    """Check final invariant failures still fail recovered fault runs."""
+    fault_result = FaultResult(
+        fault='restart-typedb',
+        fault_at_s=10.0,
+        fault_triggered_at_s=10.0,
+        fault_delete_success=None,
+        fault_delete_error=None,
+        fault_delete_latency_s=None,
+        fault_recovered_at_s=20.0,
+        fault_recovery_s=10.0,
+        fault_restart_stop_success=True,
+        fault_restart_start_success=True,
+    )
+    result = StressExperimentResult(
+        records=[],
+        invariant_records=[
+            _invariant_record(
+                0,
+                success=False,
+                phase='final',
+                started_at_s=21.0,
+            ),
+        ],
+        config=ResolvedStressConfig(
+            query_specs=[],
+            invariant_specs=[],
+            mixed_profile=None,
+            mixed_profile_name=None,
+            invariant_profile_name='test-data',
+            max_in_flight=1,
+            debug_events_output=None,
+            fault='restart-typedb',
             fault_at_s=10.0,
             fault_recovery_timeout_s=30.0,
         ),

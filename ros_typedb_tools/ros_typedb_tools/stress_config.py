@@ -67,6 +67,9 @@ MIXED_PROFILE_FILES = {
 }
 MIXED_PROFILE_NAMES = ('auto', *MIXED_PROFILE_FILES)
 
+DEFAULT_TYPEDB_STOP_COMMAND = 'pkill -f "typedb/core/server"'
+DEFAULT_TYPEDB_START_COMMAND = 'typedb server'
+
 
 @dataclass(frozen=True)
 class QuerySpec:
@@ -146,6 +149,11 @@ class ResolvedStressConfig:
     fault: str
     fault_at_s: float | None
     fault_recovery_timeout_s: float
+    typedb_container: str | None = None
+    typedb_stop_command: str | None = DEFAULT_TYPEDB_STOP_COMMAND
+    typedb_start_command: str | None = DEFAULT_TYPEDB_START_COMMAND
+    typedb_restart_delay_s: float = 2.0
+    fault_command_timeout_s: float = 30.0
 
 
 @dataclass(frozen=True)
@@ -160,6 +168,15 @@ class FaultResult:
     fault_delete_latency_s: float | None
     fault_recovered_at_s: float | None
     fault_recovery_s: float | None
+    fault_restart_stop_success: bool | None = None
+    fault_restart_stop_error: str | None = None
+    fault_restart_stop_latency_s: float | None = None
+    fault_restart_start_success: bool | None = None
+    fault_restart_start_error: str | None = None
+    fault_restart_start_latency_s: float | None = None
+    fault_restart_delay_s: float | None = None
+    fault_restart_outage_s: float | None = None
+    fault_observed_outage_s: float | None = None
 
 
 @dataclass(frozen=True)
@@ -206,24 +223,34 @@ def validate_experiment_args(args: argparse.Namespace) -> None:
     fault = getattr(args, 'fault', 'none')
     fault_at_s = getattr(args, 'fault_at_s', None)
     fault_recovery_timeout_s = getattr(args, 'fault_recovery_timeout_s', 30.0)
-    if fault == 'delete-database':
+    if fault != 'none':
         if args.invariant_profile == 'none':
             raise ValueError(
-                '--fault delete-database requires --invariant-profile to be set'
+                f'--fault {fault} requires --invariant-profile to be set'
             )
         if args.duration_s is None:
             raise ValueError(
-                '--fault delete-database requires --duration-s'
+                f'--fault {fault} requires --duration-s'
             )
         if fault_at_s is None:
             raise ValueError(
-                '--fault delete-database requires --fault-at-s'
+                f'--fault {fault} requires --fault-at-s'
             )
         if fault_at_s <= 0:
             raise ValueError('--fault-at-s must be greater than zero')
         if fault_at_s >= args.duration_s:
             raise ValueError(
                 '--fault-at-s must be less than --duration-s'
+            )
+    if fault == 'restart-typedb':
+        if getattr(args, 'typedb_restart_delay_s', 0.0) < 0:
+            raise ValueError(
+                '--typedb-restart-delay-s must be greater than or equal to '
+                'zero'
+            )
+        if getattr(args, 'fault_command_timeout_s', 0.0) <= 0:
+            raise ValueError(
+                '--fault-command-timeout-s must be greater than zero'
             )
     if fault_recovery_timeout_s <= 0:
         raise ValueError(
