@@ -8,6 +8,9 @@ import pytest
 from rcl_interfaces.msg import ParameterType
 from rcl_interfaces.msg import ParameterValue
 
+from ros_typedb_msgs.msg import Attribute
+from ros_typedb_msgs.msg import QueryResult
+from ros_typedb_msgs.msg import ResultTree
 from ros_typedb_tools.fake_query_service import (
     build_fake_service_argument_parser,
 )
@@ -15,14 +18,18 @@ from ros_typedb_tools.ros_typedb_stress_experiment import (
     build_argument_parser,
 )
 from ros_typedb_tools.stress_config import (
-    QUERY_TYPE_BY_NAME,
-    InvariantRecord,
-    InvariantSpec,
-    RequestRecord,
     build_invariant_specs,
     build_query_specs,
+    InvariantRecord,
+    InvariantSpec,
+    QUERY_TYPE_BY_NAME,
+    RequestRecord,
 )
 from ros_typedb_tools.stress_invariants import evaluate_invariant_response
+from ros_typedb_tools.stress_mixed import build_mixed_cleanup_query_spec
+from ros_typedb_tools.stress_mixed import build_mixed_query_spec
+from ros_typedb_tools.stress_mixed import load_mixed_query_profile
+from ros_typedb_tools.stress_mixed import make_mixed_key
 from ros_typedb_tools.stress_output import (
     DebugEventWriter,
     default_timeout_output_path,
@@ -31,10 +38,8 @@ from ros_typedb_tools.stress_output import (
     write_results,
     write_timeout_results,
 )
+from ros_typedb_tools.stress_resolution import resolve_stress_config
 from ros_typedb_tools.stress_runner import run_experiment
-from ros_typedb_msgs.msg import Attribute
-from ros_typedb_msgs.msg import QueryResult
-from ros_typedb_msgs.msg import ResultTree
 
 
 def _record(
@@ -198,6 +203,32 @@ def test_parser_accepts_stage_three_arguments():
     assert args.invariant_period_s == 5
 
 
+def test_parser_accepts_stage_four_mixed_mode():
+    """Check Stage 4 mixed read/write mode arguments."""
+    parser = build_argument_parser()
+
+    args = parser.parse_args(
+        [
+            '--clients',
+            '10',
+            '--duration-s',
+            '120',
+            '--mode',
+            'mixed',
+            '--mixed-profile',
+            'plan-schema',
+            '--invariant-profile',
+            'plan-schema-mixed',
+        ]
+    )
+
+    assert args.clients == 10
+    assert args.duration_s == 120
+    assert args.mode == 'mixed'
+    assert args.mixed_profile == 'plan-schema'
+    assert args.invariant_profile == 'plan-schema-mixed'
+
+
 def test_fake_service_parser_accepts_diagnostic_arguments():
     """Check the fake service CLI options."""
     parser = build_fake_service_argument_parser()
@@ -288,6 +319,7 @@ def test_write_results_writes_summary_and_request_records(tmp_path: Path):
         clients=2,
         duration_s=10.0,
         mode='read',
+        mixed_profile='auto',
         query_mix=build_query_specs(
             SimpleNamespace(query=None, query_type=None, mode='read')
         ),
@@ -309,6 +341,7 @@ def test_write_results_writes_summary_and_request_records(tmp_path: Path):
     assert payload['invariant_profile'] == 'test-data'
     assert payload['invariant_period_s'] == 5.0
     assert payload['mode'] == 'read'
+    assert payload['mixed_profile'] == 'auto'
     assert payload['query_type'] == 'fetch'
     assert payload['query_mix'][0]['query_type'] in QUERY_TYPE_BY_NAME
     assert payload['summary']['successes'] == 1
@@ -403,6 +436,124 @@ def test_build_query_specs_uses_read_query_mix_by_default():
     assert all(spec.query_type in QUERY_TYPE_BY_NAME for spec in specs)
 
 
+def test_resolve_stress_config_uses_mixed_query_mix():
+    """Check resolved mixed mode includes read and write query types."""
+    config = resolve_stress_config(
+        SimpleNamespace(
+            requests=1,
+            clients=1,
+            duration_s=None,
+            timeout_s=5.0,
+            wait_service_timeout_s=1.0,
+            request_gap_s=0.0,
+            max_in_flight=None,
+            executor='global',
+            executor_threads=2,
+            debug_events_output=None,
+            invariant_profile='none',
+            invariant_period_s=10.0,
+            query=None,
+            query_type=None,
+            mode='mixed',
+            mixed_profile='test-data',
+        )
+    )
+
+    query_types = {spec.query_type for spec in config.query_specs}
+    assert {'delete', 'get', 'insert', 'update'} <= query_types
+    assert config.mixed_profile_name == 'test-data'
+    assert config.max_in_flight == 1
+
+
+def test_build_mixed_query_spec_cycles_temporary_robot_operations():
+    """Check mixed mode generates insert, update, and delete robot queries."""
+    profile = load_mixed_query_profile(
+        SimpleNamespace(mixed_profile='test-data', invariant_profile='none')
+    )
+    read_spec = build_mixed_query_spec(
+        profile=profile,
+        run_id='abc123',
+        client_id=2,
+        client_request_index=0,
+    )
+    insert_spec = build_mixed_query_spec(
+        profile=profile,
+        run_id='abc123',
+        client_id=2,
+        client_request_index=1,
+    )
+    update_spec = build_mixed_query_spec(
+        profile=profile,
+        run_id='abc123',
+        client_id=2,
+        client_request_index=3,
+    )
+    delete_spec = build_mixed_query_spec(
+        profile=profile,
+        run_id='abc123',
+        client_id=2,
+        client_request_index=5,
+    )
+
+    key = make_mixed_key(run_id='abc123', client_id=2, cycle=0)
+    assert read_spec.query_type == 'get'
+    assert read_spec.cleanup_key is None
+    assert insert_spec.query_type == 'insert'
+    assert f'has full-name "{key}"' in insert_spec.query
+    assert 'isa robot' in insert_spec.query
+    assert insert_spec.cleanup_key == key
+    assert update_spec.query_type == 'update'
+    assert f'has full-name "{key}"' in update_spec.query
+    assert 'delete $robot has $age;' in update_spec.query
+    assert update_spec.cleanup_key == key
+    assert delete_spec.query_type == 'delete'
+    assert f'has full-name "{key}"' in delete_spec.query
+    assert delete_spec.cleanup_key == key
+
+
+def test_build_mixed_cleanup_query_spec_deletes_exact_temp_key():
+    """Check mixed cleanup targets only one generated robot key."""
+    profile = load_mixed_query_profile(
+        SimpleNamespace(mixed_profile='test-data', invariant_profile='none')
+    )
+    spec = build_mixed_cleanup_query_spec(
+        profile,
+        'ros-typedb-stress-run-c0-n0',
+    )
+
+    assert spec.query_type == 'delete'
+    assert spec.cleanup_key == 'ros-typedb-stress-run-c0-n0'
+    assert 'isa robot' in spec.query
+    assert 'has full-name "ros-typedb-stress-run-c0-n0"' in spec.query
+
+
+def test_build_mixed_query_spec_supports_plan_schema_profile():
+    """Check plan-schema mixed mode writes temporary actions."""
+    profile = load_mixed_query_profile(
+        SimpleNamespace(mixed_profile='plan-schema', invariant_profile='none')
+    )
+
+    insert_spec = build_mixed_query_spec(
+        profile=profile,
+        run_id='abc123',
+        client_id=1,
+        client_request_index=1,
+    )
+    cleanup_spec = build_mixed_cleanup_query_spec(
+        profile,
+        insert_spec.cleanup_key,
+    )
+
+    assert insert_spec.query_type == 'insert'
+    assert 'isa Action' in insert_spec.query
+    assert 'has action_name "ros-typedb-stress-abc123-c1-n0"' in (
+        insert_spec.query
+    )
+    assert 'has action_duration 0.0' in insert_spec.query
+    assert cleanup_spec.query_type == 'delete'
+    assert 'isa Action' in cleanup_spec.query
+
+
 def test_build_query_specs_rejects_query_without_query_type():
     """Check explicit queries still require an explicit query type."""
     args = SimpleNamespace(
@@ -446,6 +597,31 @@ def test_build_invariant_specs_uses_plan_schema_profile():
         'collect-water-sample-sentinel-count',
     ]
     assert all(spec.query_type == 'get_aggregate' for spec in specs)
+    assert {
+        spec.name: spec.expected_value
+        for spec in specs
+    }['action-preconditions-count'] == 4
+
+
+def test_build_invariant_specs_uses_plan_schema_mixed_profile():
+    """Check the mixed-safe plan-schema invariant profile."""
+    specs = build_invariant_specs(
+        SimpleNamespace(invariant_profile='plan-schema-mixed')
+    )
+
+    assert [spec.name for spec in specs] == [
+        'plan-count',
+        'proposition-count',
+        'has-action-count',
+        'action-preconditions-count',
+        'action-effects-count',
+        'collect-water-sample-sentinel-count',
+    ]
+    assert all(spec.query_type == 'get_aggregate' for spec in specs)
+    assert {
+        spec.name: spec.expected_value
+        for spec in specs
+    }['action-preconditions-count'] == 4
 
 
 def test_build_invariant_specs_returns_empty_list_for_none_profile():

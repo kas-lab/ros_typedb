@@ -1,17 +1,11 @@
 {
-  "description": "Correctness invariants for ros_typedb_examples/data/plan_schema.tql and plan_data.tql.",
+  "description": "Mixed-mode invariants for ros_typedb_examples/data/plan_schema.tql and plan_data.tql.",
   "invariants": [
     {
       "name": "plan-count",
       "query": "match $p isa Plan; get $p; count;",
       "query_type": "get_aggregate",
       "expected_value": 2
-    },
-    {
-      "name": "action-count",
-      "query": "match $a isa Action; get $a; count;",
-      "query_type": "get_aggregate",
-      "expected_value": 4
     },
     {
       "name": "proposition-count",

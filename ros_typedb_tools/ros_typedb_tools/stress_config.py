@@ -16,12 +16,16 @@
 from __future__ import annotations
 
 import argparse
-import json
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Any
+from typing import TYPE_CHECKING
 
 from ros_typedb_msgs.srv import Query
+
+if TYPE_CHECKING:
+    from ros_typedb_tools.stress_mixed import MixedQueryProfile
 
 
 QUERY_TYPE_BY_NAME = {
@@ -50,11 +54,18 @@ DEFAULT_READ_QUERY_SPECS = (
 )
 
 INVARIANT_PROFILE_FILES = {
+    'plan-schema-mixed': 'plan_schema_mixed_invariants.json',
     'plan-schema': 'plan_schema_invariants.json',
     'test-data': 'test_data_invariants.json',
 }
 INVARIANT_PROFILE_NAMES = ('none', *INVARIANT_PROFILE_FILES)
 INVARIANT_PROFILE_DIR = Path(__file__).with_name('profiles')
+
+MIXED_PROFILE_FILES = {
+    'plan-schema': 'plan_schema_mixed.json',
+    'test-data': 'test_data_mixed.json',
+}
+MIXED_PROFILE_NAMES = ('auto', *MIXED_PROFILE_FILES)
 
 
 @dataclass(frozen=True)
@@ -63,6 +74,7 @@ class QuerySpec:
 
     query: str
     query_type: str
+    cleanup_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -114,11 +126,31 @@ class InvariantRecord:
 
 
 @dataclass(frozen=True)
+class ResolvedStressConfig:
+    """Concrete runtime configuration derived from CLI arguments.
+
+    The CLI exposes convenient selectors such as ``--mixed-profile auto``.
+    The runner should not need to interpret those selectors while it is also
+    managing ROS futures. This object stores the selected query mix, invariant
+    checks, and mixed profile after all CLI-level choices have been resolved.
+    """
+
+    query_specs: list[QuerySpec]
+    invariant_specs: list[InvariantSpec]
+    mixed_profile: MixedQueryProfile | None
+    mixed_profile_name: str | None
+    invariant_profile_name: str
+    max_in_flight: int
+    debug_events_output: Path | None
+
+
+@dataclass(frozen=True)
 class StressExperimentResult:
     """Complete stress experiment result."""
 
     records: list[RequestRecord]
     invariant_records: list[InvariantRecord]
+    config: ResolvedStressConfig
 
 
 def validate_experiment_args(args: argparse.Namespace) -> None:
@@ -149,10 +181,18 @@ def validate_experiment_args(args: argparse.Namespace) -> None:
         raise ValueError(
             '--invariant-period-s must be greater than or equal to zero'
         )
+    mixed_profile = getattr(args, 'mixed_profile', 'auto')
+    if mixed_profile not in MIXED_PROFILE_NAMES:
+        raise ValueError(f'unsupported mixed profile: {mixed_profile}')
 
 
 def build_query_specs(args: argparse.Namespace) -> list[QuerySpec]:
-    """Build the query sequence used by the stress experiment."""
+    """Build fixed query specs for explicit-query or read-only modes.
+
+    Mixed mode uses schema-specific templates and is resolved in
+    ``stress_resolution``. Keeping this helper fixed-query-only avoids hidden
+    profile loading from a generic config function.
+    """
     if args.query and not args.query_type:
         raise ValueError('--query-type is required when --query is used')
     if args.query_type and not args.query:
@@ -166,6 +206,9 @@ def build_query_specs(args: argparse.Namespace) -> list[QuerySpec]:
             QuerySpec(query=query, query_type=query_type)
             for query, query_type in DEFAULT_READ_QUERY_SPECS
         ]
+
+    if args.mode == 'mixed':
+        raise ValueError('mixed mode requires a resolved mixed profile')
 
     raise ValueError(f'unsupported mode: {args.mode}')
 

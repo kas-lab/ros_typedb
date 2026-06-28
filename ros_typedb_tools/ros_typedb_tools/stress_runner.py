@@ -16,10 +16,10 @@
 from __future__ import annotations
 
 import argparse
-import time
 from dataclasses import dataclass
-from pathlib import Path
+import time
 from typing import Any
+import uuid
 
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
@@ -27,18 +27,19 @@ from rclpy.executors import SingleThreadedExecutor
 
 from ros_typedb_msgs.srv import Query
 
+from ros_typedb_tools.stress_config import build_query_request
 from ros_typedb_tools.stress_config import InvariantRecord
 from ros_typedb_tools.stress_config import InvariantSpec
 from ros_typedb_tools.stress_config import QuerySpec
 from ros_typedb_tools.stress_config import RequestRecord
 from ros_typedb_tools.stress_config import StressExperimentResult
-from ros_typedb_tools.stress_config import build_invariant_specs
-from ros_typedb_tools.stress_config import build_query_request
-from ros_typedb_tools.stress_config import build_query_specs
-from ros_typedb_tools.stress_config import validate_experiment_args
 from ros_typedb_tools.stress_invariants import build_timeout_invariant_record
 from ros_typedb_tools.stress_invariants import evaluate_invariant_response
+from ros_typedb_tools.stress_mixed import build_mixed_cleanup_query_spec
+from ros_typedb_tools.stress_mixed import build_mixed_query_spec
+from ros_typedb_tools.stress_mixed import MixedQueryProfile
 from ros_typedb_tools.stress_output import DebugEventWriter
+from ros_typedb_tools.stress_resolution import resolve_stress_config
 
 
 @dataclass
@@ -57,6 +58,10 @@ class _RunState:
     invariant_records: list[InvariantRecord]
     pending_by_client: dict[int, _PendingRequest]
     last_started_by_client: list[float]
+    sent_count_by_client: list[int]
+    mixed_cleanup_keys: set[str]
+    mixed_profile: MixedQueryProfile | None
+    mixed_run_id: str
     next_index: int
     next_invariant_index: int
     deadline_s: float | None
@@ -148,9 +153,25 @@ def _start_request(
     state: _RunState,
     timeout_s: float,
     started_at_s: float,
+    use_mixed_queries: bool,
+    mixed_profile: MixedQueryProfile | None,
+    mixed_run_id: str,
 ) -> _PendingRequest:
-    query_index = state.next_index % len(query_specs)
-    query_spec = query_specs[query_index]
+    if use_mixed_queries:
+        if mixed_profile is None:
+            raise RuntimeError('mixed profile is required for mixed mode')
+        query_index = state.sent_count_by_client[client_id] % len(
+            mixed_profile.templates
+        )
+        query_spec = build_mixed_query_spec(
+            profile=mixed_profile,
+            run_id=mixed_run_id,
+            client_id=client_id,
+            client_request_index=state.sent_count_by_client[client_id],
+        )
+    else:
+        query_index = state.next_index % len(query_specs)
+        query_spec = query_specs[query_index]
     request = build_query_request(
         query_spec.query,
         query_spec.query_type,
@@ -167,6 +188,14 @@ def _start_request(
     )
     state.pending_by_client[client_id] = pending
     state.last_started_by_client[client_id] = started_at_s
+    state.sent_count_by_client[client_id] += 1
+    # Mixed workloads create experiment-owned temporary concepts. Track keys
+    # until a matching delete succeeds, then final cleanup can remove leftovers.
+    if (
+        query_spec.cleanup_key is not None
+        and query_spec.query_type != 'delete'
+    ):
+        state.mixed_cleanup_keys.add(query_spec.cleanup_key)
     state.next_index += 1
     return pending
 
@@ -201,6 +230,9 @@ def _send_available_requests(
             state=state,
             timeout_s=args.timeout_s,
             started_at_s=now_s,
+            use_mixed_queries=args.mode == 'mixed' and args.query is None,
+            mixed_profile=state.mixed_profile,
+            mixed_run_id=state.mixed_run_id,
         )
         debug_events.log(
             'request_sent',
@@ -300,6 +332,12 @@ def _record_done_future(
         return
 
     response = pending.future.result()
+    if (
+        response.success
+        and pending.query_spec.cleanup_key is not None
+        and pending.query_spec.query_type == 'delete'
+    ):
+        state.mixed_cleanup_keys.discard(pending.query_spec.cleanup_key)
     state.records.append(
         _record_from_pending(
             pending,
@@ -471,6 +509,111 @@ def _run_invariant_profile(
         state.next_invariant_index += 1
 
 
+def _run_cleanup_request(
+    *,
+    node: Any,
+    executor: Any | None,
+    client: Any,
+    state: _RunState,
+    query_spec: QuerySpec,
+    timeout_s: float,
+    debug_events: DebugEventWriter,
+) -> None:
+    started_at_s = time.monotonic()
+    request = build_query_request(
+        query_spec.query,
+        query_spec.query_type,
+        timeout_s,
+    )
+    future = client.call_async(request)
+    pending = _PendingRequest(
+        client_id=-1,
+        index=state.next_index,
+        query_index=-1,
+        query_spec=query_spec,
+        future=future,
+        started_at_s=started_at_s,
+    )
+    state.next_index += 1
+    debug_events.log(
+        'cleanup_sent',
+        index=pending.index,
+        cleanup_key=query_spec.cleanup_key,
+    )
+
+    while True:
+        _spin_once(node, executor)
+        now_s = time.monotonic()
+        if future.done():
+            _record_done_future(
+                pending=pending,
+                now_s=now_s,
+                pending_count=1,
+                state=state,
+                debug_events=debug_events,
+            )
+            debug_events.log(
+                'cleanup_complete',
+                index=pending.index,
+                cleanup_key=query_spec.cleanup_key,
+            )
+            return
+
+        if now_s - started_at_s >= timeout_s:
+            _record_timeout(
+                pending=pending,
+                now_s=now_s,
+                pending_count=1,
+                state=state,
+                debug_events=debug_events,
+            )
+            debug_events.log(
+                'cleanup_timeout',
+                index=pending.index,
+                cleanup_key=query_spec.cleanup_key,
+            )
+            return
+
+
+def _cleanup_mixed_data(
+    *,
+    args: argparse.Namespace,
+    node: Any,
+    executor: Any | None,
+    cleanup_client: Any | None,
+    mixed_profile: MixedQueryProfile | None,
+    state: _RunState,
+    debug_events: DebugEventWriter,
+) -> None:
+    if args.mode != 'mixed' or args.query is not None:
+        return
+    if (
+        cleanup_client is None
+        or mixed_profile is None
+        or not state.mixed_cleanup_keys
+    ):
+        return
+
+    debug_events.log(
+        'cleanup_started',
+        cleanup_keys=len(state.mixed_cleanup_keys),
+    )
+    for key in sorted(state.mixed_cleanup_keys):
+        _run_cleanup_request(
+            node=node,
+            executor=executor,
+            client=cleanup_client,
+            state=state,
+            query_spec=build_mixed_cleanup_query_spec(mixed_profile, key),
+            timeout_s=args.timeout_s,
+            debug_events=debug_events,
+        )
+    debug_events.log(
+        'cleanup_finished',
+        cleanup_keys=len(state.mixed_cleanup_keys),
+    )
+
+
 def _maybe_run_periodic_invariants(
     *,
     args: argparse.Namespace,
@@ -504,15 +647,7 @@ def _maybe_run_periodic_invariants(
 
 def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
     """Run the stress experiment."""
-    validate_experiment_args(args)
-    query_specs = build_query_specs(args)
-    invariant_specs = build_invariant_specs(args)
-    max_in_flight = args.max_in_flight or args.clients
-    debug_events_output = (
-        Path(args.debug_events_output).expanduser()
-        if args.debug_events_output
-        else None
-    )
+    config = resolve_stress_config(args)
 
     node = rclpy.create_node('ros_typedb_stress_experiment')
     executor = _build_executor(args)
@@ -524,7 +659,12 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
     ]
     invariant_client = (
         node.create_client(Query, args.service_name)
-        if invariant_specs
+        if config.invariant_specs
+        else None
+    )
+    cleanup_client = (
+        node.create_client(Query, args.service_name)
+        if config.mixed_profile is not None
         else None
     )
     deadline_s = (
@@ -537,6 +677,10 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
         invariant_records=[],
         pending_by_client={},
         last_started_by_client=[float('-inf') for _ in range(args.clients)],
+        sent_count_by_client=[0 for _ in range(args.clients)],
+        mixed_cleanup_keys=set(),
+        mixed_profile=config.mixed_profile,
+        mixed_run_id=uuid.uuid4().hex[:12],
         next_index=0,
         next_invariant_index=0,
         deadline_s=deadline_s,
@@ -545,18 +689,21 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
     )
 
     try:
-        with DebugEventWriter(debug_events_output) as debug_events:
+        with DebugEventWriter(config.debug_events_output) as debug_events:
             debug_events.log(
                 'experiment_started',
                 clients=args.clients,
                 executor=args.executor,
-                max_in_flight=max_in_flight,
+                max_in_flight=config.max_in_flight,
                 request_gap_s=args.request_gap_s,
-                invariant_profile=args.invariant_profile,
+                invariant_profile=config.invariant_profile_name,
                 invariant_period_s=args.invariant_period_s,
+                mixed_profile=config.mixed_profile_name,
             )
             _wait_for_all_clients(
-                clients + ([invariant_client] if invariant_client else []),
+                clients
+                + ([invariant_client] if invariant_client else [])
+                + ([cleanup_client] if cleanup_client else []),
                 service_name=args.service_name,
                 wait_service_timeout_s=args.wait_service_timeout_s,
                 debug_events=debug_events,
@@ -592,9 +739,9 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
                 _send_available_requests(
                     args=args,
                     clients=clients,
-                    query_specs=query_specs,
+                    query_specs=config.query_specs,
                     state=state,
-                    max_in_flight=max_in_flight,
+                    max_in_flight=config.max_in_flight,
                     debug_events=debug_events,
                 )
                 _maybe_run_periodic_invariants(
@@ -602,18 +749,28 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
                     node=node,
                     executor=executor,
                     invariant_client=invariant_client,
-                    invariant_specs=invariant_specs,
+                    invariant_specs=config.invariant_specs,
                     state=state,
                     now_s=now_s,
                     debug_events=debug_events,
                 )
 
-            if invariant_specs and invariant_client is not None:
+            _cleanup_mixed_data(
+                args=args,
+                node=node,
+                executor=executor,
+                cleanup_client=cleanup_client,
+                mixed_profile=config.mixed_profile,
+                state=state,
+                debug_events=debug_events,
+            )
+
+            if config.invariant_specs and invariant_client is not None:
                 _run_invariant_profile(
                     node=node,
                     executor=executor,
                     client=invariant_client,
-                    specs=invariant_specs,
+                    specs=config.invariant_specs,
                     state=state,
                     phase='final',
                     timeout_s=args.timeout_s,
@@ -641,4 +798,5 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
     return StressExperimentResult(
         records=state.records,
         invariant_records=state.invariant_records,
+        config=config,
     )

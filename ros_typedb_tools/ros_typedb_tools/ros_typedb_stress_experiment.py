@@ -16,15 +16,15 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
+import sys
 
 import rclpy
 
-from ros_typedb_tools.stress_config import QUERY_TYPE_BY_NAME
 from ros_typedb_tools.stress_config import INVARIANT_PROFILE_NAMES
+from ros_typedb_tools.stress_config import MIXED_PROFILE_NAMES
+from ros_typedb_tools.stress_config import QUERY_TYPE_BY_NAME
 from ros_typedb_tools.stress_config import StressExperimentResult
-from ros_typedb_tools.stress_config import build_query_specs
 from ros_typedb_tools.stress_output import default_timeout_output_path
 from ros_typedb_tools.stress_output import print_summary
 from ros_typedb_tools.stress_output import summarize_invariant_records
@@ -110,9 +110,19 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         '--mode',
-        choices=('read',),
+        choices=('read', 'mixed'),
         default='read',
         help='Built-in query mix to use when --query is omitted.',
+    )
+    parser.add_argument(
+        '--mixed-profile',
+        choices=MIXED_PROFILE_NAMES,
+        default='auto',
+        help=(
+            'Schema-specific mixed-mode profile. auto selects plan-schema '
+            'when --invariant-profile is plan-schema or plan-schema-mixed; '
+            'otherwise it selects test-data.'
+        ),
     )
     parser.add_argument(
         '--timeout-s',
@@ -179,7 +189,6 @@ def _write_requested_outputs(
 ) -> None:
     output_path = None
     if args.output:
-        query_specs = build_query_specs(args)
         output_path = Path(args.output).expanduser()
         write_results(
             output_path,
@@ -191,11 +200,14 @@ def _write_requested_outputs(
             clients=args.clients,
             duration_s=args.duration_s,
             mode=args.mode,
-            query_mix=query_specs,
+            mixed_profile=(
+                result.config.mixed_profile_name or args.mixed_profile
+            ),
+            query_mix=result.config.query_specs,
             request_gap_s=args.request_gap_s,
-            max_in_flight=args.max_in_flight,
+            max_in_flight=result.config.max_in_flight,
             executor=args.executor,
-            invariant_profile=args.invariant_profile,
+            invariant_profile=result.config.invariant_profile_name,
             invariant_period_s=args.invariant_period_s,
             invariant_records=result.invariant_records,
         )

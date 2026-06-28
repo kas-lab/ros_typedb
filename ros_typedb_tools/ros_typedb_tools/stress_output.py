@@ -15,12 +15,12 @@
 
 from __future__ import annotations
 
-import json
-import statistics
-import time
 from collections.abc import Sequence
 from dataclasses import asdict
+import json
 from pathlib import Path
+import statistics
+import time
 from typing import Any
 
 from ros_typedb_tools.stress_config import InvariantRecord
@@ -99,6 +99,7 @@ def write_results(
     clients: int = 1,
     duration_s: float | None = None,
     mode: str = 'read',
+    mixed_profile: str = 'auto',
     query_mix: Sequence[QuerySpec] | None = None,
     request_gap_s: float = 0.0,
     max_in_flight: int | None = None,
@@ -112,6 +113,7 @@ def write_results(
     payload = {
         'service_name': service_name,
         'mode': mode,
+        'mixed_profile': mixed_profile,
         'clients': clients,
         'duration_s': duration_s,
         'request_gap_s': request_gap_s,
