@@ -10,7 +10,7 @@ This package currently provides three console scripts:
 - `typedb_rule_diagram`: generate a rule dependency/read-write diagram for one or more schema files that contain rules.
 - `ros_typedb_stress_experiment`: send repeated requests to the real `ros_typedb` query service and report request metrics.
 
-Both tools can write `.svg` or `.dot` output.
+The diagram tools can write `.svg` or `.dot` output.
 
 ## Prerequisites
 
@@ -108,6 +108,31 @@ Prerequisites:
 - `ros_typedb_interface` is running.
 - The lifecycle node has been configured so the query service exists.
 
+### Experiment Stages
+
+The stress tool is organized as staged experiments. Earlier stages are useful
+on their own; later stages build on the same result format and command-line
+interface.
+
+| Stage | Status | Purpose |
+| --- | --- | --- |
+| 1. Minimal real service load | Implemented | Send repeated requests to the real ROS `Query` service and measure latency, success, errors, and timeouts. |
+| 2. Concurrent client stress | Implemented | Run many ROS service clients concurrently to find service/executor transport limits before blaming TypeDB or driver code. |
+| 3. Correctness invariants | Implemented | Check that expected baseline facts remain visible during and after load, not only that requests returned. |
+| 4. Mixed read/write load | Implemented | Read while inserting, updating, deleting, and cleaning up experiment-owned temporary data. |
+| 5. Delete-database fault injection | Implemented | Delete the database during load and measure whether the driver fails loudly, reloads correctly, and recovers invariants. |
+| 6. TypeDB restart fault injection | Planned | Stop/restart TypeDB during load and measure outage, reconnect behavior, and post-recovery correctness. |
+| 7. Lifecycle stress | Planned | Trigger ROS lifecycle cleanup/configure/activate transitions during load to check teardown races. |
+| 8. External schema/data profiles | Planned | Run the same harness with application-specific schema/data, query mixes, invariants, setup, and cleanup profiles. |
+
+Use Stage 1 when validating a single query path. Use Stage 2 when probing ROS
+service throughput and timeout behavior. Use Stage 3 when checking that load
+does not corrupt or hide baseline data. Use Stage 4 when validating robustness
+under real read/write activity. Use Stage 5 when validating recovery after a
+database deletion fault.
+
+### Stage 1: Minimal Real Service Load
+
 Example:
 
 ```bash
@@ -118,6 +143,12 @@ ros2 run ros_typedb_tools ros_typedb_stress_experiment \
   --timeout-s 5 \
   --output ~/results/ros_typedb_stress_results.json
 ```
+
+This is the smallest useful run. It is best for confirming that the service,
+query type, timeout handling, result conversion, and JSON output work for one
+known query before adding concurrency.
+
+### Stage 2: Concurrent Client Stress
 
 Concurrent read stress example:
 
@@ -142,6 +173,10 @@ ros2 run ros_typedb_tools ros_typedb_stress_experiment \
   --output ~/results/ros_typedb_get_stress_results.json
 ```
 
+This stage is for separating ROS service transport behavior from database
+behavior. It reports throughput and latency percentiles across concurrent
+clients and can write debug JSONL events for request/future/executor analysis.
+
 When `--output` is set, timeout-only records are also written next to the main
 result file using the suffix `_timeouts.json`. Use `--timeout-output` to choose
 a different path. Timeout records include request index, client id, query index,
@@ -149,6 +184,8 @@ query type, query text, latency, and whether future cancellation was requested.
 The command exits successfully when the experiment runs to completion, even if
 some requests fail. Use `--fail-on-failure` when a nonzero exit code is useful
 for CI or scripted thresholds.
+
+### Stage 3: Correctness Invariants
 
 An invariant is a correctness check that should remain true while the stress
 load is running. Request metrics show whether the service answered; invariants
@@ -195,6 +232,125 @@ Checks run every 10 seconds by default and once at the end. Use
 `--invariant-period-s 0` to run only the final check. Invariant failures are
 reported separately from request failures and always make the command exit with
 status 1.
+
+### Stage 4: Mixed Read/Write Load
+
+Mixed read/write stress for the bundled `ros_typedb` test schema:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 10 \
+  --duration-s 120 \
+  --timeout-s 10 \
+  --mode mixed \
+  --invariant-profile test-data \
+  --request-gap-s 0.01 \
+  --max-in-flight 10 \
+  --output ~/results/ros_typedb_mixed_stress_results.json
+```
+
+The packaged `test-data` mixed profile reads the database while inserting,
+updating, and deleting experiment-owned temporary `robot` entities. It is
+intended for the schema in `ros_typedb/test/typedb_test_data/schema.tql` and
+cleans up remaining temporary robots before the final invariant check.
+
+Mixed read/write stress for the `ros_typedb_examples` plan schema:
+
+```bash
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 10 \
+  --duration-s 120 \
+  --timeout-s 10 \
+  --mode mixed \
+  --mixed-profile plan-schema \
+  --invariant-profile plan-schema-mixed \
+  --request-gap-s 0.01 \
+  --max-in-flight 10 \
+  --output ~/results/ros_typedb_plan_mixed_stress_results.json
+```
+
+Mixed profiles are packaged JSON files under
+`ros_typedb_tools/ros_typedb_tools/profiles/`. The `plan-schema` mixed profile
+writes temporary `Action` entities, so use `plan-schema-mixed` invariants when
+periodic invariant checks run during that mixed workload. That invariant
+profile keeps stable checks for plans, propositions, relations, and the
+`collect-water-sample` sentinel action without requiring an exact total
+`Action` count while temporary actions may exist.
+
+### Stage 5: Delete-Database Fault Injection
+
+This stage calls the real `delete_database` service while normal query clients
+are still active. It is meant to check that a missing database does not produce
+silent success against an uninitialized empty database. After the delete call,
+periodic invariant passes during the active load record recovery as soon as all
+checks pass once. If periodic checks do not observe recovery, the runner uses a
+post-load recovery check until invariants pass or `--fault-recovery-timeout-s`
+expires.
+
+For a reproducible run, start the bundled test-data launch file in one terminal.
+It configures and activates `/ros_typedb_interface`, loads
+`ros_typedb/test/typedb_test_data/schema.tql` and `data.tql`, and leaves the
+schema/data paths available for recovery:
+
+```bash
+docker exec -it ros_typedb bash -lc '
+cd /home/ubuntu-user/typedb_ws &&
+source /opt/ros/humble/setup.bash &&
+source install/setup.bash &&
+ros2 launch ros_typedb_examples test_data_example.launch.py'
+```
+
+Then run the fault-injection experiment from another terminal:
+
+```bash
+docker exec -it ros_typedb bash -lc '
+cd /home/ubuntu-user/typedb_ws &&
+source /opt/ros/humble/setup.bash &&
+source install/setup.bash &&
+ros2 run ros_typedb_tools ros_typedb_stress_experiment \
+  --clients 10 \
+  --duration-s 180 \
+  --timeout-s 10 \
+  --mode read \
+  --fault delete-database \
+  --fault-at-s 60 \
+  --invariant-profile test-data \
+  --request-gap-s 0.01 \
+  --max-in-flight 10 \
+  --output /tmp/stage5_delete_database.json \
+  --debug-events-output /tmp/stage5_delete_database_debug.jsonl'
+```
+
+The result JSON always includes a `fault` object with:
+
+- `fault`: configured fault name, such as `delete-database`
+- `fault_at_s`: configured trigger time
+- `fault_triggered_at_s`: monotonic timestamp when the fault was triggered
+- `fault_delete_success`, `fault_delete_error`, and `fault_delete_latency_s`
+- `fault_recovered_at_s`: first timestamp when all recovery invariants passed
+- `fault_recovery_s`: elapsed time from trigger to successful recovery
+
+If the fault is triggered but invariants do not recover, the CLI exits with
+status 1. Keep `--invariant-profile test-data` paired with the bundled
+test-data launch; use a matching invariant profile for any other schema/data
+pair. Keep `--max-in-flight 10` and `--request-gap-s 0.01` for robustness
+testing so the experiment stays inside the known stable ROS service envelope.
+
+### Planned Fault-Injection Stages
+
+Stages 6-8 are not implemented yet. They are placeholders for the next
+robustness checks:
+
+- Stage 6, TypeDB restart fault injection: stop and restart the TypeDB server
+  or container during load, then measure outage and reconnect behavior.
+- Stage 7, lifecycle stress: call lifecycle cleanup/configure/activate while
+  requests are in flight, then check that service callbacks and resource
+  teardown do not race.
+- Stage 8, external profiles: load schema-specific query mixes, invariants,
+  setup, and cleanup from user-provided JSON/YAML profile files instead of only
+  the packaged examples.
+
+### Diagnostics and Boundaries
 
 For ROS client/executor debugging, `--debug-events-output` writes JSONL events
 for request sends, `spin_once()` calls, completed futures, timeouts, and periodic
@@ -257,14 +413,16 @@ Useful options:
 - `--requests`: number of requests to send when `--duration-s` is omitted
 - `--clients`: number of concurrent service clients
 - `--duration-s`: run for this many seconds instead of a fixed request count
-- `--mode`: built-in query mix to use when `--query` is omitted; currently
-  supports `read`
+- `--mode`: built-in query mix to use when `--query` is omitted; supports
+  `read` and `mixed`
+- `--mixed-profile`: schema-specific mixed-mode profile, such as `test-data`
+  or `plan-schema`; `auto` derives it from the invariant profile when possible
 - `--request-gap-s`: minimum delay between requests from the same client
 - `--max-in-flight`: maximum number of outstanding requests across all clients
 - `--executor`: client executor mode, one of `global`, `single`, or `multi`
 - `--debug-events-output`: optional JSONL debug event path
-- `--invariant-profile`: optional correctness profile, such as `test-data` or
-  `plan-schema`
+- `--invariant-profile`: optional correctness profile, such as `test-data`,
+  `plan-schema`, or `plan-schema-mixed`
 - `--invariant-period-s`: seconds between periodic invariant checks
 - `--timeout-s`: per-request client and server timeout
 - `--output`: optional JSON results path

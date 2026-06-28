@@ -14,16 +14,21 @@ from ros_typedb_msgs.msg import ResultTree
 from ros_typedb_tools.fake_query_service import (
     build_fake_service_argument_parser,
 )
+import ros_typedb_tools.ros_typedb_stress_experiment as stress_cli
 from ros_typedb_tools.ros_typedb_stress_experiment import (
     build_argument_parser,
 )
 from ros_typedb_tools.stress_config import (
     build_invariant_specs,
     build_query_specs,
+    FaultResult,
     InvariantRecord,
     InvariantSpec,
     QUERY_TYPE_BY_NAME,
     RequestRecord,
+    ResolvedStressConfig,
+    StressExperimentResult,
+    validate_experiment_args,
 )
 from ros_typedb_tools.stress_invariants import evaluate_invariant_response
 from ros_typedb_tools.stress_mixed import build_mixed_cleanup_query_spec
@@ -39,6 +44,10 @@ from ros_typedb_tools.stress_output import (
     write_timeout_results,
 )
 from ros_typedb_tools.stress_resolution import resolve_stress_config
+from ros_typedb_tools.stress_runner import (
+    _mark_fault_recovered_from_invariant_pass,
+)
+from ros_typedb_tools.stress_runner import _RunState
 from ros_typedb_tools.stress_runner import run_experiment
 
 
@@ -87,6 +96,28 @@ def _invariant_record(
         expected_value=20,
         actual_value=20 if success else 0,
     )
+
+
+def _run_state(**overrides) -> _RunState:
+    """Return minimal run state for helper tests."""
+    state = _RunState(
+        records=[],
+        invariant_records=[],
+        pending_by_client={},
+        last_started_by_client=[],
+        sent_count_by_client=[],
+        mixed_cleanup_keys=set(),
+        mixed_profile=None,
+        mixed_run_id='test',
+        next_index=0,
+        next_invariant_index=0,
+        deadline_s=None,
+        next_snapshot_s=0.0,
+        next_invariant_s=0.0,
+    )
+    for name, value in overrides.items():
+        setattr(state, name, value)
+    return state
 
 
 def _aggregate_count_response(value: int, *, success: bool = True):
@@ -304,6 +335,47 @@ def test_summarize_invariant_records_counts_failures_and_timeouts():
     assert summary['timeouts'] == 1
 
 
+def test_fault_recovery_is_marked_from_successful_invariant_pass():
+    """Check a successful post-fault invariant pass records recovery."""
+    state = _run_state(
+        fault_triggered=True,
+        fault_triggered_at_s=1.0,
+    )
+
+    marked = _mark_fault_recovered_from_invariant_pass(
+        state=state,
+        records=[
+            _invariant_record(0, success=True),
+            _invariant_record(1, success=True),
+        ],
+        debug_events=DebugEventWriter(None),
+    )
+
+    assert marked is True
+    assert state.fault_recovered_at_s is not None
+    assert state.fault_recovered_at_s > state.fault_triggered_at_s
+
+
+def test_fault_recovery_ignores_failed_invariant_pass():
+    """Check failed invariant passes do not record recovery."""
+    state = _run_state(
+        fault_triggered=True,
+        fault_triggered_at_s=1.0,
+    )
+
+    marked = _mark_fault_recovered_from_invariant_pass(
+        state=state,
+        records=[
+            _invariant_record(0, success=True),
+            _invariant_record(1, success=False),
+        ],
+        debug_events=DebugEventWriter(None),
+    )
+
+    assert marked is False
+    assert state.fault_recovered_at_s is None
+
+
 def test_write_results_writes_summary_and_request_records(tmp_path: Path):
     """Check JSON output includes metadata, summary, and records."""
     output_path = tmp_path / 'stress' / 'results.json'
@@ -329,6 +401,16 @@ def test_write_results_writes_summary_and_request_records(tmp_path: Path):
         invariant_profile='test-data',
         invariant_period_s=5.0,
         invariant_records=[_invariant_record(0, success=True)],
+        fault_result=FaultResult(
+            fault='delete-database',
+            fault_at_s=10.0,
+            fault_triggered_at_s=10.25,
+            fault_delete_success=True,
+            fault_delete_error=None,
+            fault_delete_latency_s=0.125,
+            fault_recovered_at_s=12.75,
+            fault_recovery_s=2.5,
+        ),
     )
 
     payload = json.loads(output_path.read_text(encoding='utf-8'))
@@ -355,6 +437,42 @@ def test_write_results_writes_summary_and_request_records(tmp_path: Path):
     assert payload['requests'][0]['success'] is True
     assert payload['invariant_summary']['successes'] == 1
     assert payload['invariants'][0]['name'] == 'person-count'
+    assert payload['fault'] == {
+        'fault': 'delete-database',
+        'fault_at_s': 10.0,
+        'fault_triggered_at_s': 10.25,
+        'fault_delete_success': True,
+        'fault_delete_error': None,
+        'fault_delete_latency_s': 0.125,
+        'fault_recovered_at_s': 12.75,
+        'fault_recovery_s': 2.5,
+    }
+
+
+def test_write_results_writes_default_fault_payload(tmp_path: Path):
+    """Check JSON output always includes fault metadata."""
+    output_path = tmp_path / 'results.json'
+
+    write_results(
+        output_path,
+        service_name='/ros_typedb_interface/query',
+        query_type='fetch',
+        query='match $x isa entity; fetch $x: attribute;',
+        timeout_s=5.0,
+        records=[],
+    )
+
+    payload = json.loads(output_path.read_text(encoding='utf-8'))
+    assert payload['fault'] == {
+        'fault': 'none',
+        'fault_at_s': None,
+        'fault_triggered_at_s': None,
+        'fault_delete_success': None,
+        'fault_delete_error': None,
+        'fault_delete_latency_s': None,
+        'fault_recovered_at_s': None,
+        'fault_recovery_s': None,
+    }
 
 
 def test_default_timeout_output_path_uses_result_stem():
@@ -722,3 +840,133 @@ def test_run_experiment_rejects_invalid_client_count():
 
     with pytest.raises(ValueError, match='--clients'):
         run_experiment(args)
+
+
+def _base_args(**overrides):
+    """Return a SimpleNamespace with valid base args for validation tests."""
+    base = {
+        'requests': 1,
+        'clients': 1,
+        'duration_s': 60.0,
+        'timeout_s': 5.0,
+        'wait_service_timeout_s': 1.0,
+        'request_gap_s': 0.0,
+        'max_in_flight': None,
+        'executor': 'global',
+        'executor_threads': 2,
+        'debug_events_output': None,
+        'invariant_profile': 'none',
+        'invariant_period_s': 10.0,
+        'query': None,
+        'query_type': None,
+        'mode': 'read',
+        'mixed_profile': 'auto',
+        'fault': 'none',
+        'fault_at_s': None,
+        'fault_recovery_timeout_s': 30.0,
+    }
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
+def test_validate_args_fault_delete_database_requires_invariant_profile():
+    """Check --fault delete-database requires --invariant-profile to be set."""
+    args = _base_args(
+        fault='delete-database',
+        invariant_profile='none',
+        fault_at_s=10.0,
+    )
+
+    with pytest.raises(ValueError, match='--invariant-profile'):
+        validate_experiment_args(args)
+
+
+def test_validate_args_fault_delete_database_requires_duration_s():
+    """Check --fault delete-database requires --duration-s."""
+    args = _base_args(
+        fault='delete-database',
+        invariant_profile='test-data',
+        duration_s=None,
+        fault_at_s=10.0,
+    )
+
+    with pytest.raises(ValueError, match='--duration-s'):
+        validate_experiment_args(args)
+
+
+def test_validate_args_fault_delete_database_requires_fault_at_s():
+    """Check --fault delete-database requires --fault-at-s."""
+    args = _base_args(
+        fault='delete-database',
+        invariant_profile='test-data',
+        duration_s=60.0,
+        fault_at_s=None,
+    )
+
+    with pytest.raises(ValueError, match='--fault-at-s'):
+        validate_experiment_args(args)
+
+
+def test_validate_args_fault_at_s_must_be_less_than_duration_s():
+    """Check --fault-at-s must be less than --duration-s."""
+    args = _base_args(
+        fault='delete-database',
+        invariant_profile='test-data',
+        duration_s=30.0,
+        fault_at_s=30.0,
+    )
+
+    with pytest.raises(ValueError, match='--fault-at-s must be less than'):
+        validate_experiment_args(args)
+
+
+def test_validate_args_fault_recovery_timeout_s_must_be_positive():
+    """Check --fault-recovery-timeout-s must be greater than zero."""
+    args = _base_args(fault_recovery_timeout_s=0.0)
+
+    with pytest.raises(ValueError, match='--fault-recovery-timeout-s'):
+        validate_experiment_args(args)
+
+
+def test_validate_args_fault_none_passes_without_fault_args():
+    """Check --fault none (default) passes validation with no fault args."""
+    args = _base_args()
+
+    validate_experiment_args(args)  # should not raise
+
+
+def test_main_fails_when_triggered_fault_does_not_recover(monkeypatch):
+    """Check CLI exits nonzero for unrecovered triggered faults."""
+    fault_result = FaultResult(
+        fault='delete-database',
+        fault_at_s=10.0,
+        fault_triggered_at_s=10.0,
+        fault_delete_success=True,
+        fault_delete_error=None,
+        fault_delete_latency_s=0.1,
+        fault_recovered_at_s=None,
+        fault_recovery_s=None,
+    )
+    result = StressExperimentResult(
+        records=[],
+        invariant_records=[],
+        config=ResolvedStressConfig(
+            query_specs=[],
+            invariant_specs=[],
+            mixed_profile=None,
+            mixed_profile_name=None,
+            invariant_profile_name='test-data',
+            max_in_flight=1,
+            debug_events_output=None,
+            fault='delete-database',
+            fault_at_s=10.0,
+            fault_recovery_timeout_s=30.0,
+        ),
+        fault_result=fault_result,
+    )
+
+    monkeypatch.setattr(stress_cli.rclpy, 'init', lambda args=None: None)
+    monkeypatch.setattr(stress_cli.rclpy, 'shutdown', lambda: None)
+    monkeypatch.setattr(stress_cli, 'run_experiment', lambda args: result)
+
+    assert stress_cli.main([]) == 1

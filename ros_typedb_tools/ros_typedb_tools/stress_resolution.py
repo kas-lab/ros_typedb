@@ -30,7 +30,8 @@ from ros_typedb_tools.stress_mixed import MixedQueryProfile
 def resolve_stress_config(
     args: argparse.Namespace,
 ) -> ResolvedStressConfig:
-    """Build the concrete configuration used by the runner and output writer.
+    """
+    Build the concrete configuration used by the runner and output writer.
 
     This is the only place that combines the raw CLI flags with packaged
     profiles. The runner receives ordinary query specs and an optional loaded
@@ -47,6 +48,9 @@ def resolve_stress_config(
         if args.debug_events_output
         else None
     )
+    fault = getattr(args, 'fault', 'none')
+    fault_at_s = getattr(args, 'fault_at_s', None)
+    fault_recovery_timeout_s = getattr(args, 'fault_recovery_timeout_s', 30.0)
 
     return ResolvedStressConfig(
         query_specs=query_specs,
@@ -58,6 +62,9 @@ def resolve_stress_config(
         invariant_profile_name=args.invariant_profile,
         max_in_flight=args.max_in_flight or args.clients,
         debug_events_output=debug_events_output,
+        fault=fault,
+        fault_at_s=fault_at_s,
+        fault_recovery_timeout_s=fault_recovery_timeout_s,
     )
 
 

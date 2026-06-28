@@ -28,6 +28,7 @@ from rclpy.executors import SingleThreadedExecutor
 from ros_typedb_msgs.srv import Query
 
 from ros_typedb_tools.stress_config import build_query_request
+from ros_typedb_tools.stress_config import FaultResult
 from ros_typedb_tools.stress_config import InvariantRecord
 from ros_typedb_tools.stress_config import InvariantSpec
 from ros_typedb_tools.stress_config import QuerySpec
@@ -40,6 +41,7 @@ from ros_typedb_tools.stress_mixed import build_mixed_query_spec
 from ros_typedb_tools.stress_mixed import MixedQueryProfile
 from ros_typedb_tools.stress_output import DebugEventWriter
 from ros_typedb_tools.stress_resolution import resolve_stress_config
+from std_srvs.srv import Empty
 
 
 @dataclass
@@ -67,6 +69,12 @@ class _RunState:
     deadline_s: float | None
     next_snapshot_s: float
     next_invariant_s: float
+    fault_triggered: bool = False
+    fault_triggered_at_s: float | None = None
+    fault_delete_success: bool | None = None
+    fault_delete_error: str | None = None
+    fault_delete_latency_s: float | None = None
+    fault_recovered_at_s: float | None = None
 
 
 def _build_executor(args: argparse.Namespace) -> Any | None:
@@ -405,6 +413,28 @@ def _process_pending_requests(
     return timed_out_this_cycle
 
 
+def _spin_until_future_done(
+    future: Any,
+    node: Any,
+    executor: Any | None,
+    timeout_s: float,
+    started_at_s: float,
+) -> tuple[bool, float]:
+    """
+    Spin until future completes or timeout expires.
+
+    Returns (timed_out, ended_at_s). Cancels future on timeout.
+    """
+    while True:
+        _spin_once(node, executor)
+        now_s = time.monotonic()
+        if future.done():
+            return False, now_s
+        if now_s - started_at_s >= timeout_s:
+            future.cancel()
+            return True, now_s
+
+
 def _run_invariant_check(
     *,
     node: Any,
@@ -430,57 +460,54 @@ def _run_invariant_check(
         phase=phase,
     )
 
-    while True:
-        _spin_once(node, executor)
-        now_s = time.monotonic()
-        if future.done():
-            exception = future.exception()
-            if exception is not None:
-                record = evaluate_invariant_response(
-                    index=index,
-                    phase=phase,
-                    spec=spec,
-                    started_at_s=started_at_s,
-                    ended_at_s=now_s,
-                    response=None,
-                    exception_message=str(exception),
-                )
-            else:
-                record = evaluate_invariant_response(
-                    index=index,
-                    phase=phase,
-                    spec=spec,
-                    started_at_s=started_at_s,
-                    ended_at_s=now_s,
-                    response=future.result(),
-                )
-            debug_events.log(
-                'invariant_complete',
-                index=index,
-                name=spec.name,
-                phase=phase,
-                success=record.success,
-                latency_s=record.latency_s,
-                error_message=record.error_message,
-            )
-            return record
-
-        if now_s - started_at_s >= timeout_s:
-            future.cancel()
-            record = build_timeout_invariant_record(
-                index=index,
-                phase=phase,
-                spec=spec,
-                started_at_s=started_at_s,
-            )
-            debug_events.log(
-                'invariant_timeout',
-                index=index,
-                name=spec.name,
-                phase=phase,
-                latency_s=record.latency_s,
-            )
-            return record
+    timed_out, now_s = _spin_until_future_done(
+        future, node, executor, timeout_s, started_at_s
+    )
+    if timed_out:
+        record = build_timeout_invariant_record(
+            index=index,
+            phase=phase,
+            spec=spec,
+            started_at_s=started_at_s,
+        )
+        debug_events.log(
+            'invariant_timeout',
+            index=index,
+            name=spec.name,
+            phase=phase,
+            latency_s=record.latency_s,
+        )
+        return record
+    exception = future.exception()
+    if exception is not None:
+        record = evaluate_invariant_response(
+            index=index,
+            phase=phase,
+            spec=spec,
+            started_at_s=started_at_s,
+            ended_at_s=now_s,
+            response=None,
+            exception_message=str(exception),
+        )
+    else:
+        record = evaluate_invariant_response(
+            index=index,
+            phase=phase,
+            spec=spec,
+            started_at_s=started_at_s,
+            ended_at_s=now_s,
+            response=future.result(),
+        )
+    debug_events.log(
+        'invariant_complete',
+        index=index,
+        name=spec.name,
+        phase=phase,
+        success=record.success,
+        latency_s=record.latency_s,
+        error_message=record.error_message,
+    )
+    return record
 
 
 def _run_invariant_profile(
@@ -493,7 +520,8 @@ def _run_invariant_profile(
     phase: str,
     timeout_s: float,
     debug_events: DebugEventWriter,
-) -> None:
+) -> list[InvariantRecord]:
+    records: list[InvariantRecord] = []
     for spec in specs:
         record = _run_invariant_check(
             node=node,
@@ -507,6 +535,30 @@ def _run_invariant_profile(
         )
         state.invariant_records.append(record)
         state.next_invariant_index += 1
+        records.append(record)
+    return records
+
+
+def _mark_fault_recovered_from_invariant_pass(
+    *,
+    state: _RunState,
+    records: list[InvariantRecord],
+    debug_events: DebugEventWriter,
+) -> bool:
+    """Record fault recovery when one full invariant pass succeeds."""
+    if state.fault_triggered_at_s is None:
+        return False
+    if state.fault_recovered_at_s is not None:
+        return False
+    if not records or not all(record.success for record in records):
+        return False
+
+    state.fault_recovered_at_s = time.monotonic()
+    debug_events.log(
+        'recovery_complete',
+        recovery_s=state.fault_recovered_at_s - state.fault_triggered_at_s,
+    )
+    return True
 
 
 def _run_cleanup_request(
@@ -541,38 +593,36 @@ def _run_cleanup_request(
         cleanup_key=query_spec.cleanup_key,
     )
 
-    while True:
-        _spin_once(node, executor)
-        now_s = time.monotonic()
-        if future.done():
-            _record_done_future(
-                pending=pending,
-                now_s=now_s,
-                pending_count=1,
-                state=state,
-                debug_events=debug_events,
-            )
-            debug_events.log(
-                'cleanup_complete',
-                index=pending.index,
-                cleanup_key=query_spec.cleanup_key,
-            )
-            return
-
-        if now_s - started_at_s >= timeout_s:
-            _record_timeout(
-                pending=pending,
-                now_s=now_s,
-                pending_count=1,
-                state=state,
-                debug_events=debug_events,
-            )
-            debug_events.log(
-                'cleanup_timeout',
-                index=pending.index,
-                cleanup_key=query_spec.cleanup_key,
-            )
-            return
+    timed_out, now_s = _spin_until_future_done(
+        future, node, executor, timeout_s, started_at_s
+    )
+    if timed_out:
+        _record_timeout(
+            pending=pending,
+            now_s=now_s,
+            pending_count=1,
+            state=state,
+            debug_events=debug_events,
+        )
+        debug_events.log(
+            'cleanup_timeout',
+            index=pending.index,
+            cleanup_key=query_spec.cleanup_key,
+        )
+        return
+    _record_done_future(
+        pending=pending,
+        now_s=now_s,
+        pending_count=1,
+        state=state,
+        debug_events=debug_events,
+    )
+    debug_events.log(
+        'cleanup_complete',
+        index=pending.index,
+        cleanup_key=query_spec.cleanup_key,
+    )
+    return
 
 
 def _cleanup_mixed_data(
@@ -614,6 +664,13 @@ def _cleanup_mixed_data(
     )
 
 
+def _derive_delete_db_service_name(service_name: str) -> str:
+    """Derive delete_database service name from the query service name."""
+    parts = service_name.rstrip('/').rsplit('/', 1)
+    prefix = parts[0] if len(parts) > 1 else ''
+    return prefix + '/delete_database'
+
+
 def _maybe_run_periodic_invariants(
     *,
     args: argparse.Namespace,
@@ -632,7 +689,7 @@ def _maybe_run_periodic_invariants(
     if now_s < state.next_invariant_s:
         return
 
-    _run_invariant_profile(
+    records = _run_invariant_profile(
         node=node,
         executor=executor,
         client=invariant_client,
@@ -642,7 +699,103 @@ def _maybe_run_periodic_invariants(
         timeout_s=args.timeout_s,
         debug_events=debug_events,
     )
+    _mark_fault_recovered_from_invariant_pass(
+        state=state,
+        records=records,
+        debug_events=debug_events,
+    )
     state.next_invariant_s = time.monotonic() + args.invariant_period_s
+
+
+def _trigger_delete_database_fault(
+    *,
+    node: Any,
+    executor: Any | None,
+    delete_db_client: Any,
+    state: _RunState,
+    timeout_s: float,
+    debug_events: DebugEventWriter,
+) -> None:
+    """Call the delete_database service and record fault timing."""
+    started_at_s = time.monotonic()
+    pending_count = len(state.pending_by_client)
+    state.fault_triggered = True
+    state.fault_triggered_at_s = started_at_s
+    debug_events.log(
+        'fault_triggered',
+        fault='delete-database',
+        triggered_at_s=started_at_s,
+        pending_count_at_fault=pending_count,
+    )
+    request = Empty.Request()
+    future = delete_db_client.call_async(request)
+    timed_out, ended_at_s = _spin_until_future_done(
+        future, node, executor, timeout_s, started_at_s
+    )
+    state.fault_delete_latency_s = ended_at_s - started_at_s
+    if timed_out:
+        state.fault_delete_success = False
+        state.fault_delete_error = (
+            f'delete_database service timed out after {timeout_s:g}s'
+        )
+        debug_events.log(
+            'fault_delete_timeout',
+            latency_s=state.fault_delete_latency_s,
+        )
+    else:
+        exc = future.exception()
+        if exc is not None:
+            state.fault_delete_success = False
+            state.fault_delete_error = str(exc)
+            debug_events.log(
+                'fault_delete_error',
+                error=state.fault_delete_error,
+                latency_s=state.fault_delete_latency_s,
+            )
+        else:
+            state.fault_delete_success = True
+            debug_events.log(
+                'fault_delete_complete',
+                latency_s=state.fault_delete_latency_s,
+            )
+
+
+def _wait_for_recovery(
+    *,
+    node: Any,
+    executor: Any | None,
+    client: Any,
+    specs: list[InvariantSpec],
+    state: _RunState,
+    recovery_timeout_s: float,
+    invariant_timeout_s: float,
+    debug_events: DebugEventWriter,
+) -> None:
+    """Poll invariants until all pass or recovery_timeout_s expires."""
+    if not specs or state.fault_triggered_at_s is None:
+        return
+    if state.fault_recovered_at_s is not None:
+        return
+    recovery_deadline_s = state.fault_triggered_at_s + recovery_timeout_s
+    debug_events.log('recovery_started', recovery_timeout_s=recovery_timeout_s)
+    while time.monotonic() < recovery_deadline_s:
+        records = _run_invariant_profile(
+            node=node,
+            executor=executor,
+            client=client,
+            specs=specs,
+            state=state,
+            phase='recovery',
+            timeout_s=invariant_timeout_s,
+            debug_events=debug_events,
+        )
+        if _mark_fault_recovered_from_invariant_pass(
+            state=state,
+            records=records,
+            debug_events=debug_events,
+        ):
+            return
+    debug_events.log('recovery_timeout', recovery_timeout_s=recovery_timeout_s)
 
 
 def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
@@ -665,6 +818,16 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
     cleanup_client = (
         node.create_client(Query, args.service_name)
         if config.mixed_profile is not None
+        else None
+    )
+    delete_db_service_name = (
+        args.delete_database_service_name
+        if getattr(args, 'delete_database_service_name', None)
+        else _derive_delete_db_service_name(args.service_name)
+    )
+    delete_db_client = (
+        node.create_client(Empty, delete_db_service_name)
+        if getattr(args, 'fault', 'none') != 'none'
         else None
     )
     deadline_s = (
@@ -703,11 +866,13 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
             _wait_for_all_clients(
                 clients
                 + ([invariant_client] if invariant_client else [])
-                + ([cleanup_client] if cleanup_client else []),
+                + ([cleanup_client] if cleanup_client else [])
+                + ([delete_db_client] if delete_db_client is not None else []),
                 service_name=args.service_name,
                 wait_service_timeout_s=args.wait_service_timeout_s,
                 debug_events=debug_events,
             )
+            experiment_started_at_s = time.monotonic()
 
             while (
                 _should_send_request(state, requests=args.requests)
@@ -754,7 +919,41 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
                     now_s=now_s,
                     debug_events=debug_events,
                 )
+                if (
+                    delete_db_client is not None
+                    and not state.fault_triggered
+                    and config.fault_at_s is not None
+                    and time.monotonic() - experiment_started_at_s
+                    >= config.fault_at_s
+                ):
+                    _trigger_delete_database_fault(
+                        node=node,
+                        executor=executor,
+                        delete_db_client=delete_db_client,
+                        state=state,
+                        timeout_s=args.timeout_s,
+                        debug_events=debug_events,
+                    )
 
+            # 1. Recovery (must come before cleanup — cleanup queries trigger DB
+            #    recreation, which would silently advance recovery unobserved)
+            if (
+                state.fault_triggered
+                and config.invariant_specs
+                and invariant_client is not None
+            ):
+                _wait_for_recovery(
+                    node=node,
+                    executor=executor,
+                    client=invariant_client,
+                    specs=config.invariant_specs,
+                    state=state,
+                    recovery_timeout_s=config.fault_recovery_timeout_s,
+                    invariant_timeout_s=args.timeout_s,
+                    debug_events=debug_events,
+                )
+
+            # 2. Mixed cleanup (existing)
             _cleanup_mixed_data(
                 args=args,
                 node=node,
@@ -765,6 +964,7 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
                 debug_events=debug_events,
             )
 
+            # 3. Final invariants (existing)
             if config.invariant_specs and invariant_client is not None:
                 _run_invariant_profile(
                     node=node,
@@ -795,8 +995,25 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
             executor.remove_node(node)
             executor.shutdown()
         node.destroy_node()
+    fault_recovery_s = (
+        state.fault_recovered_at_s - state.fault_triggered_at_s
+        if state.fault_triggered_at_s is not None
+        and state.fault_recovered_at_s is not None
+        else None
+    )
+    fault_result = FaultResult(
+        fault=config.fault,
+        fault_at_s=config.fault_at_s,
+        fault_triggered_at_s=state.fault_triggered_at_s,
+        fault_delete_success=state.fault_delete_success,
+        fault_delete_error=state.fault_delete_error,
+        fault_delete_latency_s=state.fault_delete_latency_s,
+        fault_recovered_at_s=state.fault_recovered_at_s,
+        fault_recovery_s=fault_recovery_s,
+    )
     return StressExperimentResult(
         records=state.records,
         invariant_records=state.invariant_records,
         config=config,
+        fault_result=fault_result,
     )

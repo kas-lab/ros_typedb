@@ -180,6 +180,40 @@ def build_argument_parser() -> argparse.ArgumentParser:
             'making the tool command fail.'
         ),
     )
+    parser.add_argument(
+        '--fault',
+        choices=('none', 'delete-database'),
+        default='none',
+        help=(
+            'Fault to inject during the experiment. '
+            'Defaults to none.'
+        ),
+    )
+    parser.add_argument(
+        '--fault-at-s',
+        type=float,
+        help=(
+            'Seconds into the experiment at which to trigger the fault. '
+            'Required when --fault is not none.'
+        ),
+    )
+    parser.add_argument(
+        '--fault-recovery-timeout-s',
+        type=float,
+        default=30.0,
+        help=(
+            'Seconds to wait for invariants to pass after a fault. '
+            'Defaults to 30.'
+        ),
+    )
+    parser.add_argument(
+        '--delete-database-service-name',
+        help=(
+            'delete_database service name. Defaults to the --service-name '
+            'prefix with /delete_database appended '
+            '(e.g. /ros_typedb_interface/delete_database).'
+        ),
+    )
     return parser
 
 
@@ -210,6 +244,7 @@ def _write_requested_outputs(
             invariant_profile=result.config.invariant_profile_name,
             invariant_period_s=args.invariant_period_s,
             invariant_records=result.invariant_records,
+            fault_result=result.fault_result,
         )
         print(f'  output: {output_path}')
 
@@ -239,8 +274,15 @@ def main(argv: list[str] | None = None) -> int:
         invariant_summary = summarize_invariant_records(
             result.invariant_records
         )
-        print_summary(summary, invariant_summary)
+        print_summary(summary, invariant_summary, result.fault_result)
         _write_requested_outputs(args, result)
+        fault_result = result.fault_result
+        if (
+            fault_result.fault != 'none'
+            and fault_result.fault_triggered_at_s is not None
+            and fault_result.fault_recovered_at_s is None
+        ):
+            return 1
         if invariant_summary['failures'] > 0:
             return 1
         if args.fail_on_failure and summary['failures'] > 0:

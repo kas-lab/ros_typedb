@@ -127,7 +127,8 @@ class InvariantRecord:
 
 @dataclass(frozen=True)
 class ResolvedStressConfig:
-    """Concrete runtime configuration derived from CLI arguments.
+    """
+    Concrete runtime configuration derived from CLI arguments.
 
     The CLI exposes convenient selectors such as ``--mixed-profile auto``.
     The runner should not need to interpret those selectors while it is also
@@ -142,6 +143,23 @@ class ResolvedStressConfig:
     invariant_profile_name: str
     max_in_flight: int
     debug_events_output: Path | None
+    fault: str
+    fault_at_s: float | None
+    fault_recovery_timeout_s: float
+
+
+@dataclass(frozen=True)
+class FaultResult:
+    """Recorded timing and outcome of a fault injection."""
+
+    fault: str
+    fault_at_s: float | None
+    fault_triggered_at_s: float | None
+    fault_delete_success: bool | None
+    fault_delete_error: str | None
+    fault_delete_latency_s: float | None
+    fault_recovered_at_s: float | None
+    fault_recovery_s: float | None
 
 
 @dataclass(frozen=True)
@@ -151,6 +169,7 @@ class StressExperimentResult:
     records: list[RequestRecord]
     invariant_records: list[InvariantRecord]
     config: ResolvedStressConfig
+    fault_result: FaultResult
 
 
 def validate_experiment_args(args: argparse.Namespace) -> None:
@@ -184,10 +203,37 @@ def validate_experiment_args(args: argparse.Namespace) -> None:
     mixed_profile = getattr(args, 'mixed_profile', 'auto')
     if mixed_profile not in MIXED_PROFILE_NAMES:
         raise ValueError(f'unsupported mixed profile: {mixed_profile}')
+    fault = getattr(args, 'fault', 'none')
+    fault_at_s = getattr(args, 'fault_at_s', None)
+    fault_recovery_timeout_s = getattr(args, 'fault_recovery_timeout_s', 30.0)
+    if fault == 'delete-database':
+        if args.invariant_profile == 'none':
+            raise ValueError(
+                '--fault delete-database requires --invariant-profile to be set'
+            )
+        if args.duration_s is None:
+            raise ValueError(
+                '--fault delete-database requires --duration-s'
+            )
+        if fault_at_s is None:
+            raise ValueError(
+                '--fault delete-database requires --fault-at-s'
+            )
+        if fault_at_s <= 0:
+            raise ValueError('--fault-at-s must be greater than zero')
+        if fault_at_s >= args.duration_s:
+            raise ValueError(
+                '--fault-at-s must be less than --duration-s'
+            )
+    if fault_recovery_timeout_s <= 0:
+        raise ValueError(
+            '--fault-recovery-timeout-s must be greater than zero'
+        )
 
 
 def build_query_specs(args: argparse.Namespace) -> list[QuerySpec]:
-    """Build fixed query specs for explicit-query or read-only modes.
+    """
+    Build fixed query specs for explicit-query or read-only modes.
 
     Mixed mode uses schema-specific templates and is resolved in
     ``stress_resolution``. Keeping this helper fixed-query-only avoids hidden

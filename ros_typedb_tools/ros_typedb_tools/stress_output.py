@@ -23,6 +23,7 @@ import statistics
 import time
 from typing import Any
 
+from ros_typedb_tools.stress_config import FaultResult
 from ros_typedb_tools.stress_config import InvariantRecord
 from ros_typedb_tools.stress_config import QuerySpec
 from ros_typedb_tools.stress_config import RequestRecord
@@ -88,6 +89,31 @@ def summarize_invariant_records(
     }
 
 
+def _fault_payload(fault_result: FaultResult | None) -> dict[str, Any]:
+    """Build a stable JSON object for fault result fields."""
+    if fault_result is None:
+        fault_result = FaultResult(
+            fault='none',
+            fault_at_s=None,
+            fault_triggered_at_s=None,
+            fault_delete_success=None,
+            fault_delete_error=None,
+            fault_delete_latency_s=None,
+            fault_recovered_at_s=None,
+            fault_recovery_s=None,
+        )
+    return {
+        'fault': fault_result.fault,
+        'fault_at_s': fault_result.fault_at_s,
+        'fault_triggered_at_s': fault_result.fault_triggered_at_s,
+        'fault_delete_success': fault_result.fault_delete_success,
+        'fault_delete_error': fault_result.fault_delete_error,
+        'fault_delete_latency_s': fault_result.fault_delete_latency_s,
+        'fault_recovered_at_s': fault_result.fault_recovered_at_s,
+        'fault_recovery_s': fault_result.fault_recovery_s,
+    }
+
+
 def write_results(
     output_path: Path,
     *,
@@ -107,6 +133,7 @@ def write_results(
     invariant_profile: str = 'none',
     invariant_period_s: float = 10.0,
     invariant_records: list[InvariantRecord] | None = None,
+    fault_result: FaultResult | None = None,
 ) -> None:
     """Write experiment results to a JSON file."""
     invariants = invariant_records or []
@@ -129,6 +156,7 @@ def write_results(
         'timeout_s': timeout_s,
         'summary': summarize_records(records),
         'invariant_summary': summarize_invariant_records(invariants),
+        'fault': _fault_payload(fault_result),
         'requests': [asdict(record) for record in records],
         'invariants': [asdict(record) for record in invariants],
     }
@@ -210,6 +238,7 @@ class DebugEventWriter:
 def print_summary(
     summary: dict[str, Any],
     invariant_summary: dict[str, Any] | None = None,
+    fault_result: FaultResult | None = None,
 ) -> None:
     """Print compact experiment summary."""
     latency = summary['latency_s']
@@ -231,3 +260,27 @@ def print_summary(
         print(f"  invariants_successes: {invariant_summary['successes']}")
         print(f"  invariants_failures: {invariant_summary['failures']}")
         print(f"  invariants_timeouts: {invariant_summary['timeouts']}")
+    if fault_result is not None and fault_result.fault != 'none':
+        triggered_at = (
+            f'{fault_result.fault_triggered_at_s:.2f}s'
+            if fault_result.fault_triggered_at_s is not None
+            else 'not triggered'
+        )
+        delete_latency = (
+            f'{fault_result.fault_delete_latency_s:.3f}s'
+            if fault_result.fault_delete_latency_s is not None
+            else 'n/a'
+        )
+        delete_status = (
+            'ok' if fault_result.fault_delete_success else 'FAILED'
+        )
+        recovery_str = (
+            f'{fault_result.fault_recovery_s:.2f}s'
+            if fault_result.fault_recovery_s is not None
+            else 'not recovered'
+        )
+        print(
+            f'  fault: {fault_result.fault} triggered at {triggered_at} | '
+            f'delete: {delete_status} ({delete_latency}) | '
+            f'recovery: {recovery_str}'
+        )
