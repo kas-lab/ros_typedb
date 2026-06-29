@@ -306,19 +306,21 @@ command even if invariants later recover.
 
 This stage calls the ROS lifecycle `change_state` service while normal query
 clients continue sending requests. The default sequence is deactivate, cleanup,
-configure, then activate. Cleanup destroys the query and delete services and
-waits for active service callbacks before closing TypeDB resources; the
-experiment verifies that this does not race with in-flight requests and that
-the node recovers after reactivation. The controller checks `get_state` after
-each transition and only sends the next transition after the expected lifecycle
-state is observed.
+configure, then activate. Cleanup closes TypeDB resources while service
+callbacks are gated by lifecycle state; the experiment verifies that this does
+not race with in-flight requests and that the node recovers after reactivation.
+The controller checks `get_state` after each transition and only sends the next
+transition after the expected lifecycle state is observed.
 
-When using a launch file that automatically reactivates the node after every
-deactivate, disable that behavior for this experiment. The bundled test-data
-launch file defaults to normal auto-reactivation, so start it for Stage 7 with:
+When using a launch file that automatically activates the node, disable repeated
+launch-managed activation for this experiment. The bundled test-data launch
+file defaults to normal auto-activation; with `auto_activate_on_configure` set
+to `False`, launch still activates the node once at startup but leaves later
+cleanup/configure/activate transitions under the benchmark controller.
 
 ```bash
 ros2 launch ros_typedb_examples test_data_example.launch.py \
+  auto_activate_on_configure:=False \
   reactivate_on_deactivate:=False
 ```
 

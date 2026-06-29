@@ -22,6 +22,7 @@ from launch.actions import DeclareLaunchArgument
 from launch.actions import EmitEvent
 from launch.actions import RegisterEventHandler
 from launch.conditions import IfCondition
+from launch.conditions import UnlessCondition
 from launch.events import matches_action
 from launch.substitutions import LaunchConfiguration
 
@@ -55,6 +56,9 @@ def generate_launch_description():
     reload_schema = LaunchConfiguration('reload_schema')
     infer = LaunchConfiguration('infer')
     query_timeout_s = LaunchConfiguration('query_timeout_s')
+    auto_activate_on_configure = LaunchConfiguration(
+        'auto_activate_on_configure'
+    )
     reactivate_on_deactivate = LaunchConfiguration('reactivate_on_deactivate')
 
     database_name_arg = DeclareLaunchArgument(
@@ -105,6 +109,12 @@ def generate_launch_description():
         description='reactivate the lifecycle node after deactivate',
     )
 
+    auto_activate_on_configure_arg = DeclareLaunchArgument(
+        'auto_activate_on_configure',
+        default_value='True',
+        description='activate the lifecycle node after configure',
+    )
+
     ros_typedb_node = LifecycleNode(
         package='ros_typedb',
         executable='ros_typedb',
@@ -131,6 +141,24 @@ def generate_launch_description():
         ),
     )
 
+    initial_activate_event = RegisterEventHandler(
+        OnStateTransition(
+            target_lifecycle_node=ros_typedb_node,
+            start_state='configuring',
+            goal_state='inactive',
+            entities=[
+                EmitEvent(event=ChangeState(
+                    lifecycle_node_matcher=matches_action(ros_typedb_node),
+                    transition_id=(
+                        lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE
+                    ),
+                )),
+            ],
+            handle_once=True,
+        ),
+        condition=UnlessCondition(auto_activate_on_configure),
+    )
+
     activate_event = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node=ros_typedb_node,
@@ -145,6 +173,7 @@ def generate_launch_description():
                 )),
             ],
         ),
+        condition=IfCondition(auto_activate_on_configure),
     )
 
     reactivate_event = RegisterEventHandler(
@@ -172,9 +201,11 @@ def generate_launch_description():
         reload_schema_arg,
         infer_arg,
         query_timeout_s_arg,
+        auto_activate_on_configure_arg,
         reactivate_on_deactivate_arg,
         ros_typedb_node,
         configure_event,
+        initial_activate_event,
         activate_event,
         reactivate_event,
     ])

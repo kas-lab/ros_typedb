@@ -1,3 +1,5 @@
+"""Launch the ros_typedb lifecycle node."""
+
 # Copyright 2024 Gustavo Rezende Silva
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,15 +18,19 @@ from launch.actions import DeclareLaunchArgument
 from launch.actions import EmitEvent
 from launch.actions import RegisterEventHandler
 from launch.conditions import IfCondition
+from launch.conditions import UnlessCondition
 from launch.events import matches_action
 from launch.substitutions import LaunchConfiguration
+
 from launch_ros.actions import LifecycleNode
 from launch_ros.event_handlers import OnStateTransition
 from launch_ros.events.lifecycle import ChangeState
+
 import lifecycle_msgs
 
 
 def generate_launch_description():
+    """Launch the ros_typedb lifecycle node."""
     schema_path = LaunchConfiguration('schema_path')
     data_path = LaunchConfiguration('data_path')
     database_name = LaunchConfiguration('database_name')
@@ -32,6 +38,9 @@ def generate_launch_description():
     force_data = LaunchConfiguration('force_data')
     force_database = LaunchConfiguration('force_database')
     infer = LaunchConfiguration('infer')
+    auto_activate_on_configure = LaunchConfiguration(
+        'auto_activate_on_configure'
+    )
     reactivate_on_deactivate = LaunchConfiguration('reactivate_on_deactivate')
 
     schema_path_arg = DeclareLaunchArgument(
@@ -82,6 +91,12 @@ def generate_launch_description():
         description='reactivate the lifecycle node after deactivate'
     )
 
+    auto_activate_on_configure_arg = DeclareLaunchArgument(
+        'auto_activate_on_configure',
+        default_value='True',
+        description='activate the lifecycle node after configure'
+    )
+
     ros_typedb_node = LifecycleNode(
         package='ros_typedb',
         executable='ros_typedb',
@@ -106,6 +121,24 @@ def generate_launch_description():
         )
     )
 
+    ros_typedb_node_initial_activate_event = RegisterEventHandler(
+        OnStateTransition(
+            target_lifecycle_node=ros_typedb_node,
+            start_state='configuring',
+            goal_state='inactive',
+            entities=[
+                EmitEvent(event=ChangeState(
+                    lifecycle_node_matcher=matches_action(ros_typedb_node),
+                    transition_id=(
+                        lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE
+                    ),
+                )),
+            ],
+            handle_once=True,
+        ),
+        condition=UnlessCondition(auto_activate_on_configure),
+    )
+
     ros_typedb_node_activate_event = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node=ros_typedb_node,
@@ -119,7 +152,8 @@ def generate_launch_description():
                     ),
                 )),
             ],
-        )
+        ),
+        condition=IfCondition(auto_activate_on_configure),
     )
 
     ros_typedb_node_reactivate_event = RegisterEventHandler(
@@ -147,9 +181,11 @@ def generate_launch_description():
         force_data_arg,
         force_database_arg,
         infer_arg,
+        auto_activate_on_configure_arg,
         reactivate_on_deactivate_arg,
         ros_typedb_node,
         ros_typedb_node_config_event,
+        ros_typedb_node_initial_activate_event,
         ros_typedb_node_activate_event,
         ros_typedb_node_reactivate_event,
     ])
