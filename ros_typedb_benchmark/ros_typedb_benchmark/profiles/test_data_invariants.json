@@ -1,0 +1,29 @@
+{
+  "description": "Correctness invariants for ros_typedb/test/typedb_test_data/schema.tql and data.tql.",
+  "invariants": [
+    {
+      "name": "person-count",
+      "query": "match $p isa person; get $p; count;",
+      "query_type": "get_aggregate",
+      "expected_value": 20
+    },
+    {
+      "name": "company-count",
+      "query": "match $c isa company; get $c; count;",
+      "query_type": "get_aggregate",
+      "expected_value": 1
+    },
+    {
+      "name": "employment-count",
+      "query": "match $e isa employment; get $e; count;",
+      "query_type": "get_aggregate",
+      "expected_value": 3
+    },
+    {
+      "name": "boss-sentinel-count",
+      "query": "match $p isa person, has email \"boss@tudelft.nl\"; get $p; count;",
+      "query_type": "get_aggregate",
+      "expected_value": 1
+    }
+  ]
+}

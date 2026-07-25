@@ -1,0 +1,72 @@
+insert
+
+$navigation_system_ready isa Proposition, has valid true;
+$camera_system_ready isa Proposition, has valid true;
+$water_sampler_ready isa Proposition, has valid true;
+$vehicle_at_survey_site isa Proposition, has valid false;
+$hull_inspected isa Proposition, has valid false;
+$water_sample_collected isa Proposition, has valid false;
+$vehicle_back_at_base isa Proposition, has valid false;
+
+$navigate_to_survey_site isa Action,
+    has action_name "navigate-to-survey-site",
+    has action_duration 120.0,
+    has start_time 2026-06-26T10:00:00.000;
+
+$inspect_hull isa Action,
+    has action_name "inspect-hull",
+    has action_duration 180.0,
+    has start_time 2026-06-26T10:02:00.000;
+
+$collect_water_sample isa Action,
+    has action_name "collect-water-sample",
+    has action_name "dual_name",
+    has action_duration 240.0,
+    has start_time 2026-06-26T10:05:00.000;
+
+$return_to_base isa Action,
+    has action_name "return-to-base",
+    has action_duration 150.0,
+    has start_time 2026-06-26T10:09:00.000;
+
+(action: $navigate_to_survey_site, precondition: $navigation_system_ready)
+    isa action_preconditions;
+(action: $navigate_to_survey_site, effect: $vehicle_at_survey_site)
+    isa action_effects;
+
+(action: $inspect_hull, precondition: $vehicle_at_survey_site, precondition: $camera_system_ready)
+    isa action_preconditions;
+(action: $inspect_hull, effect: $hull_inspected)
+    isa action_effects;
+
+(action: $collect_water_sample, precondition: $vehicle_at_survey_site, precondition: $water_sampler_ready)
+    isa action_preconditions;
+(action: $collect_water_sample, effect: $water_sample_collected)
+    isa action_effects;
+
+(action: $return_to_base, precondition: $navigation_system_ready)
+    isa action_preconditions;
+(action: $return_to_base, effect: $vehicle_back_at_base)
+    isa action_effects;
+
+$inspection_plan isa Plan,
+    has start_time 2026-06-26T10:00:00.000,
+    has cost 42.5;
+
+$sampling_plan isa Plan,
+    has start_time 2026-06-26T10:00:00.000,
+    has cost 58.0;
+
+(plan: $inspection_plan, action: $navigate_to_survey_site)
+    isa has_action, has index 1;
+(plan: $inspection_plan, action: $inspect_hull)
+    isa has_action, has index 2;
+(plan: $inspection_plan, action: $return_to_base)
+    isa has_action, has index 3;
+
+(plan: $sampling_plan, action: $navigate_to_survey_site)
+    isa has_action, has index 1;
+(plan: $sampling_plan, action: $collect_water_sample)
+    isa has_action, has index 2;
+(plan: $sampling_plan, action: $return_to_base)
+    isa has_action, has index 3;

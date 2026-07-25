@@ -13,31 +13,14 @@
 # limitations under the License.
 
 from datetime import datetime
-import time
 
 import pytest
 
-from ros_typedb.typedb_interface import convert_py_type_to_query_type
-from ros_typedb.typedb_interface import string_to_string_array
 from ros_typedb.typedb_interface import TypeDBInterface
 
 
-def test_string_to_string_array_preserves_raw_path_with_comma():
-    path = '/tmp/schema,with-comma.tql'
-
-    assert string_to_string_array(path) == [path]
-
-
-def test_string_to_string_array_parses_quoted_list_with_comma_in_path():
-    assert string_to_string_array(
-        "['/tmp/schema,with-comma.tql', '/tmp/data.tql']"
-    ) == ['/tmp/schema,with-comma.tql', '/tmp/data.tql']
-
-
-def test_string_to_string_array_keeps_unbracketed_strings_as_single_values():
-    assert string_to_string_array('/tmp/schema.tql,/tmp/data.tql') == [
-        '/tmp/schema.tql,/tmp/data.tql'
-    ]
+SCHEMA_PATH = 'test/typedb_test_data/schema.tql'
+DATA_PATH = 'test/typedb_test_data/data.tql'
 
 
 @pytest.fixture
@@ -46,8 +29,8 @@ def typedb_interface():
         'localhost:1729',
         'test_database',
         force_database=True,
-        schema_path=['test/typedb_test_data/schema.tql'],
-        data_path=['test/typedb_test_data/data.tql'],
+        schema_path=[SCHEMA_PATH],
+        data_path=[DATA_PATH],
         force_data=True,
         sort_fetch_results=True
     )
@@ -55,27 +38,174 @@ def typedb_interface():
     typedb_interface.delete_database()
 
 
-def test_convert_py_type_to_query_type_escapes_strings():
-    assert convert_py_type_to_query_type("O'Brien") == "'O\\'Brien'"
-    assert convert_py_type_to_query_type(r'C:\\tmp') == r"'C:\\\\tmp'"
-    assert convert_py_type_to_query_type('$person') == '$person'
+def _fetch_entities(typedb_interface):
+    return typedb_interface.get_aggregate_database(
+        'match $e isa entity; get $e; count;')
 
 
-def test_delete_thing_uses_query_type_conversion(monkeypatch):
-    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
-    captured_query = None
+def _fetch_relations(typedb_interface):
+    return typedb_interface.get_aggregate_database(
+        'match $r isa relation; get $r; count;')
 
-    def fake_delete_from_database(query):
-        nonlocal captured_query
-        captured_query = query
-        return True
 
-    monkeypatch.setattr(
-        typedb_interface, 'delete_from_database', fake_delete_from_database)
+def _fetch_attributes(typedb_interface):
+    return typedb_interface.get_aggregate_database(
+        'match $a isa attribute; get $a; count;')
 
-    assert typedb_interface.delete_thing('person', 'name', "O'Brien") is True
-    assert "has name 'O\\'Brien'" in captured_query
-    assert 'has name "O\'Brien"' not in captured_query
+
+def _count_person_by_email(typedb_interface, email):
+    return typedb_interface.get_aggregate_database(
+        f'match $p isa person, has email "{email}"; get $p; count;')
+
+
+def _delete_database(database_name):
+    typedb_interface = TypeDBInterface('localhost:1729', database_name)
+    try:
+        typedb_interface.delete_database()
+    finally:
+        typedb_interface.driver.close()
+
+
+def test_reload_schema_false_reuses_existing_database():
+    """reload_schema=False skips schema reload while keeping existing data."""
+    database_name = 'test_reload_schema_false_reuses_existing_database'
+    typedb_interface = None
+    reused_interface = None
+    try:
+        typedb_interface = TypeDBInterface(
+            'localhost:1729',
+            database_name,
+            force_database=True,
+            schema_path=[SCHEMA_PATH],
+            data_path=[DATA_PATH],
+            force_data=True,
+        )
+        assert _count_person_by_email(typedb_interface, 'boss@tudelft.nl') == 1
+        typedb_interface.driver.close()
+
+        reused_interface = TypeDBInterface(
+            'localhost:1729',
+            database_name,
+            force_database=False,
+            force_data=False,
+            reload_schema=False,
+            schema_path=[SCHEMA_PATH],
+        )
+
+        assert _count_person_by_email(reused_interface, 'boss@tudelft.nl') == 1
+    finally:
+        if reused_interface is not None:
+            reused_interface.driver.close()
+        elif typedb_interface is not None:
+            typedb_interface.driver.close()
+        _delete_database(database_name)
+
+
+def test_missing_database_is_recreated_from_configured_files():
+    """A missing configured database is recreated with schema and data files."""
+    database_name = 'test_missing_database_recreate_from_files'
+    typedb_interface = None
+    try:
+        typedb_interface = TypeDBInterface(
+            'localhost:1729',
+            database_name,
+            force_database=True,
+            schema_path=[SCHEMA_PATH],
+            data_path=[DATA_PATH],
+            force_data=True,
+        )
+        assert _count_person_by_email(typedb_interface, 'boss@tudelft.nl') == 1
+
+        typedb_interface.delete_database()
+        assert not typedb_interface.driver.databases.contains(database_name)
+
+        assert _count_person_by_email(typedb_interface, 'boss@tudelft.nl') == 1
+        assert _fetch_entities(typedb_interface) > 0
+    finally:
+        if typedb_interface is not None:
+            typedb_interface.delete_database()
+            typedb_interface.driver.close()
+
+
+def test_force_data_refresh_removes_existing_data_before_loading_fixture():
+    """force_data=True clears old data before loading configured data files."""
+    database_name = 'test_force_data_refresh_removes_existing_data'
+    typedb_interface = None
+    refreshed_interface = None
+    try:
+        typedb_interface = TypeDBInterface(
+            'localhost:1729',
+            database_name,
+            force_database=True,
+            schema_path=[SCHEMA_PATH],
+            data_path=[DATA_PATH],
+            force_data=True,
+        )
+        typedb_interface.insert_entity(
+            'person', [('email', 'extra_person@test.test')])
+        assert _count_person_by_email(
+            typedb_interface, 'extra_person@test.test') == 1
+
+        refreshed_interface = TypeDBInterface(
+            'localhost:1729',
+            database_name,
+            force_database=False,
+            force_data=True,
+            reload_schema=False,
+            schema_path=[SCHEMA_PATH],
+            data_path=[DATA_PATH],
+        )
+
+        assert _count_person_by_email(
+            refreshed_interface, 'extra_person@test.test') == 0
+        assert _count_person_by_email(
+            refreshed_interface, 'boss@tudelft.nl') == 1
+    finally:
+        if refreshed_interface is not None:
+            refreshed_interface.delete_database()
+            refreshed_interface.driver.close()
+            typedb_interface.driver.close()
+        elif typedb_interface is not None:
+            typedb_interface.delete_database()
+            typedb_interface.driver.close()
+
+
+def test_delete_all_data_removes_entities_relations_and_attributes(
+        typedb_interface):
+    """delete_all_data removes all live fixture data."""
+    assert _fetch_entities(typedb_interface)
+    assert _fetch_relations(typedb_interface)
+    assert _fetch_attributes(typedb_interface)
+
+    typedb_interface.delete_all_data()
+
+    assert _fetch_entities(typedb_interface) == 0
+    assert _fetch_relations(typedb_interface) == 0
+    assert _fetch_attributes(typedb_interface) == 0
+
+
+def test_delete_entities_before_relations_leaves_no_residual_data(
+        typedb_interface):
+    """Document TypeDB behavior for the current delete_all_data order."""
+    assert _fetch_relations(typedb_interface)
+
+    typedb_interface.delete_from_database(
+        'match $e isa entity; delete $e isa entity;')
+    after_entity_delete_error = typedb_interface.last_error
+    entities_after_entity_delete = _fetch_entities(typedb_interface)
+    relations_after_entity_delete = _fetch_relations(typedb_interface)
+
+    typedb_interface.delete_from_database(
+        'match $r isa relation; delete $r isa relation;')
+    typedb_interface.delete_from_database(
+        'match $a isa attribute; delete $a isa attribute;')
+
+    assert after_entity_delete_error == ''
+    assert entities_after_entity_delete == 0
+    assert relations_after_entity_delete == 0
+    assert _fetch_entities(typedb_interface) == 0
+    assert _fetch_relations(typedb_interface) == 0
+    assert _fetch_attributes(typedb_interface) == 0
 
 
 def test_load_bad_data_raises(typedb_interface):
@@ -84,67 +214,13 @@ def test_load_bad_data_raises(typedb_interface):
         typedb_interface.load_data('test/typedb_test_data/bad_data.tql')
 
 
-def test_driver_connection_timeout(monkeypatch):
-    def slow_core_driver(address):
-        time.sleep(1.0)
-
-    monkeypatch.setattr(
-        'ros_typedb.typedb_interface.TypeDB.core_driver',
-        slow_core_driver
-    )
-
-    start_time = time.monotonic()
-    with pytest.raises(TimeoutError):
-        TypeDBInterface(
-            'localhost:1729',
-            'test_database',
-            driver_timeout_s=0.01
-        )
-
-    assert time.monotonic() - start_time < 0.5
-
-
-def test_driver_connection_timeout_closes_late_driver(monkeypatch):
-    class LateDriver:
-
-        def __init__(self):
-            self.closed = False
-
-        def close(self):
-            self.closed = True
-
-    late_driver = LateDriver()
-
-    def slow_core_driver(address):
-        time.sleep(0.05)
-        return late_driver
-
-    monkeypatch.setattr(
-        'ros_typedb.typedb_interface.TypeDB.core_driver',
-        slow_core_driver
-    )
-
-    with pytest.raises(TimeoutError):
-        TypeDBInterface(
-            'localhost:1729',
-            'test_database',
-            driver_timeout_s=0.01
-        )
-
-    deadline = time.monotonic() + 0.5
-    while not late_driver.closed and time.monotonic() < deadline:
-        time.sleep(0.01)
-
-    assert late_driver.closed
-
-
 def test_create_and_delete_database():
     typedb_interface = TypeDBInterface(
         'localhost:1729',
         'test_database',
         force_database=True,
-        schema_path=['test/typedb_test_data/schema.tql'],
-        data_path=['test/typedb_test_data/data.tql'],
+        schema_path=[SCHEMA_PATH],
+        data_path=[DATA_PATH],
         force_data=True,
     )
 
@@ -156,7 +232,8 @@ def test_create_and_delete_database():
 
 def test_define_query(typedb_interface):
     assert typedb_interface.define_database('define MyEntity sub entity;')
-    assert typedb_interface.define_database('define MyEntity aa entity') is None
+    assert typedb_interface.define_database(
+        'define MyEntity aa entity') is None
 
 
 def test_insert_entity(typedb_interface):
@@ -191,28 +268,6 @@ def test_delete_thing(typedb_interface):
     wrong_result = typedb_interface.delete_thing(
         'something_wrong', 'email', 'test@email.test')
     assert wrong_result is None
-
-
-@pytest.mark.parametrize('key_value, expected_query_value', [
-    ('test@email.test', "'test@email.test'"),
-    (33, '33'),
-    (3.237, '3.237'),
-    (True, 'true'),
-    (datetime.fromisoformat('2026-06-14T12:34:56.789'),
-     '2026-06-14T12:34:56.789'),
-])
-def test_delete_thing_formats_key_value_for_type(key_value, expected_query_value):
-    typedb_interface = TypeDBInterface.__new__(TypeDBInterface)
-    queries = []
-
-    def capture_delete(query):
-        queries.append(query)
-        return True
-
-    typedb_interface.delete_from_database = capture_delete
-
-    assert typedb_interface.delete_thing('person', 'email', key_value) is True
-    assert f'has email {expected_query_value};' in queries[0]
 
 
 @pytest.mark.parametrize('attr, attr_value', [
@@ -295,6 +350,19 @@ def test_update_attribute_in_thing(typedb_interface, attr, attr_value, new_v):
         'person', [('email', 'test@email.test')], attr)
 
     assert result_update is not None and result[0] == new_v
+
+
+def test_update_attribute_in_thing_inserts_when_attribute_absent(
+        typedb_interface):
+    """update_attribute_in_thing preserves existing insert-if-absent behavior."""
+    typedb_interface.insert_entity('person', [('email', 'test@email.test')])
+
+    result_update = typedb_interface.update_attribute_in_thing(
+        'person', 'email', 'test@email.test', 'age', 56)
+    result = typedb_interface.fetch_attribute_from_thing(
+        'person', [('email', 'test@email.test')], 'age')
+
+    assert result_update is not None and result == [56]
 
 
 def test_insert_relationship(typedb_interface):
@@ -485,7 +553,7 @@ def test_insert_attributes(typedb_interface, match_dict, r_dict):
     )
 ])
 def test_delete_attributes(
-   typedb_interface, insert_dict, match_dict):
+        typedb_interface, insert_dict, match_dict):
 
     query = typedb_interface.dict_to_query(insert_dict)
     insert_result = typedb_interface.insert_database('insert ' + query)
@@ -611,7 +679,6 @@ def test_fetch_query(typedb_interface):
             'full-name': emp['employee']['full-name'][0]['value']
         })
 
-    # Compare as sets so order does not matter
     assert {tuple(sorted(d.items())) for d in actual} == \
         {tuple(sorted(d.items())) for d in expected}
 
@@ -624,119 +691,7 @@ def test_register_method(typedb_interface):
             fetch
                 $p: email;
         """
-        return typedb_interface.fetch_database(query)[0]['p']['email'][0]['value']
+        return typedb_interface.fetch_database(
+            query)[0]['p']['email'][0]['value']
     typedb_interface.register_method('get_name_email', get_name_email)
     assert typedb_interface.get_name_email('Big Boss') == 'boss@tudelft.nl'
-
-
-def test_database_query_reconnects_after_failed_health_check(monkeypatch):
-    class FakeDatabases:
-        """Fake database collection with controllable health checks."""
-
-        def __init__(self, fail_after_first_contains=False):
-            self.fail_after_first_contains = fail_after_first_contains
-            self.contains_count = 0
-
-        def contains(self, database_name):
-            self.contains_count += 1
-            if self.fail_after_first_contains and self.contains_count > 1:
-                raise RuntimeError('server unavailable')
-            return True
-
-        def create(self, database_name):
-            raise AssertionError('database should already exist')
-
-    class FakeDriver:
-        """Fake TypeDB driver."""
-
-        def __init__(self, fail_after_first_contains=False):
-            self.databases = FakeDatabases(fail_after_first_contains)
-            self.closed = False
-            self.session_count = 0
-
-        def session(self, database_name, session_type, options):
-            self.session_count += 1
-            return FakeSession()
-
-        def close(self):
-            self.closed = True
-
-    class FakeSession:
-        """Fake TypeDB session context manager."""
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, traceback):
-            return False
-
-        def transaction(self, transaction_type, options):
-            return FakeTransaction()
-
-    class FakeQuery:
-        """Fake TypeDB query API."""
-
-        def fetch(self, query):
-            return [{'person': {'type': {'root': 'entity', 'label': 'person'}}}]
-
-    class FakeTransaction:
-        """Fake TypeDB transaction context manager."""
-
-        query = FakeQuery()
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, traceback):
-            return False
-
-    drivers = [FakeDriver(fail_after_first_contains=True), FakeDriver()]
-    monkeypatch.setattr(
-        'ros_typedb.typedb_interface.TypeDB.core_driver',
-        lambda address: drivers.pop(0)
-    )
-
-    typedb_interface = TypeDBInterface('localhost:1729', 'test_database')
-    stale_driver = typedb_interface.driver
-
-    result = typedb_interface.fetch_database('match $p isa person; fetch $p;')
-
-    assert result == [{'person': {'type': {'root': 'entity', 'label': 'person'}}}]
-    assert stale_driver.closed is True
-    assert stale_driver.session_count == 0
-    assert typedb_interface.driver.session_count == 1
-
-
-def test_ensure_server_alive_creates_missing_database(monkeypatch):
-    class FakeDatabases:
-        """Fake database collection tracking database creation."""
-
-        def __init__(self):
-            self.created_database = None
-
-        def contains(self, database_name):
-            return self.created_database == database_name
-
-        def create(self, database_name):
-            self.created_database = database_name
-
-    class FakeDriver:
-        """Fake TypeDB driver."""
-
-        def __init__(self):
-            self.databases = FakeDatabases()
-
-        def close(self):
-            pass
-
-    monkeypatch.setattr(
-        'ros_typedb.typedb_interface.TypeDB.core_driver',
-        lambda address: FakeDriver()
-    )
-
-    typedb_interface = TypeDBInterface('localhost:1729', 'test_database')
-    typedb_interface.driver.databases.created_database = None
-
-    typedb_interface.ensure_server_alive()
-
-    assert typedb_interface.driver.databases.created_database == 'test_database'

@@ -1,0 +1,4 @@
+match
+    $p isa Plan; (plan: $p, action: $a) isa has_action;
+fetch
+    $a: action_name;

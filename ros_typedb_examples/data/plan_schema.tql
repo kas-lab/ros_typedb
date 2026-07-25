@@ -1,0 +1,91 @@
+define
+
+name sub attribute,
+    abstract,
+    value string;
+action_name sub name,
+    value string;
+action_duration sub attribute,
+    value double;
+
+start_time sub attribute,
+    value datetime;
+end_time sub attribute,
+    value datetime;
+
+action_preconditions sub relation,
+    relates action,
+    relates precondition;
+
+action_effects sub relation,
+    relates action,
+    relates effect;
+
+valid_precondition sub attribute,
+    value boolean;
+cost sub attribute,
+    value double;
+
+result sub attribute,
+    value boolean;
+
+Action sub entity,
+    owns action_name,
+    owns valid_precondition,
+    owns action_duration,
+    owns start_time,
+    owns end_time,
+    owns cost,
+    owns result,
+    plays action_preconditions:action,
+    plays action_effects:action,
+    plays has_action:action;
+
+index sub attribute,
+    value long;
+has_action sub relation,
+    owns index,
+    relates plan,
+    relates action;
+
+Plan sub entity,
+    owns start_time,
+    owns end_time,
+    owns result,
+    owns cost,
+    owns cost,
+    plays has_action:plan;
+
+valid sub attribute,
+    value boolean;
+Proposition sub entity,
+    owns valid,
+    plays action_preconditions:precondition,
+    plays action_effects:effect;
+
+rule action_precondition_valid:
+    when {
+        $a isa Action;
+        (action: $a, precondition: $proposition) isa action_preconditions;
+        $proposition has valid true;
+    } then {
+        $a has valid_precondition true;
+    };
+
+rule action_precondition_invalid:
+    when {
+        $a isa Action;
+        (action: $a, precondition: $proposition) isa action_preconditions;
+        $proposition has valid false;
+    } then {
+        $a has valid_precondition false;
+    };
+
+rule action_precondition_invalid:
+    when {
+        $a isa Action;
+        (action: $a, precondition: $proposition) isa action_preconditions;
+        not {$proposition has valid $valid;};
+    } then {
+        $a has valid_precondition false;
+    };

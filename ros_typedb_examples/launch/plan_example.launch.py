@@ -1,6 +1,6 @@
-"""Launch the ros_typedb lifecycle node."""
+"""Launch ros_typedb with a small stress-test example model."""
 
-# Copyright 2024 Gustavo Rezende Silva
+# Copyright 2026 Gustavo Rezende Silva
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
+from ament_index_python.packages import get_package_share_directory
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.actions import EmitEvent
@@ -30,98 +34,112 @@ import lifecycle_msgs
 
 
 def generate_launch_description():
-    """Launch the ros_typedb lifecycle node."""
-    schema_path = LaunchConfiguration('schema_path')
-    data_path = LaunchConfiguration('data_path')
+    """Launch ros_typedb with the example stress schema and data."""
+    package_share = get_package_share_directory('ros_typedb_examples')
+    default_schema_path = os.path.join(
+        package_share,
+        'data',
+        'plan_schema.tql',
+    )
+    default_data_path = os.path.join(
+        package_share,
+        'data',
+        'plan_data.tql',
+    )
+
     database_name = LaunchConfiguration('database_name')
     address = LaunchConfiguration('address')
     force_data = LaunchConfiguration('force_data')
     force_database = LaunchConfiguration('force_database')
+    reload_schema = LaunchConfiguration('reload_schema')
     infer = LaunchConfiguration('infer')
+    query_timeout_s = LaunchConfiguration('query_timeout_s')
     auto_activate_on_configure = LaunchConfiguration(
         'auto_activate_on_configure'
     )
     reactivate_on_deactivate = LaunchConfiguration('reactivate_on_deactivate')
 
-    schema_path_arg = DeclareLaunchArgument(
-        'schema_path',
-        default_value="['']",
-        description='path for KB schema'
-    )
-
-    data_path_arg = DeclareLaunchArgument(
-        'data_path',
-        default_value="['']",
-        description='path for KB data'
-    )
-
     database_name_arg = DeclareLaunchArgument(
         'database_name',
-        default_value='ros_typedb',
-        description='database name'
+        default_value='ros_typedb_stress_example',
+        description='database name',
     )
 
     address_arg = DeclareLaunchArgument(
         'address',
         default_value='localhost:1729',
-        description='typedb server address'
+        description='TypeDB server address',
     )
 
     force_data_arg = DeclareLaunchArgument(
         'force_data',
-        default_value='False',
-        description='force data'
+        default_value='True',
+        description='reload example data on startup',
     )
 
     force_database_arg = DeclareLaunchArgument(
         'force_database',
-        default_value='False',
-        description='force database'
+        default_value='True',
+        description='recreate the example database on startup',
+    )
+
+    reload_schema_arg = DeclareLaunchArgument(
+        'reload_schema',
+        default_value='True',
+        description='reload example schema on startup',
     )
 
     infer_arg = DeclareLaunchArgument(
         'infer',
         default_value='True',
-        description='use inference engine'
+        description='use inference engine',
+    )
+
+    query_timeout_s_arg = DeclareLaunchArgument(
+        'query_timeout_s',
+        default_value='5.0',
+        description='default TypeDB query timeout in seconds',
     )
 
     reactivate_on_deactivate_arg = DeclareLaunchArgument(
         'reactivate_on_deactivate',
         default_value='True',
-        description='reactivate the lifecycle node after deactivate'
+        description='reactivate the lifecycle node after deactivate',
     )
 
     auto_activate_on_configure_arg = DeclareLaunchArgument(
         'auto_activate_on_configure',
         default_value='True',
-        description='activate the lifecycle node after configure'
+        description='activate the lifecycle node after configure',
     )
 
     ros_typedb_node = LifecycleNode(
         package='ros_typedb',
         executable='ros_typedb',
-        name='ros_typedb',
+        name='ros_typedb_interface',
         namespace='',
         output='screen',
         parameters=[{
-            'schema_path': schema_path,
-            'data_path': data_path,
+            'schema_path': [default_schema_path],
+            'data_path': [default_data_path],
             'database_name': database_name,
             'address': address,
             'force_data': force_data,
             'force_database': force_database,
+            'reload_schema': reload_schema,
             'infer': infer,
-        }]
+            'query_timeout_s': query_timeout_s,
+        }],
     )
 
-    ros_typedb_node_config_event = EmitEvent(
+    configure_event = EmitEvent(
         event=ChangeState(
             lifecycle_node_matcher=matches_action(ros_typedb_node),
             transition_id=lifecycle_msgs.msg.Transition.TRANSITION_CONFIGURE,
-        )
+        ),
     )
 
-    ros_typedb_node_initial_activate_event = RegisterEventHandler(
+    initial_activate_event = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node=ros_typedb_node,
             start_state='configuring',
@@ -139,7 +157,7 @@ def generate_launch_description():
         condition=UnlessCondition(auto_activate_on_configure),
     )
 
-    ros_typedb_node_activate_event = RegisterEventHandler(
+    activate_event = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node=ros_typedb_node,
             start_state='configuring',
@@ -156,7 +174,7 @@ def generate_launch_description():
         condition=IfCondition(auto_activate_on_configure),
     )
 
-    ros_typedb_node_reactivate_event = RegisterEventHandler(
+    reactivate_event = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node=ros_typedb_node,
             start_state='deactivating',
@@ -174,18 +192,18 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        schema_path_arg,
-        data_path_arg,
         database_name_arg,
         address_arg,
         force_data_arg,
         force_database_arg,
+        reload_schema_arg,
         infer_arg,
+        query_timeout_s_arg,
         auto_activate_on_configure_arg,
         reactivate_on_deactivate_arg,
         ros_typedb_node,
-        ros_typedb_node_config_event,
-        ros_typedb_node_initial_activate_event,
-        ros_typedb_node_activate_event,
-        ros_typedb_node_reactivate_event,
+        configure_event,
+        initial_activate_event,
+        activate_event,
+        reactivate_event,
     ])

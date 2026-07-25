@@ -4,7 +4,7 @@ Reusable TypeDB 2 helper scripts for generating schema and rule diagrams.
 
 ## Overview
 
-This package currently provides two console scripts:
+This package provides two console scripts for TypeDB schema and rule visualization:
 
 - `typedb_schema_diagram`: generate a diagram for one schema file or a merged diagram for multiple schema files.
 - `typedb_rule_diagram`: generate a rule dependency/read-write diagram for one or more schema files that contain rules.
@@ -96,19 +96,3 @@ Useful options:
 - `--orientation`: `vertical` or `horizontal`
 - `--no-rule-dependencies`: suppress rule-to-rule dependency edges
 
-## Running Without ros2 run
-
-If needed, you can also invoke the modules directly from the workspace root:
-
-```bash
-PYTHONPATH=src/ros_typedb/ros_typedb_tools python3 -m ros_typedb_tools.typedb_schema_diagram --help
-PYTHONPATH=src/ros_typedb/ros_typedb_tools python3 -m ros_typedb_tools.typedb_rule_diagram --help
-```
-
-## Installed README Location
-
-After rebuilding the package, this README is installed to:
-
-```text
-install/ros_typedb_tools/share/ros_typedb_tools/README.md
-```

@@ -13,6 +13,8 @@
 # limitations under the License.
 """ros_typedb_interface - python interface to interact with typedb via ROS."""
 
+from functools import wraps
+import threading
 import traceback
 
 from typing import Any
@@ -65,6 +67,10 @@ _PARAM_TYPE_MAP = {
     'long_array': (ParameterType.PARAMETER_INTEGER_ARRAY, 'integer_array_value', 'long_array'),
     'double_array': (ParameterType.PARAMETER_DOUBLE_ARRAY, 'double_array_value', 'double_array'),
     'string_array': (ParameterType.PARAMETER_STRING_ARRAY, 'string_array_value', 'string_array'),
+    'datetime_array': (
+        ParameterType.PARAMETER_STRING_ARRAY,
+        'string_array_value',
+        'string_array'),
 }
 
 _TYPEDB_ROOT_TYPE_TO_QUERY_RESULT_TYPE = {
@@ -110,7 +116,33 @@ def convert_attribute_dict_to_ros_msg(
     attr_name: str,
     attribute_value: List[Dict[str, Any]] | Dict[str, Any]
 ) -> Attribute:
+    """
+    Convert one concrete TypeDB attribute fetch result to a ROS attribute.
 
+    ``attribute_value`` may be a single attribute dict or a homogeneous list of
+    attribute dicts. Homogeneous means every item has the same concrete
+    attribute label and value type. Wildcard fetch results such as
+    ``fetch $x: attribute;`` must be grouped by concrete attribute type before
+    calling this function.
+
+    Example single attribute shape from ``fetch $age;``::
+
+        {'value': 33,
+         'type': {'label': 'age',
+                  'root': 'attribute',
+                  'value_type': 'long'}}
+
+    Example homogeneous list shape from ``fetch $x: phone-number;``::
+
+        [{'value': '+1-202-555-0106',
+          'type': {'label': 'phone-number',
+                   'root': 'attribute',
+                   'value_type': 'string'}},
+         {'value': '+44-1632-960007',
+          'type': {'label': 'phone-number',
+                   'root': 'attribute',
+                   'value_type': 'string'}}]
+    """
     attr = Attribute()
     attr.variable_name = attr_name
 
@@ -126,9 +158,17 @@ def convert_attribute_dict_to_ros_msg(
 
         for value in attribute_value:
             current_type = value['type']
-            if current_type['value_type'] != value_type or current_type['label'] != attr_label:
+            if (
+                current_type['value_type'] != value_type or
+                current_type['label'] != attr_label
+            ):
                 raise ValueError(
-                    'Inconsistent types or labels in attribute list')
+                    f"""Inconsistent types or labels in attribute list:
+                    attribute name: {attr_name}
+                    attribute value: {attribute_value}
+                    current_type: {current_type}
+                    value type: {value_type}
+                    attribute label: {attr_label}""")
 
             value_list.append(value['value'])
 
@@ -146,53 +186,209 @@ def convert_attribute_dict_to_ros_msg(
     return attr
 
 
+def _attribute_type_key(
+    attribute_result: Dict[str, Any]
+) -> tuple[str, str]:
+    """Return the concrete attribute label and value type for grouping."""
+    attr_type = attribute_result['type']
+    return attr_type['label'], attr_type['value_type']
+
+
+def _group_wildcard_attribute_results(
+    attribute_results: List[Dict[str, Any]]
+) -> Dict[tuple[str, str], List[Dict[str, Any]]]:
+    """
+    Group ``fetch $x: attribute;`` results by concrete attribute type.
+
+    TypeDB places all wildcard-owned attributes under an ``attribute`` key, so
+    one list can contain ``age`` longs, ``nickname`` strings, datetimes, etc.
+    The ordinary attribute converter expects homogeneous lists, so this groups
+    the wildcard list into homogeneous lists keyed by ``(label, value_type)``.
+    """
+    grouped_attribute_values = {}
+    for attr_result in attribute_results:
+        attr_key = _attribute_type_key(attr_result)
+        grouped_attribute_values.setdefault(attr_key, []).append(attr_result)
+    return grouped_attribute_values
+
+
+def _iter_thing_attribute_groups(
+    thing_result: Dict[str, Any]
+):
+    """
+    Yield normalized ``(variable_name, attribute_result)`` pairs for a thing.
+
+    TypeDB fetch returns two different shapes for thing attributes:
+
+    * explicit fetches, e.g. ``fetch $x: email;``, are keyed by the concrete
+      attribute label (``email``) and already contain homogeneous lists;
+    * wildcard fetches, e.g. ``fetch $x: attribute;``, are keyed as
+      ``attribute`` and may contain mixed concrete labels and value types.
+
+    This iterator hides that difference from the ROS message converter.
+
+    Example explicit fetch shape::
+
+        {'type': {'label': 'person', 'root': 'entity'},
+         'email': [{'value': 'test@test.com',
+                    'type': {'label': 'email',
+                             'root': 'attribute',
+                             'value_type': 'string'}}]}
+
+    Example wildcard fetch shape::
+
+        {'type': {'label': 'person', 'root': 'entity'},
+         'attribute': [
+             {'value': 'test@test.com',
+              'type': {'label': 'email',
+                       'root': 'attribute',
+                       'value_type': 'string'}},
+             {'value': 33,
+              'type': {'label': 'age',
+                       'root': 'attribute',
+                       'value_type': 'long'}}]}
+    """
+    for attr_name, attr_result in thing_result.items():
+        if attr_name == 'type':
+            continue
+
+        if attr_name != 'attribute':
+            yield attr_name, attr_result
+            continue
+
+        # A wildcard attribute may still be represented as one concrete
+        # attribute dict. Normalize its variable name to the concrete label.
+        if isinstance(attr_result, dict):
+            attr_label, _ = _attribute_type_key(attr_result)
+            yield attr_label, attr_result
+            continue
+
+        # The common wildcard shape is a mixed list. Split it before conversion
+        # so each ROS Attribute contains only one concrete TypeDB attribute.
+        for attr_key, attr_group in _group_wildcard_attribute_results(
+                attr_result).items():
+            attr_label, _ = attr_key
+            yield attr_label, attr_group
+
+
+def convert_thing_attribute_dicts_to_ros_msgs(
+    attribute_values: Dict[str, Any]
+) -> List[Attribute]:
+    """
+    Convert TypeDB fetch thing attributes to ROS attributes.
+
+    This function accepts a full entity/relation fetch result dict, including
+    its ``type`` key. Attribute shape normalization happens in
+    ``_iter_thing_attribute_groups``; this function only maps normalized groups
+    into ROS messages.
+    """
+    return [
+        convert_attribute_dict_to_ros_msg(attr_name, attr_result)
+        for attr_name, attr_result in _iter_thing_attribute_groups(
+            attribute_values)
+    ]
+
+
+def _is_typedb_concept_fetch_result(values: Any) -> bool:
+    """Return true for fetch results that describe a TypeDB concept."""
+    return isinstance(values, dict) and 'type' in values
+
+
+def _is_subquery_fetch_result(values: Any) -> bool:
+    """Return true for fetch results that contain nested fetch results."""
+    return isinstance(values, list)
+
+
+def _concept_fetch_result_to_ros_msg(
+    variable_name: str,
+    values: Dict[str, Any],
+    result_index: int
+) -> QueryResult:
+    """
+    Convert an attribute/entity/relation fetch result to a QueryResult.
+
+    TypeDB fetch result dicts use a ``type.root`` field to distinguish
+    top-level attributes from things. Top-level attributes become
+    ``QueryResult.ATTRIBUTE``. Entities and relations become
+    ``QueryResult.THING`` with their owned attributes attached.
+    """
+    result_type_info = values['type']
+    result_type = result_type_info['root']
+    result_label = result_type_info['label']
+
+    query_result = QueryResult()
+    query_result.result_index = result_index
+    query_result.type = _TYPEDB_ROOT_TYPE_TO_QUERY_RESULT_TYPE[result_type]
+
+    if result_type == 'attribute':
+        query_result.attribute = convert_attribute_dict_to_ros_msg(
+            variable_name, values)
+        return query_result
+
+    thing = Thing()
+    thing.type = _TYPEDB_ROOT_TYPE_TO_THING_TYPE[result_type]
+    thing.variable_name = variable_name
+    thing.type_name = result_label
+    thing.attributes = convert_thing_attribute_dicts_to_ros_msgs(values)
+    query_result.thing = thing
+    return query_result
+
+
+def _subquery_fetch_result_to_ros_msg(
+    subquery_name: str,
+    nested_results: List[Dict[str, Any]],
+    result_index: int
+) -> tuple[QueryResult, List[QueryResult], int]:
+    """
+    Convert a nested fetch result and return its flattened children.
+
+    ROS result trees store subquery children in a flat ``results`` list.
+    ``children_index`` stores the index ranges for each nested match returned by
+    TypeDB. The returned integer is the next unused result index.
+    """
+    query_result = QueryResult()
+    query_result.result_index = result_index
+    query_result.type = QueryResult.SUB_QUERY
+    query_result.sub_query_name = subquery_name
+
+    next_index = result_index + 1
+    children_results = []
+    for value_dict in nested_results:
+        child_result_tree, child_last_index = fetch_result_to_ros_result_tree(
+            value_dict, next_index)
+        sub_tree_index_list = IndexList()
+        # The child tree uses a contiguous index range starting at next_index.
+        sub_tree_index_list.index = list(range(next_index, child_last_index))
+        next_index = child_last_index
+        query_result.children_index.append(sub_tree_index_list)
+        children_results.extend(child_result_tree.results)
+
+    return query_result, children_results, next_index
+
+
 def fetch_result_to_ros_result_tree(json_obj, start_index=0):
+    """
+    Convert one TypeDB fetch result dict to a flattened ROS result tree.
+
+    ``json_obj`` is one item from the TypeDB fetch response list. Each key is
+    either a fetched variable/thing name or a subquery name. Concept results are
+    appended directly; subquery results are appended with their descendants
+    flattened immediately after the subquery node.
+    """
     result_tree = ResultTree()
     index = start_index
 
     for key, values in json_obj.items():
-        query_result = QueryResult()
-        query_result.result_index = index
-        index += 1
-
-        if isinstance(values, dict) and 'type' in values:
-            result_type_info = values['type']
-            result_type = result_type_info['root']
-            result_label = result_type_info['label']
-
-            query_result.type = _TYPEDB_ROOT_TYPE_TO_QUERY_RESULT_TYPE[result_type]
-
-            if result_type == 'attribute':
-                attr = convert_attribute_dict_to_ros_msg(key, values)
-                query_result.attribute = attr
-            else:
-                thing = Thing()
-                thing.type = _TYPEDB_ROOT_TYPE_TO_THING_TYPE[result_type]
-                thing.variable_name = key
-                thing.type_name = result_label
-                thing.attributes = [
-                    convert_attribute_dict_to_ros_msg(attr_name, attr_result_list)
-                    for attr_name, attr_result_list in values.items()
-                    if attr_name != 'type'
-                ]
-                query_result.thing = thing
-
+        if _is_typedb_concept_fetch_result(values):
+            query_result = _concept_fetch_result_to_ros_msg(
+                key, values, index)
             result_tree.results.append(query_result)
-        elif isinstance(values, list):
-            query_result.type = QueryResult.SUB_QUERY
-            query_result.sub_query_name = key
+            index += 1
+            continue
 
-            children_results = []
-            for value_dict in values:
-                child_result_tree, child_last_index = fetch_result_to_ros_result_tree(
-                    value_dict, index)
-                sub_tree_index_list = IndexList()
-                sub_tree_index_list.index = list(
-                    range(index, child_last_index))
-                index = child_last_index
-                query_result.children_index.append(sub_tree_index_list)
-                children_results.extend(child_result_tree.results)
-
+        if _is_subquery_fetch_result(values):
+            query_result, children_results, index = (
+                _subquery_fetch_result_to_ros_msg(key, values, index))
             result_tree.results.append(query_result)
             result_tree.results.extend(children_results)
 
@@ -308,6 +504,20 @@ def query_result_to_ros_msg(
     return response
 
 
+def lifecycle_state_is_active(node):
+    """Return True when the lifecycle node is in the active state."""
+    return node._state_machine.current_state[1] == 'active'
+
+
+def when_lifecycle_active(func):
+    """Decorate a method to run only when its lifecycle node is active."""
+    @wraps(func)
+    def inner(self, *args, **kwargs):
+        if lifecycle_state_is_active(self):
+            return func(self, *args, **kwargs)
+    return inner
+
+
 class ROSTypeDBInterface(Node):
     """ROS lifecycle node to interact with typedb."""
 
@@ -318,8 +528,10 @@ class ROSTypeDBInterface(Node):
         self.declare_parameter('database_name', 'ros_typedb')
         self.declare_parameter('force_database', True)
         self.declare_parameter('force_data', True)
+        self.declare_parameter('reload_schema', True)
         self.declare_parameter('infer', True)
         self.declare_parameter('driver_timeout_s', 10.0)
+        self.declare_parameter('query_timeout_s', 0.0)
 
         self.default_schema_path = ''
         self.declare_parameter('schema_path', [''])
@@ -330,6 +542,27 @@ class ROSTypeDBInterface(Node):
         self.typedb_interface_class = TypeDBInterface
 
         self.query_cb_group = MutuallyExclusiveCallbackGroup()
+        self._service_callback_lock = threading.Lock()
+
+        self.query_service = self.create_service(
+            Query,
+            self.get_name() + '/query',
+            self.query_service_cb,
+            callback_group=self.query_cb_group)
+
+        self.delete_db_service = self.create_service(
+            Empty,
+            self.get_name() + '/delete_database',
+            self.delete_db_cb,
+            callback_group=self.query_cb_group)
+
+    def _get_service_callback_lock(self):
+        """Return the lock used to serialize service callbacks with cleanup."""
+        lock = getattr(self, '_service_callback_lock', None)
+        if lock is None:
+            lock = threading.Lock()
+            self._service_callback_lock = lock
+        return lock
 
     def init_typedb_interface(
             self,
@@ -339,9 +572,11 @@ class ROSTypeDBInterface(Node):
             data_path: Optional[list[str] | str] = None,
             force_database: Optional[bool] = False,
             force_data: Optional[bool] = False,
+            reload_schema: Optional[bool] = True,
             infer: Optional[bool] = False,
             sort_fetch_results: Optional[bool] = False,
-            driver_timeout_s: Optional[float] = 10.0) -> None:
+            driver_timeout_s: Optional[float] = 10.0,
+            query_timeout_s: Optional[float] = None) -> None:
         """
         Initialize self.typedb_interface.
 
@@ -351,11 +586,15 @@ class ROSTypeDBInterface(Node):
         :param data_path: list with paths to data files (.tql).
         :param force_database: if database should override an existing database
         :param force_data: if the database data should be overriden.
+        :param reload_schema: if schema files should be reapplied when the
+            database already exists.
         :param infer: if inference engine should be used.
         :param sort_fetch_results: if fetch query results should be
             recursively sorted.
         :param driver_timeout_s: seconds to wait for driver connection before
             timing out.
+        :param query_timeout_s: default per-query timeout in seconds.
+            None means no limit.
         """
         self.typedb_interface = self.typedb_interface_class(
             address,
@@ -366,7 +605,9 @@ class ROSTypeDBInterface(Node):
             force_data,
             infer,
             sort_fetch_results,
-            driver_timeout_s
+            driver_timeout_s,
+            query_timeout_s=query_timeout_s,
+            reload_schema=reload_schema
         )
 
         self.typedb_interface.insert_data_event = self.insert_data_event
@@ -381,6 +622,7 @@ class ROSTypeDBInterface(Node):
         if typedb_interface is not None:
             self.typedb_interface = None
 
+    @when_lifecycle_active
     def publish_data_event(self, event_type: str) -> None:
         """
         Publish message in the `/event` topic.
@@ -415,10 +657,13 @@ class ROSTypeDBInterface(Node):
                 data_path=self.get_parameter('data_path').value,
                 force_database=self.get_parameter('force_database').value,
                 force_data=self.get_parameter('force_data').value,
+                reload_schema=self.get_parameter('reload_schema').value,
                 infer=self.get_parameter('infer').value,
                 sort_fetch_results=(
                     self.get_parameter('sort_fetch_results').value),
-                driver_timeout_s=self.get_parameter('driver_timeout_s').value
+                driver_timeout_s=self.get_parameter('driver_timeout_s').value,
+                query_timeout_s=(
+                    self.get_parameter('query_timeout_s').value or None)
             )
 
             self.event_pub = self.create_lifecycle_publisher(
@@ -426,18 +671,6 @@ class ROSTypeDBInterface(Node):
                 self.get_name() + '/events',
                 10,
                 callback_group=ReentrantCallbackGroup())
-
-            self.query_service = self.create_service(
-                Query,
-                self.get_name() + '/query',
-                self.query_service_cb,
-                callback_group=self.query_cb_group)
-
-            self.delete_db_service = self.create_service(
-                Empty,
-                self.get_name() + '/delete_database',
-                self.delete_db_cb,
-                callback_group=self.query_cb_group)
         except Exception as exc:
             try:
                 self.close_typedb_interface()
@@ -460,17 +693,13 @@ class ROSTypeDBInterface(Node):
 
         :return: transition result
         """
-        for service_name in ('query_service', 'delete_db_service'):
-            service = getattr(self, service_name, None)
-            if service is not None:
-                self.destroy_service(service)
-                delattr(self, service_name)
+        service_callback_lock = self._get_service_callback_lock()
+        with service_callback_lock:
+            if getattr(self, 'event_pub', None) is not None:
+                self.destroy_publisher(self.event_pub)
+                del self.event_pub
 
-        if getattr(self, 'event_pub', None) is not None:
-            self.destroy_publisher(self.event_pub)
-            del self.event_pub
-
-        self.close_typedb_interface()
+            self.close_typedb_interface()
 
         self.get_logger().info(self.get_name() + ' :on_cleanup() is called.')
         return TransitionCallbackReturn.SUCCESS
@@ -489,35 +718,59 @@ class ROSTypeDBInterface(Node):
         :param response: query result
         :return: query result
         """
-        if req.query_type == Query.Request.INSERT:
-            query_func = self.typedb_interface.insert_database
-        elif req.query_type == Query.Request.DELETE:
-            query_func = self.typedb_interface.delete_from_database
-        elif req.query_type == Query.Request.FETCH:
-            query_func = self.typedb_interface.fetch_database
-        elif req.query_type == Query.Request.GET:
-            query_func = self.typedb_interface.get_database
-        elif req.query_type == Query.Request.GET_AGGREGATE:
-            query_func = self.typedb_interface.get_aggregate_database
-        elif req.query_type == Query.Request.UPDATE:
-            query_func = self.typedb_interface.update_database
-        elif req.query_type == Query.Request.DEFINE:
-            query_func = self.typedb_interface.define_database
-        else:
-            self.get_logger().warning(
-                'Query type {} not recognized'.format(req.query_type))
-            response.success = False
-            response.error_message = f'Unknown query type: {req.query_type}'
-            return response
+        service_callback_lock = self._get_service_callback_lock()
+        with service_callback_lock:
+            if not lifecycle_state_is_active(self):
+                response.success = False
+                response.error_message = 'Node is not active'
+                return response
+            if getattr(self, 'typedb_interface', None) is None:
+                response.success = False
+                response.error_message = 'Node is not configured'
+                return response
+            if req.query_type == Query.Request.INSERT:
+                query_func = self.typedb_interface.insert_database
+            elif req.query_type == Query.Request.DELETE:
+                query_func = self.typedb_interface.delete_from_database
+            elif req.query_type == Query.Request.FETCH:
+                query_func = self.typedb_interface.fetch_database
+            elif req.query_type == Query.Request.GET:
+                query_func = self.typedb_interface.get_database
+            elif req.query_type == Query.Request.GET_AGGREGATE:
+                query_func = self.typedb_interface.get_aggregate_database
+            elif req.query_type == Query.Request.UPDATE:
+                query_func = self.typedb_interface.update_database
+            elif req.query_type == Query.Request.DEFINE:
+                query_func = self.typedb_interface.define_database
+            else:
+                self.get_logger().warning(
+                    'Query type {} not recognized'.format(req.query_type))
+                response.success = False
+                response.error_message = (
+                    f'Unknown query type: {req.query_type}')
+                return response
 
-        query_result = query_func(req.query)
-        response = query_result_to_ros_msg(req.query_type, query_result)
-        if query_result is None:
-            response.success = False
-            response.error_message = self.typedb_interface.last_error
-        else:
-            response.success = True
-        return response
+            per_call_timeout = req.timeout_s if req.timeout_s > 0 else None
+            try:
+                query_result = query_func(req.query, timeout=per_call_timeout)
+                response = query_result_to_ros_msg(
+                    req.query_type, query_result)
+                if query_result is None:
+                    response.success = False
+                    response.error_message = self.typedb_interface.last_error
+                else:
+                    response.success = True
+                return response
+            except Exception as exc:
+                try:
+                    self.get_logger().error(
+                        'Query service failed: {}\n{}'.format(
+                            exc, traceback.format_exc()))
+                except Exception:
+                    pass
+                response.success = False
+                response.error_message = str(exc)
+                return response
 
     def delete_db_cb(
         self,
@@ -529,5 +782,11 @@ class ROSTypeDBInterface(Node):
 
         Delete the dabase.
         """
-        self.typedb_interface.delete_database()
+        service_callback_lock = self._get_service_callback_lock()
+        with service_callback_lock:
+            if not lifecycle_state_is_active(self):
+                return response
+            if getattr(self, 'typedb_interface', None) is None:
+                return response
+            self.typedb_interface.delete_database()
         return response

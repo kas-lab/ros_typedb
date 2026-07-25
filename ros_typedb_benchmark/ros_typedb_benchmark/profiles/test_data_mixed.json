@@ -1,0 +1,33 @@
+{
+  "description": "Mixed read/write profile for ros_typedb/test/typedb_test_data/schema.tql.",
+  "cleanup_query": "match $robot isa robot, has full-name \"{key}\"; delete $robot isa robot;",
+  "queries": [
+    {
+      "query": "match $x isa entity; get $x;",
+      "query_type": "get"
+    },
+    {
+      "query": "insert $robot isa robot, has full-name \"{key}\", has robot-type \"stress\", has age {cycle}, has alive true;",
+      "query_type": "insert",
+      "tracks_cleanup": true
+    },
+    {
+      "query": "match $x isa relation; get $x;",
+      "query_type": "get"
+    },
+    {
+      "query": "match $robot isa robot, has full-name \"{key}\", has age $age; delete $robot has $age; insert $robot has age {cycle_plus_one};",
+      "query_type": "update",
+      "tracks_cleanup": true
+    },
+    {
+      "query": "match $x isa attribute; get $x;",
+      "query_type": "get"
+    },
+    {
+      "query": "match $robot isa robot, has full-name \"{key}\"; delete $robot isa robot;",
+      "query_type": "delete",
+      "clears_cleanup": true
+    }
+  ]
+}

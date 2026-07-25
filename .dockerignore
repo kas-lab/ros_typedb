@@ -4,6 +4,13 @@ docs-self/
 .vscode
 docs/source/_autosummary/
 docs/source/generated/
+.claude
+.serena
+**/.pytest_cache/
+docs-agents/
+AGENTS.md
+CLAUDE.md
+.gitignore
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

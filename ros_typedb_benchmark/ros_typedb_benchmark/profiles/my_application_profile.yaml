@@ -1,0 +1,74 @@
+# Sample external stress profile for ros_typedb_benchmark.
+#
+# Copy this file, fill in the sections relevant to your application, and
+# remove the rest.  Pass it with:
+#
+#   ros_typedb_stress_experiment --profile-file /path/to/my_profile.yaml
+#
+# All paths (schema_path, data_path) are resolved relative to THIS file.
+
+description: "My application stress profile"
+
+# ---------------------------------------------------------------------------
+# Setup — runs once BEFORE the load experiment starts
+# ---------------------------------------------------------------------------
+
+# Optional: path to a TypeDB schema TQL file sent as a 'define' query.
+# schema_path: schema/my_schema.tql
+
+# Optional: path to a TypeDB data TQL file sent as an 'insert' query
+# after the schema (if given).
+# data_path: data/my_data.tql
+
+# Optional: arbitrary setup queries executed after schema_path and data_path.
+# Useful when setup logic is more complex than a single file.
+# setup_queries:
+#   - query: "insert $x isa my-entity, has name 'seed';"
+#     query_type: insert
+
+# ---------------------------------------------------------------------------
+# Teardown — runs once AFTER the final invariant checks
+# ---------------------------------------------------------------------------
+
+# teardown_queries:
+#   - query: "match $x isa my-entity; delete $x isa my-entity;"
+#     query_type: delete
+
+# ---------------------------------------------------------------------------
+# Read queries — used in --mode read (the default)
+# ---------------------------------------------------------------------------
+
+# read_queries:
+#   - query: "match $x isa my-entity; get $x;"
+#     query_type: get
+#   - query: "match $x isa my-relation; get $x;"
+#     query_type: get
+
+# ---------------------------------------------------------------------------
+# Mixed mode — used in --mode mixed
+# Conflicts with --mixed-profile (omit that flag or set it to 'auto')
+# ---------------------------------------------------------------------------
+
+# mixed:
+#   # Key template used to generate and clean up unique entities per run.
+#   # {key} is replaced with a UUID-derived string each iteration.
+#   cleanup_query: >
+#     match $x isa my-entity, has name "{key}";
+#     delete $x isa my-entity;
+#   queries:
+#     - query: "insert $x isa my-entity, has name \"{key}\";"
+#       query_type: insert
+#       tracks_cleanup: true   # this query creates the {key} entity
+#     - query: "match $x isa my-entity; get $x;"
+#       query_type: get
+
+# ---------------------------------------------------------------------------
+# Invariants — run periodically and at experiment end
+# Conflicts with --invariant-profile (omit that flag or set it to 'none')
+# ---------------------------------------------------------------------------
+
+# invariants:
+#   - name: entity_count
+#     query: "match $x isa my-entity; get $x; count;"
+#     query_type: get_aggregate
+#     expected_value: 1

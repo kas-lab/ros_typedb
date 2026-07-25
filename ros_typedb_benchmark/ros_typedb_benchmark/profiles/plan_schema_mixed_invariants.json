@@ -1,0 +1,41 @@
+{
+  "description": "Mixed-mode invariants for ros_typedb_examples/data/plan_schema.tql and plan_data.tql.",
+  "invariants": [
+    {
+      "name": "plan-count",
+      "query": "match $p isa Plan; get $p; count;",
+      "query_type": "get_aggregate",
+      "expected_value": 2
+    },
+    {
+      "name": "proposition-count",
+      "query": "match $p isa Proposition; get $p; count;",
+      "query_type": "get_aggregate",
+      "expected_value": 7
+    },
+    {
+      "name": "has-action-count",
+      "query": "match $r isa has_action; get $r; count;",
+      "query_type": "get_aggregate",
+      "expected_value": 6
+    },
+    {
+      "name": "action-preconditions-count",
+      "query": "match $r isa action_preconditions; get $r; count;",
+      "query_type": "get_aggregate",
+      "expected_value": 4
+    },
+    {
+      "name": "action-effects-count",
+      "query": "match $r isa action_effects; get $r; count;",
+      "query_type": "get_aggregate",
+      "expected_value": 4
+    },
+    {
+      "name": "collect-water-sample-sentinel-count",
+      "query": "match $a isa Action, has action_name \"collect-water-sample\"; get $a; count;",
+      "query_type": "get_aggregate",
+      "expected_value": 1
+    }
+  ]
+}

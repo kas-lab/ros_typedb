@@ -1,0 +1,33 @@
+{
+  "description": "Mixed read/write profile for ros_typedb_examples/data/plan_schema.tql.",
+  "cleanup_query": "match $action isa Action, has action_name \"{key}\"; delete $action isa Action;",
+  "queries": [
+    {
+      "query": "match $x isa entity; get $x;",
+      "query_type": "get"
+    },
+    {
+      "query": "insert $action isa Action, has action_name \"{key}\", has action_duration {cycle_float}, has result true;",
+      "query_type": "insert",
+      "tracks_cleanup": true
+    },
+    {
+      "query": "match $x isa relation; get $x;",
+      "query_type": "get"
+    },
+    {
+      "query": "match $action isa Action, has action_name \"{key}\", has action_duration $duration; delete $action has $duration; insert $action has action_duration {cycle_plus_one_float};",
+      "query_type": "update",
+      "tracks_cleanup": true
+    },
+    {
+      "query": "match $x isa attribute; get $x;",
+      "query_type": "get"
+    },
+    {
+      "query": "match $action isa Action, has action_name \"{key}\"; delete $action isa Action;",
+      "query_type": "delete",
+      "clears_cleanup": true
+    }
+  ]
+}

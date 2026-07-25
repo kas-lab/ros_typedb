@@ -5,7 +5,7 @@
 This package provides a basic generic integration between ROS and [typeDB](https://typedb.com/).
 The package was designed in a way to enable users to easily extend it to fulfill their needs, the package design is explained in the [Package Design](#package-design) section.
 
-This package was tested in Ubuntu 22.04 with ROS Humble and typedb v2.28.3.
+This package was tested in Ubuntu 22.04 with ROS Humble and typedb v2.29.1.
 
 ## Install
 
@@ -17,7 +17,7 @@ Follow the [official instructions](https://docs.ros.org/en/humble/Installation/U
 
 #### Install TypeDB
 
-**Note:** This package has been tested with TypeDB version `2.28.3` and the typedb python driver version `2.28.0`.
+**Note:** This package has been tested with TypeDB version `2.29.1` and the typedb python driver version `2.29.7`.
 
 Install typedb: follow the[official instructions](https://typedb.com/docs/typedb/2.x/installation.html).
 
@@ -133,6 +133,8 @@ ros2 run ros_typedb ros_typedb_interface -p schema_path:=<schema_path> -p data_p
 
 **Note:** Make sure to replace <schema_path> and <data_path> with the real path for your schema and data file
 **Note 2:** Remember that ros_typedb_interface is a [LifeCycle](https://design.ros2.org/articles/node_lifecycle.html) node, so you need to change its state to active before using it. Check the [lifecycle tutorial](https://github.com/ros2/demos/tree/rolling/lifecycle).
+
+For stress testing, fault injection, and correctness invariant experiments, see [`ros_typedb_benchmark/README.md`](ros_typedb_benchmark/README.md).
 
 ## Extend the package
 
