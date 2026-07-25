@@ -6,6 +6,7 @@ import subprocess
 from types import SimpleNamespace
 
 import pytest
+import yaml
 from rcl_interfaces.msg import ParameterType
 from rcl_interfaces.msg import ParameterValue
 
@@ -28,6 +29,7 @@ from ros_typedb_benchmark.stress_config import (
     InvariantRecord,
     InvariantSpec,
     QUERY_TYPE_BY_NAME,
+    QuerySpec,
     RequestRecord,
     ResolvedStressConfig,
     StressExperimentResult,
@@ -148,6 +150,9 @@ class _DoneFuture:
 
     def result(self):
         return self._result
+
+    def cancel(self):
+        pass
 
 
 class _CapturingClient:
@@ -1558,3 +1563,511 @@ def test_main_fails_final_invariant_failure_after_recovered_fault(monkeypatch):
     monkeypatch.setattr(stress_cli, 'run_experiment', lambda args: result)
 
     assert stress_cli.main([]) == 1
+
+
+# ---------------------------------------------------------------------------
+# Task 1: stress_profile.py tests
+# ---------------------------------------------------------------------------
+
+def _write_yaml(tmp_path, data, filename='profile.yaml'):
+    """Write data as YAML to a temp file and return the Path."""
+    p = Path(tmp_path) / filename
+    p.write_text(yaml.dump(data), encoding='utf-8')
+    return p
+
+
+def _write_json_file(tmp_path, data, filename='profile.json'):
+    """Write data as JSON to a temp file and return the Path."""
+    p = Path(tmp_path) / filename
+    p.write_text(json.dumps(data), encoding='utf-8')
+    return p
+
+
+def test_load_stress_profile_empty_yaml(tmp_path):
+    """Minimal profile with no sections loads without error."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    p = _write_yaml(tmp_path, {'description': 'test'})
+    profile = load_stress_profile(p)
+    assert profile.description == 'test'
+    assert profile.setup_specs == []
+    assert profile.teardown_specs == []
+    assert profile.read_query_specs is None
+    assert profile.mixed_profile is None
+    assert profile.invariant_specs is None
+
+
+def test_load_stress_profile_json_extension(tmp_path):
+    """JSON files are loaded when extension is .json."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    p = _write_json_file(tmp_path, {'description': 'json-test'})
+    profile = load_stress_profile(p)
+    assert profile.description == 'json-test'
+
+
+def test_load_stress_profile_setup_queries(tmp_path):
+    """setup_queries become QuerySpec list."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    data = {
+        'setup_queries': [
+            {'query': 'define person sub entity;', 'query_type': 'define'},
+        ]
+    }
+    p = _write_yaml(tmp_path, data)
+    profile = load_stress_profile(p)
+    assert len(profile.setup_specs) == 1
+    assert profile.setup_specs[0].query == 'define person sub entity;'
+    assert profile.setup_specs[0].query_type == 'define'
+    assert profile.setup_specs[0].cleanup_key is None
+
+
+def test_load_stress_profile_teardown_queries(tmp_path):
+    """teardown_queries become QuerySpec list."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    data = {
+        'teardown_queries': [
+            {
+                'query': 'match $x isa person; delete $x isa person;',
+                'query_type': 'delete',
+            },
+        ]
+    }
+    p = _write_yaml(tmp_path, data)
+    profile = load_stress_profile(p)
+    assert len(profile.teardown_specs) == 1
+    assert profile.teardown_specs[0].query_type == 'delete'
+
+
+def test_load_stress_profile_schema_path(tmp_path):
+    """schema_path in profile is read and placed as first setup_spec."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    schema_file = Path(tmp_path) / 'schema.tql'
+    schema_file.write_text('define robot sub entity;', encoding='utf-8')
+    data = {'schema_path': str(schema_file)}
+    p = _write_yaml(tmp_path, data)
+    profile = load_stress_profile(p)
+    assert len(profile.setup_specs) == 1
+    assert 'define robot sub entity;' in profile.setup_specs[0].query
+    assert profile.setup_specs[0].query_type == 'define'
+
+
+def test_load_stress_profile_data_path(tmp_path):
+    """data_path in profile is read and placed as a setup_spec."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    data_file = Path(tmp_path) / 'data.tql'
+    data_file.write_text('insert $r isa robot;', encoding='utf-8')
+    data = {'data_path': str(data_file)}
+    p = _write_yaml(tmp_path, data)
+    profile = load_stress_profile(p)
+    assert len(profile.setup_specs) == 1
+    assert profile.setup_specs[0].query_type == 'insert'
+
+
+def test_load_stress_profile_schema_before_data(tmp_path):
+    """schema_path setup spec appears before data_path setup spec."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    schema_file = Path(tmp_path) / 'schema.tql'
+    schema_file.write_text('define robot sub entity;', encoding='utf-8')
+    data_file = Path(tmp_path) / 'data.tql'
+    data_file.write_text('insert $r isa robot;', encoding='utf-8')
+    data = {'schema_path': str(schema_file), 'data_path': str(data_file)}
+    p = _write_yaml(tmp_path, data)
+    profile = load_stress_profile(p)
+    assert len(profile.setup_specs) == 2
+    assert profile.setup_specs[0].query_type == 'define'
+    assert profile.setup_specs[1].query_type == 'insert'
+
+
+def test_load_stress_profile_read_queries(tmp_path):
+    """read_queries populate read_query_specs."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    data = {
+        'read_queries': [
+            {'query': 'match $x isa entity; get $x;', 'query_type': 'get'},
+        ]
+    }
+    p = _write_yaml(tmp_path, data)
+    profile = load_stress_profile(p)
+    assert profile.read_query_specs is not None
+    assert len(profile.read_query_specs) == 1
+    assert profile.read_query_specs[0].query_type == 'get'
+
+
+def test_load_stress_profile_invariants(tmp_path):
+    """invariants section populates invariant_specs."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    data = {
+        'invariants': [
+            {
+                'name': 'entity-count',
+                'query': 'match $x isa entity; get $x; count;',
+                'query_type': 'get_aggregate',
+                'expected_value': 5,
+            }
+        ]
+    }
+    p = _write_yaml(tmp_path, data)
+    profile = load_stress_profile(p)
+    assert profile.invariant_specs is not None
+    assert len(profile.invariant_specs) == 1
+    assert profile.invariant_specs[0].name == 'entity-count'
+    assert profile.invariant_specs[0].expected_value == 5
+
+
+def test_load_stress_profile_mixed(tmp_path):
+    """mixed section populates mixed_profile."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    data = {
+        'mixed': {
+            'cleanup_query': (
+                'match $r isa robot, has name "{key}";'
+                ' delete $r isa robot;'
+            ),
+            'queries': [
+                {
+                    'query': 'insert $r isa robot, has name "{key}";',
+                    'query_type': 'insert',
+                    'tracks_cleanup': True,
+                },
+                {
+                    'query': 'match $r isa robot; get $r;',
+                    'query_type': 'get',
+                },
+            ],
+        }
+    }
+    p = _write_yaml(tmp_path, data)
+    profile = load_stress_profile(p)
+    assert profile.mixed_profile is not None
+    assert len(profile.mixed_profile.templates) == 2
+    assert profile.mixed_profile.templates[0].tracks_cleanup is True
+    assert profile.mixed_profile.cleanup_query.startswith('match')
+
+
+def test_load_stress_profile_invalid_query_type(tmp_path):
+    """Unknown query_type in setup_queries raises ValueError."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    data = {
+        'setup_queries': [
+            {'query': 'define x sub entity;', 'query_type': 'bogus'}
+        ]
+    }
+    p = _write_yaml(tmp_path, data)
+    with pytest.raises(ValueError, match='unsupported'):
+        load_stress_profile(p)
+
+
+def test_load_stress_profile_missing_file():
+    """Missing profile file raises FileNotFoundError."""
+    from ros_typedb_benchmark.stress_profile import load_stress_profile
+    with pytest.raises(FileNotFoundError):
+        load_stress_profile(Path('/nonexistent/profile.yaml'))
+
+
+# ---------------------------------------------------------------------------
+# Task 2: ResolvedStressConfig fields + CLI args tests
+# ---------------------------------------------------------------------------
+
+def test_resolved_stress_config_has_setup_and_teardown_fields():
+    """ResolvedStressConfig accepts setup_specs and teardown_specs."""
+    spec = QuerySpec(query='define x sub entity;', query_type='define')
+    config = ResolvedStressConfig(
+        query_specs=[],
+        invariant_specs=[],
+        mixed_profile=None,
+        mixed_profile_name=None,
+        invariant_profile_name='none',
+        max_in_flight=1,
+        debug_events_output=None,
+        fault='none',
+        fault_at_s=None,
+        fault_recovery_timeout_s=30.0,
+        setup_specs=[spec],
+        teardown_specs=[spec],
+    )
+    assert len(config.setup_specs) == 1
+    assert len(config.teardown_specs) == 1
+
+
+def test_resolved_stress_config_defaults_empty_setup_teardown():
+    """setup_specs and teardown_specs default to empty lists."""
+    config = ResolvedStressConfig(
+        query_specs=[],
+        invariant_specs=[],
+        mixed_profile=None,
+        mixed_profile_name=None,
+        invariant_profile_name='none',
+        max_in_flight=1,
+        debug_events_output=None,
+        fault='none',
+        fault_at_s=None,
+        fault_recovery_timeout_s=30.0,
+    )
+    assert config.setup_specs == []
+    assert config.teardown_specs == []
+
+
+def test_cli_profile_file_arg():
+    """--profile-file argument is accepted by the argument parser."""
+    parser = build_argument_parser()
+    args = parser.parse_args(['--profile-file', '/tmp/profile.yaml'])
+    assert args.profile_file == '/tmp/profile.yaml'
+
+
+def test_cli_schema_path_arg():
+    """--schema-path argument is accepted by the argument parser."""
+    parser = build_argument_parser()
+    args = parser.parse_args(['--schema-path', '/tmp/schema.tql'])
+    assert args.schema_path == '/tmp/schema.tql'
+
+
+def test_cli_data_path_arg():
+    """--data-path argument is accepted by the argument parser."""
+    parser = build_argument_parser()
+    args = parser.parse_args(['--data-path', '/tmp/data.tql'])
+    assert args.data_path == '/tmp/data.tql'
+
+
+# ---------------------------------------------------------------------------
+# Task 3: stress_resolution.py tests
+# ---------------------------------------------------------------------------
+
+def _base_args(**overrides):
+    """Return a minimal valid Namespace for resolve_stress_config."""
+    defaults = dict(
+        service_name='/ros_typedb_interface/query',
+        query=None,
+        query_type=None,
+        requests=1,
+        clients=1,
+        duration_s=None,
+        timeout_s=10.0,
+        wait_service_timeout_s=10.0,
+        request_gap_s=0.0,
+        max_in_flight=None,
+        executor='global',
+        executor_threads=2,
+        mode='read',
+        mixed_profile='auto',
+        invariant_profile='none',
+        invariant_period_s=10.0,
+        output=None,
+        timeout_output=None,
+        debug_events_output=None,
+        fail_on_failure=False,
+        fault='none',
+        fault_at_s=None,
+        fault_recovery_timeout_s=30.0,
+        delete_database_service_name=None,
+        typedb_container=None,
+        typedb_stop_command='pkill -f "typedb/core/server"',
+        typedb_start_command='typedb server',
+        typedb_restart_delay_s=2.0,
+        fault_command_timeout_s=30.0,
+        lifecycle_change_state_service_name=None,
+        lifecycle_get_state_service_name=None,
+        lifecycle_reactivate=True,
+        lifecycle_transition_timeout_s=10.0,
+        profile_file=None,
+        schema_path=None,
+        data_path=None,
+    )
+    defaults.update(overrides)
+    return SimpleNamespace(**defaults)
+
+
+def test_resolve_no_profile_file_unchanged(tmp_path):
+    """resolve_stress_config without --profile-file behaves as before."""
+    args = _base_args()
+    config = resolve_stress_config(args)
+    assert config.setup_specs == []
+    assert config.teardown_specs == []
+
+
+def test_resolve_profile_file_invariants(tmp_path):
+    """--profile-file with invariants populates invariant_specs."""
+    data = {
+        'invariants': [
+            {
+                'name': 'count',
+                'query': 'match $x isa entity; get $x; count;',
+                'query_type': 'get_aggregate',
+                'expected_value': 0,
+            }
+        ]
+    }
+    p = _write_yaml(tmp_path, data)
+    args = _base_args(profile_file=str(p))
+    config = resolve_stress_config(args)
+    assert len(config.invariant_specs) == 1
+    assert config.invariant_specs[0].name == 'count'
+
+
+def test_resolve_profile_file_setup_and_teardown(tmp_path):
+    """--profile-file setup/teardown specs propagate to config."""
+    data = {
+        'setup_queries': [
+            {'query': 'define x sub entity;', 'query_type': 'define'}
+        ],
+        'teardown_queries': [
+            {
+                'query': 'match $x isa x; delete $x isa x;',
+                'query_type': 'delete',
+            }
+        ],
+    }
+    p = _write_yaml(tmp_path, data)
+    args = _base_args(profile_file=str(p))
+    config = resolve_stress_config(args)
+    assert len(config.setup_specs) == 1
+    assert len(config.teardown_specs) == 1
+
+
+def test_resolve_schema_path_becomes_setup_spec(tmp_path):
+    """--schema-path creates a define setup_spec."""
+    schema_file = Path(tmp_path) / 'schema.tql'
+    schema_file.write_text('define robot sub entity;', encoding='utf-8')
+    args = _base_args(schema_path=str(schema_file))
+    config = resolve_stress_config(args)
+    assert len(config.setup_specs) == 1
+    assert config.setup_specs[0].query_type == 'define'
+
+
+def test_resolve_data_path_becomes_setup_spec(tmp_path):
+    """--data-path creates an insert setup_spec."""
+    data_file = Path(tmp_path) / 'data.tql'
+    data_file.write_text('insert $r isa robot;', encoding='utf-8')
+    args = _base_args(data_path=str(data_file))
+    config = resolve_stress_config(args)
+    assert len(config.setup_specs) == 1
+    assert config.setup_specs[0].query_type == 'insert'
+
+
+def test_resolve_schema_and_data_path_order(tmp_path):
+    """schema_path spec precedes data_path spec in setup_specs."""
+    schema_file = Path(tmp_path) / 'schema.tql'
+    schema_file.write_text('define robot sub entity;', encoding='utf-8')
+    data_file = Path(tmp_path) / 'data.tql'
+    data_file.write_text('insert $r isa robot;', encoding='utf-8')
+    args = _base_args(
+        schema_path=str(schema_file), data_path=str(data_file)
+    )
+    config = resolve_stress_config(args)
+    assert len(config.setup_specs) == 2
+    assert config.setup_specs[0].query_type == 'define'
+    assert config.setup_specs[1].query_type == 'insert'
+
+
+def test_resolve_profile_file_conflicts_with_invariant_profile(tmp_path):
+    """profile-file with invariants + --invariant-profile raises ValueError."""
+    data = {
+        'invariants': [
+            {
+                'name': 'count',
+                'query': 'match $x isa entity; get $x; count;',
+                'query_type': 'get_aggregate',
+                'expected_value': 0,
+            }
+        ]
+    }
+    p = _write_yaml(tmp_path, data)
+    args = _base_args(profile_file=str(p), invariant_profile='test-data')
+    with pytest.raises(ValueError, match='--invariant-profile'):
+        resolve_stress_config(args)
+
+
+def test_resolve_profile_file_conflicts_with_mixed_profile(tmp_path):
+    """profile-file with mixed section + explicit --mixed-profile raises ValueError."""
+    data = {
+        'mixed': {
+            'cleanup_query': (
+                'match $r isa robot, has name "{key}";'
+                ' delete $r isa robot;'
+            ),
+            'queries': [
+                {
+                    'query': 'insert $r isa robot, has name "{key}";',
+                    'query_type': 'insert',
+                    'tracks_cleanup': True,
+                },
+            ],
+        }
+    }
+    p = _write_yaml(tmp_path, data)
+    args = _base_args(
+        profile_file=str(p), mode='mixed', mixed_profile='test-data'
+    )
+    with pytest.raises(ValueError, match='--mixed-profile'):
+        resolve_stress_config(args)
+
+
+# ---------------------------------------------------------------------------
+# Task 4: _run_oneshot_query tests
+# ---------------------------------------------------------------------------
+
+def test_run_oneshot_query_calls_service(monkeypatch):
+    """_run_oneshot_query sends the query to the client and records success."""
+    import ros_typedb_benchmark.stress_runner as runner_mod
+    from ros_typedb_benchmark.stress_runner import _run_oneshot_query
+
+    monkeypatch.setattr(runner_mod, '_spin_once', lambda node, executor: None)
+
+    success_response = SimpleNamespace(
+        success=True, error_message='', results=[]
+    )
+    future = _DoneFuture(result=success_response)
+    client = _CapturingClient(future)
+    state = _run_state()
+
+    with DebugEventWriter(None) as debug_events:
+        _run_oneshot_query(
+            node=None,
+            executor=None,
+            client=client,
+            state=state,
+            query_spec=QuerySpec(
+                query='define x sub entity;', query_type='define'
+            ),
+            timeout_s=5.0,
+            phase='setup',
+            debug_events=debug_events,
+        )
+
+    assert client.request is not None
+    assert state.next_index == 1
+    assert len(state.records) == 1
+    assert state.records[0].success is True
+
+
+def test_run_oneshot_query_timeout_records_failure(monkeypatch):
+    """_run_oneshot_query records a timeout when future does not complete."""
+    import ros_typedb_benchmark.stress_runner as runner_mod
+    from ros_typedb_benchmark.stress_runner import _run_oneshot_query
+
+    def fake_spin_until(future, node, executor, timeout_s, started_at_s):
+        return True, started_at_s + timeout_s
+
+    monkeypatch.setattr(
+        runner_mod, '_spin_until_future_done', fake_spin_until
+    )
+    monkeypatch.setattr(runner_mod, '_spin_once', lambda node, executor: None)
+
+    future = _DoneFuture()
+    client = _CapturingClient(future)
+    state = _run_state()
+
+    with DebugEventWriter(None) as debug_events:
+        _run_oneshot_query(
+            node=None,
+            executor=None,
+            client=client,
+            state=state,
+            query_spec=QuerySpec(
+                query='define x sub entity;', query_type='define'
+            ),
+            timeout_s=1.0,
+            phase='setup',
+            debug_events=debug_events,
+        )
+
+    assert len(state.records) == 1
+    assert state.records[0].timed_out is True

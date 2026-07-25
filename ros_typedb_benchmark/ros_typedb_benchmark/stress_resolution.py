@@ -27,6 +27,8 @@ from ros_typedb_benchmark.stress_config import ResolvedStressConfig
 from ros_typedb_benchmark.stress_config import validate_experiment_args
 from ros_typedb_benchmark.stress_mixed import load_mixed_query_profile
 from ros_typedb_benchmark.stress_mixed import MixedQueryProfile
+from ros_typedb_benchmark.stress_profile import load_stress_profile
+from ros_typedb_benchmark.stress_profile import StressProfile
 
 
 def resolve_stress_config(
@@ -42,9 +44,17 @@ def resolve_stress_config(
     """
     validate_experiment_args(args)
 
-    invariant_specs = build_invariant_specs(args)
-    mixed_profile = _resolve_dynamic_mixed_profile(args)
-    query_specs = _build_runtime_query_specs(args, mixed_profile)
+    external_profile = _load_external_profile(args)
+    _check_profile_conflicts(args, external_profile)
+
+    setup_specs = _build_setup_specs(args, external_profile)
+    teardown_specs = (
+        external_profile.teardown_specs if external_profile else []
+    )
+    invariant_specs = _resolve_invariant_specs(args, external_profile)
+    mixed_profile = _resolve_mixed_profile(args, external_profile)
+    query_specs = _build_runtime_query_specs(args, mixed_profile,
+                                             external_profile)
     debug_events_output = (
         Path(args.debug_events_output).expanduser()
         if args.debug_events_output
@@ -97,13 +107,95 @@ def resolve_stress_config(
         lifecycle_get_state_service_name=lifecycle_get_state_service_name,
         lifecycle_reactivate=lifecycle_reactivate,
         lifecycle_transition_timeout_s=lifecycle_transition_timeout_s,
+        setup_specs=setup_specs,
+        teardown_specs=teardown_specs,
     )
 
 
-def _resolve_dynamic_mixed_profile(
+def _load_external_profile(
     args: argparse.Namespace,
+) -> StressProfile | None:
+    """Load the external profile file if --profile-file is given."""
+    profile_file = getattr(args, 'profile_file', None)
+    if not profile_file:
+        return None
+    return load_stress_profile(Path(profile_file))
+
+
+def _check_profile_conflicts(
+    args: argparse.Namespace,
+    profile: StressProfile | None,
+) -> None:
+    """Raise ValueError when profile file and CLI selectors define the same section."""
+    if profile is None:
+        return
+    if (
+        profile.invariant_specs is not None
+        and args.invariant_profile != 'none'
+    ):
+        raise ValueError(
+            '--profile-file defines invariants; remove --invariant-profile '
+            'or set it to none'
+        )
+    if (
+        profile.mixed_profile is not None
+        and args.mode == 'mixed'
+        and getattr(args, 'mixed_profile', 'auto') != 'auto'
+    ):
+        raise ValueError(
+            '--profile-file defines a mixed section; remove --mixed-profile '
+            'or leave it at auto'
+        )
+
+
+def _build_setup_specs(
+    args: argparse.Namespace,
+    profile: StressProfile | None,
+) -> list[QuerySpec]:
+    """Build setup specs from CLI flags and profile file."""
+    specs: list[QuerySpec] = []
+
+    schema_path = getattr(args, 'schema_path', None)
+    if schema_path:
+        specs.append(
+            QuerySpec(
+                query=Path(schema_path).read_text(encoding='utf-8'),
+                query_type='define',
+            )
+        )
+
+    data_path = getattr(args, 'data_path', None)
+    if data_path:
+        specs.append(
+            QuerySpec(
+                query=Path(data_path).read_text(encoding='utf-8'),
+                query_type='insert',
+            )
+        )
+
+    if profile is not None:
+        specs.extend(profile.setup_specs)
+
+    return specs
+
+
+def _resolve_invariant_specs(
+    args: argparse.Namespace,
+    profile: StressProfile | None,
+) -> list:
+    """Profile invariants win; fall back to CLI --invariant-profile."""
+    if profile is not None and profile.invariant_specs is not None:
+        return profile.invariant_specs
+    return build_invariant_specs(args)
+
+
+def _resolve_mixed_profile(
+    args: argparse.Namespace,
+    profile: StressProfile | None,
 ) -> MixedQueryProfile | None:
-    """Load a mixed profile only when the workload is profile-driven."""
+    """Profile mixed section wins; fall back to CLI --mode mixed."""
+    if profile is not None and profile.mixed_profile is not None:
+        return profile.mixed_profile
     if args.mode == 'mixed' and args.query is None:
         return load_mixed_query_profile(args)
     return None
@@ -112,15 +204,16 @@ def _resolve_dynamic_mixed_profile(
 def _build_runtime_query_specs(
     args: argparse.Namespace,
     mixed_profile: MixedQueryProfile | None,
+    profile: StressProfile | None,
 ) -> list[QuerySpec]:
     """Build fixed query specs or metadata specs for dynamic mixed mode."""
-    if mixed_profile is None:
-        return build_query_specs(args)
+    if mixed_profile is not None:
+        return [
+            QuerySpec(query=template.query, query_type=template.query_type)
+            for template in mixed_profile.templates
+        ]
 
-    # Dynamic mixed requests are rendered per client and request index at
-    # runtime. These QuerySpecs preserve the selected profile's query mix for
-    # JSON output and debug readability.
-    return [
-        QuerySpec(query=template.query, query_type=template.query_type)
-        for template in mixed_profile.templates
-    ]
+    if profile is not None and profile.read_query_specs is not None:
+        return profile.read_query_specs
+
+    return build_query_specs(args)

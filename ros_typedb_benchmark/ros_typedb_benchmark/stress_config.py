@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+from dataclasses import field
 import json
 from pathlib import Path
 from typing import Any
@@ -158,6 +159,8 @@ class ResolvedStressConfig:
     lifecycle_get_state_service_name: str | None = None
     lifecycle_reactivate: bool = True
     lifecycle_transition_timeout_s: float = 10.0
+    setup_specs: list[QuerySpec] = field(default_factory=list)
+    teardown_specs: list[QuerySpec] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

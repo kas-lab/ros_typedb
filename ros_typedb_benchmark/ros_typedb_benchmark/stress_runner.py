@@ -656,6 +656,104 @@ def _run_cleanup_request(
     return
 
 
+def _run_oneshot_query(
+    *,
+    node: Any,
+    executor: Any | None,
+    client: Any,
+    state: _RunState,
+    query_spec: QuerySpec,
+    timeout_s: float,
+    phase: str,
+    debug_events: DebugEventWriter,
+) -> None:
+    """Send one synchronous query and record the result.
+
+    Used for setup and teardown queries that run outside the main load loop.
+    """
+    started_at_s = time.monotonic()
+    request = build_query_request(
+        query_spec.query,
+        query_spec.query_type,
+        timeout_s,
+    )
+    future = client.call_async(request)
+    pending = _PendingRequest(
+        client_id=-1,
+        index=state.next_index,
+        query_index=-1,
+        query_spec=query_spec,
+        future=future,
+        started_at_s=started_at_s,
+    )
+    state.next_index += 1
+    debug_events.log(
+        'oneshot_query_sent',
+        phase=phase,
+        index=pending.index,
+        query_type=query_spec.query_type,
+    )
+
+    timed_out, now_s = _spin_until_future_done(
+        future, node, executor, timeout_s, started_at_s
+    )
+    if timed_out:
+        _record_timeout(
+            pending=pending,
+            now_s=now_s,
+            pending_count=1,
+            state=state,
+            debug_events=debug_events,
+        )
+        debug_events.log(
+            'oneshot_query_timeout',
+            phase=phase,
+            index=pending.index,
+        )
+        return
+    _record_done_future(
+        pending=pending,
+        now_s=now_s,
+        pending_count=1,
+        state=state,
+        debug_events=debug_events,
+    )
+    debug_events.log(
+        'oneshot_query_complete',
+        phase=phase,
+        index=pending.index,
+    )
+
+
+def _run_phase_queries(
+    *,
+    node: Any,
+    executor: Any | None,
+    client: Any,
+    specs: list[QuerySpec],
+    state: _RunState,
+    phase: str,
+    timeout_s: float,
+    debug_events: DebugEventWriter,
+) -> None:
+    """Run a list of oneshot queries sequentially for setup or teardown."""
+    if not specs:
+        return
+    debug_events.log('phase_queries_started', phase=phase, count=len(specs))
+    for spec in specs:
+        _run_oneshot_query(
+            node=node,
+            executor=executor,
+            client=client,
+            state=state,
+            query_spec=spec,
+            timeout_s=timeout_s,
+            phase=phase,
+            debug_events=debug_events,
+        )
+    debug_events.log('phase_queries_finished', phase=phase)
+
+
 def _cleanup_mixed_data(
     *,
     args: argparse.Namespace,
@@ -1376,6 +1474,11 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
         if config.fault == 'lifecycle-cleanup'
         else None
     )
+    setup_teardown_client = (
+        node.create_client(Query, args.service_name)
+        if config.setup_specs or config.teardown_specs
+        else None
+    )
     deadline_s = (
         time.monotonic() + args.duration_s
         if args.duration_s is not None
@@ -1425,11 +1528,27 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
                     [lifecycle_get_state_client]
                     if lifecycle_get_state_client is not None
                     else []
+                )
+                + (
+                    [setup_teardown_client]
+                    if setup_teardown_client is not None
+                    else []
                 ),
                 service_name=args.service_name,
                 wait_service_timeout_s=args.wait_service_timeout_s,
                 debug_events=debug_events,
             )
+            if setup_teardown_client is not None and config.setup_specs:
+                _run_phase_queries(
+                    node=node,
+                    executor=executor,
+                    client=setup_teardown_client,
+                    specs=config.setup_specs,
+                    state=state,
+                    phase='setup',
+                    timeout_s=args.timeout_s,
+                    debug_events=debug_events,
+                )
             experiment_started_at_s = time.monotonic()
 
             while (
@@ -1567,6 +1686,19 @@ def run_experiment(args: argparse.Namespace) -> StressExperimentResult:
                     specs=config.invariant_specs,
                     state=state,
                     phase='final',
+                    timeout_s=args.timeout_s,
+                    debug_events=debug_events,
+                )
+
+            # 4. Teardown (complement of setup — runs last)
+            if setup_teardown_client is not None and config.teardown_specs:
+                _run_phase_queries(
+                    node=node,
+                    executor=executor,
+                    client=setup_teardown_client,
+                    specs=config.teardown_specs,
+                    state=state,
+                    phase='teardown',
                     timeout_s=args.timeout_s,
                     debug_events=debug_events,
                 )

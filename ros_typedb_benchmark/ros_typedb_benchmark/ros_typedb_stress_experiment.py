@@ -299,6 +299,28 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=10.0,
         help='Seconds to wait for each lifecycle transition. Defaults to 10.',
     )
+    parser.add_argument(
+        '--profile-file',
+        help=(
+            'Path to a YAML or JSON stress profile. Overrides '
+            '--invariant-profile and --mixed-profile for sections '
+            'the file defines.'
+        ),
+    )
+    parser.add_argument(
+        '--schema-path',
+        help=(
+            'Path to a TypeDB schema TQL file. Sent as a define '
+            'setup query before the experiment starts.'
+        ),
+    )
+    parser.add_argument(
+        '--data-path',
+        help=(
+            'Path to a TypeDB data TQL file. Sent as an insert '
+            'setup query after --schema-path (if given).'
+        ),
+    )
     return parser
 
 
